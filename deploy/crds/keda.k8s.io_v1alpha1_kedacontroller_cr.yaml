@@ -1,0 +1,25 @@
+apiVersion: keda.k8s.io/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  ###
+  # THERE SHOULD BE ONLY ONE INSTANCE OF THIS RESOURCE PER CLUSTER 
+  # with Name set to 'keda' created in namespace 'keda'
+  ###
+
+  ## Set namespace that should be watched by KEDA Controller 
+  # omit or set empty to watch all namespaces (default setting)
+  watchNamespace: ""
+
+  ## Set logging level for KEDA Controller 
+  # allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+  # default value: info
+  logLevel: info
+
+  ## Set logging level for Metrics Server
+  # allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
+  # default value: "0"
+  logLevelMetrics: "0"
+
