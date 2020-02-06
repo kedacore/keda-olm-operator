@@ -8,7 +8,7 @@ metadata:
       [{"apiVersion":"keda.k8s.io/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0"}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauth","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject","labels":{"deploymentName":"example-deployment"}},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}}]
     categories: Cloud Provider
     certified: 'false'
-    createdAt: '2019-11-30T00:00:00.000Z'
+    createdAt: '2020-02-06T00:00:00.000Z'
     description: 'Operator that provides KEDA, a Kubernetes-based event driver autoscaler'
     containerImage: 'docker.io/kedacore/keda-olm-operator:1.2.0'
     support: 'KEDA Community'
@@ -54,7 +54,7 @@ spec:
     - name: KEDA Community
       email: keda-core@googlegroups.com
   provider:
-    name: Microsoft and Red Hat
+    name: KEDA Community
   labels:
     alm-owner-keda: keda
     operated-by: keda
@@ -306,7 +306,7 @@ spec:
                 serviceAccountName: keda-olm-operator
                 containers:
                   - name: keda-olm-operator
-                    image: 'docker.io/kedacore/keda-olm-operator:master'
+                    image: 'docker.io/kedacore/keda-olm-operator:1.2.0'
                     command:
                       - keda-olm-operator
                     imagePullPolicy: Always
