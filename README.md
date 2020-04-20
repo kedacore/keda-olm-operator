@@ -104,7 +104,7 @@ test changes. The following command will build the operator and use
 your current "kube config" to connect to the cluster:
 
 ```
-operator-sdk up local --namespace=""
+operator-sdk run --local --watch-namespace="" 
 ```
 
 Pass `--help` for further details on the various `operator-sdk`
@@ -112,7 +112,7 @@ subcommands, and pass `--help` to the operator itself to see its
 available options:
 
 ```
-operator-sdk up local --operator-flags "--help"
+operator-sdk run --local --operator-flags "--help"
 ```
 
 
