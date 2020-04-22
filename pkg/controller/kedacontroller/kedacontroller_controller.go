@@ -2,6 +2,7 @@ package kedacontroller
 
 import (
 	"context"
+	goerrors "errors"
 	"fmt"
 
 	mf "github.com/jcrossley3/manifestival"
@@ -11,12 +12,15 @@ import (
 
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -31,6 +35,13 @@ const (
 	kedaControllerResourceNamespace = "keda"
 
 	installationNamespace = "keda"
+
+	metricsServcerServiceName        = "keda-metrics-apiserver"
+	metricsServerConfigMapName       = "keda-metrics-apiserver"
+	injectCABundleAnnotation         = "service.beta.openshift.io/inject-cabundle"
+	injectCABundleAnnotationValue    = "true"
+	injectservingCertAnnotation      = "service.beta.openshift.io/serving-cert-secret-name"
+	injectservingCertAnnotationValue = "keda-metrics-apiserver"
 
 	resourcesPrefix = "deploy/resources/"
 
@@ -209,7 +220,7 @@ func (r *ReconcileKedaController) Reconcile(request reconcile.Request) (reconcil
 
 func (r *ReconcileKedaController) createNamespace(namespace string) error {
 	log.Info("Reconciling namespace", "namespace", namespace)
-	ns := &v1.Namespace{}
+	ns := &corev1.Namespace{}
 	if err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, ns); err != nil {
 		if apierrors.IsNotFound(err) {
 			ns.Name = namespace
@@ -225,7 +236,7 @@ func (r *ReconcileKedaController) createNamespace(namespace string) error {
 
 func (r *ReconcileKedaController) removeNamespace(namespace string) error {
 	log.Info("Removing namespace", "namespace", namespace)
-	ns := &v1.Namespace{}
+	ns := &corev1.Namespace{}
 	if err := r.client.Get(context.TODO(), client.ObjectKey{Name: namespace}, ns); err != nil {
 		if apierrors.IsNotFound(err) {
 			// We can safely ignore this. There is nothing to do for us.
@@ -275,7 +286,18 @@ func (r *ReconcileKedaController) installController(instance *kedav1alpha1.KedaC
 
 func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.KedaController) error {
 	log.Info("Reconciling Metrics Server Deployment")
-	transforms := []mf.Transformer{mf.InjectOwner(instance)}
+
+	if err := r.ensureMetricsServerConfigMap(instance); err != nil {
+		log.Error(err, "Unable to check Metrics Server ConfigMap is present")
+		return err
+	}
+	
+	transforms := []mf.Transformer{
+		mf.InjectOwner(instance),
+		transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.scheme, log),
+		transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue, r.scheme, log),
+		transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.scheme, log),
+	}
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.scheme, log))
 	}
@@ -288,6 +310,63 @@ func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.Ke
 		log.Error(err, "Unable to install Metrics Server")
 		return err
 	}
+	return nil
+}
+
+func (r *ReconcileKedaController) ensureMetricsServerConfigMap(instance *kedav1alpha1.KedaController) error {
+	log.Info("Ensure ConfigMap for Metrics Server CA bundle exists")
+
+	configMap := &corev1.ConfigMap{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: metricsServerConfigMapName, Namespace: instance.Namespace}, configMap)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			configMap.Name = metricsServerConfigMapName
+			configMap.Namespace = instance.Namespace
+			metav1.SetMetaDataAnnotation(&configMap.ObjectMeta, injectCABundleAnnotation, injectCABundleAnnotationValue)
+
+			if err := controllerutil.SetControllerReference(instance, configMap, r.scheme); err != nil {
+				log.Error(err, "Failed to set Controller Reference for ConfigMap")
+				return err
+			}
+
+			err = r.client.Create(context.TODO(), configMap)
+			if err != nil {
+				log.Error(err, "Failed to create new ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", metricsServerConfigMapName)
+				return err
+			}
+
+			return nil
+		}
+		// Error reading the object
+		log.Error(err, "Failed to get ConfigMap from cluster")
+		return err
+	}
+
+	configMapUpdate := false
+
+	if !metav1.HasAnnotation(configMap.ObjectMeta, injectCABundleAnnotation) ||
+		configMap.Annotations[injectCABundleAnnotation] != injectCABundleAnnotationValue {
+		metav1.SetMetaDataAnnotation(&configMap.ObjectMeta, injectCABundleAnnotation, injectCABundleAnnotationValue)
+		configMapUpdate = true
+	}
+
+	if err := controllerutil.SetControllerReference(instance, configMap, r.scheme); err != nil {
+		if !goerrors.Is(err, &controllerutil.AlreadyOwnedError{}) {
+			log.Error(err, "Failed to check Controller Reference for ConfigMap")
+			return err
+		}
+	} else {
+		configMapUpdate = true
+	}
+
+	if configMapUpdate {
+		err = r.client.Update(context.TODO(), configMap)
+		if err != nil {
+			log.Error(err, "Failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", metricsServerConfigMapName)
+			return err
+		}
+	}
+
 	return nil
 }
 
