@@ -13,10 +13,12 @@ import (
 
 var (
 	logLevelsKedaOperator = []string{"debug", "info", "error"}
+	logTimeFormatsKedaOperator = []string{"epoch", "millis", "nano", "iso8601"}
 )
 
 const (
 	logLevelPrefixKedaOperator  = "--zap-level="
+	logTimeFormatPrefixKedaOperator  = "--zap-time-encoding="
 	logLevelPrefixMetricsServer = "--v="
 
 	containerNameKedaOperator  = "keda-operator"
@@ -81,6 +83,25 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 	return replaceLogLevel(logLevelPrefixKedaOperator+logLevel, logLevelPrefixKedaOperator, containerNameKedaOperator, scheme, logger)
 }
 
+func ReplaceKedaOperatorLogTimeFormat(logTimeFormat string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+
+	found := false
+	for _, format := range logTimeFormatsKedaOperator {
+		if logTimeFormat == format {
+			found = true
+		}
+	}
+
+	if !found {
+		logger.Info("Ignoring speficied Log format for Keda Operator, it needs to be set to ", strings.Join(logTimeFormatsKedaOperator, ", "))
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+
+	return replaceLogFormat(logTimeFormatPrefixKedaOperator+logTimeFormat, logTimeFormatPrefixKedaOperator, containerNameKedaOperator, scheme, logger)
+}
+
 func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 
 	found := false
@@ -114,6 +135,40 @@ func replaceLogLevel(logLevel string, logLevelPrefix string, containerName strin
 							if arg != logLevel {
 								logger.Info("Replacing ", "deployment", container.Name, "log level", logLevel, "previous", arg)
 								containers[i].Args[j] = logLevel
+								changed = true
+							}
+							break
+						}
+					}
+					break
+				}
+			}
+			if changed {
+				if err := scheme.Convert(deploy, u, nil); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+}
+
+func replaceLogFormat(logTimeFormat string, logTimeFormatPrefix string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		changed := false
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerName {
+					for j, arg := range container.Args {
+						if strings.HasPrefix(arg, logTimeFormatPrefix) {
+							if arg != logTimeFormat {
+								logger.Info("Replacing ", "deployment", container.Name, "log format", logTimeFormat, "previous", arg)
+								containers[i].Args[j] = logTimeFormat
 								changed = true
 							}
 							break

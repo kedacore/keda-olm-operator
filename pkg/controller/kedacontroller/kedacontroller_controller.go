@@ -261,6 +261,9 @@ func (r *ReconcileKedaController) installController(instance *kedav1alpha1.KedaC
 	if len(instance.Spec.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(instance.Spec.LogLevel, r.scheme, log))
 	}
+	if len(instance.Spec.LogTimeFormat) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeFormat(instance.Spec.LogTimeFormat, r.scheme, log))
+	}
 	if err := r.resourcesController.Transform(transforms...); err != nil {
 		log.Error(err, "Unable to transform KEDA Controller manifest")
 		return err

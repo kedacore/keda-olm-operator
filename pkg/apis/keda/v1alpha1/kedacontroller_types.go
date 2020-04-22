@@ -23,6 +23,8 @@ type KedaControllerSpec struct {
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
 	// +optional
+	LogTimeFormat string `json:"logTimeFormat,omitempty"`
+	// +optional
 	LogLevelMetrics string `json:"logLevelMetrics,omitempty"`
 	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
