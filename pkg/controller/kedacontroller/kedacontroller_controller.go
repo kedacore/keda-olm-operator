@@ -8,6 +8,7 @@ import (
 	mf "github.com/jcrossley3/manifestival"
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/pkg/apis/keda/v1alpha1"
 	"github.com/kedacore/keda-olm-operator/pkg/controller/kedacontroller/transform"
+	"github.com/kedacore/keda-olm-operator/pkg/controller/util"
 	"github.com/kedacore/keda-olm-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
@@ -90,7 +91,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kedav1alpha1.KedaController{},
-	})
+	}, predicate.GenerationChangedPredicate{})
 	if err != nil {
 		return err
 	}
@@ -160,8 +161,9 @@ func (r *ReconcileKedaController) Reconcile(request reconcile.Request) (reconcil
 	if !isInteresting(request) {
 		msg := fmt.Sprintf("The KedaController resource needs to be created in namespace %s with name %s, otherwise it will be ignored", kedaControllerResourceNamespace, kedaControllerResourceName)
 		reqLogger.Info(msg)
-		instance.Status.MarkIgnored(msg)
-		err = r.updateStatus(instance)
+		status := instance.Status.DeepCopy()
+		status.MarkIgnored(msg)
+		err = util.UpdateKedaControllerStatus(r.client, instance, status)
 		return reconcile.Result{}, nil
 	}
 
@@ -192,29 +194,30 @@ func (r *ReconcileKedaController) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, nil
 	}
 
-	defer r.updateStatus(instance)
+	status := instance.Status.DeepCopy()
+	defer util.UpdateKedaControllerStatus(r.client, instance, status)
 
 	// DO NOT manage creation of namespace at the moment (we expect that it is precreated manually)
 	// if err := r.createNamespace(installationNamespace); err != nil {
-	// 	instance.Status.MarkInstallFailed(fmt.Sprintf("Not able to create Namespace '%s'", installationNamespace))
+	// 	status.MarkInstallFailed(fmt.Sprintf("Not able to create Namespace '%s'", installationNamespace))
 	// 	return reconcile.Result{}, err
 	// }
 
 	if err := r.installSA(instance); err != nil {
-		instance.Status.MarkInstallFailed("Not able to create ServiceAccount")
+		status.MarkInstallFailed("Not able to create ServiceAccount")
 		return reconcile.Result{}, err
 	}
 	if err := r.installController(instance); err != nil {
-		instance.Status.MarkInstallFailed("Not able to install KEDA Controller")
+		status.MarkInstallFailed("Not able to install KEDA Controller")
 		return reconcile.Result{}, err
 	}
 	if err := r.installMetricsServer(instance); err != nil {
-		instance.Status.MarkInstallFailed("Not able to install KEDA Metrics Server")
+		status.MarkInstallFailed("Not able to install KEDA Metrics Server")
 		return reconcile.Result{}, err
 	}
 
-	instance.Status.Version = version.Version
-	instance.Status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, installationNamespace))
+	status.Version = version.Version
+	status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, installationNamespace))
 	return reconcile.Result{}, nil
 }
 
@@ -291,7 +294,7 @@ func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.Ke
 		log.Error(err, "Unable to check Metrics Server ConfigMap is present")
 		return err
 	}
-	
+
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
 		transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.scheme, log),
@@ -367,14 +370,6 @@ func (r *ReconcileKedaController) ensureMetricsServerConfigMap(instance *kedav1a
 		}
 	}
 
-	return nil
-}
-
-// Update the status subresource
-func (r *ReconcileKedaController) updateStatus(instance *kedav1alpha1.KedaController) error {
-	if err := r.client.Status().Update(context.TODO(), instance); err != nil {
-		return err
-	}
 	return nil
 }
 
