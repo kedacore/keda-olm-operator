@@ -7,10 +7,10 @@ import (
 type KedaControllerPhase string
 
 const (
-	PhaseNone                 KedaControllerPhase = ""
-	PhaseInstallSucceeded                         = "Installation Succeeded"
-	PhaseIgnored                                  = "Installation Ignored"
-	PhaseFailed                                   = "Installation Failed"
+	PhaseNone             KedaControllerPhase = ""
+	PhaseInstallSucceeded                     = "Installation Succeeded"
+	PhaseIgnored                              = "Installation Ignored"
+	PhaseFailed                               = "Installation Failed"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -36,12 +36,17 @@ type KedaControllerSpec struct {
 // KedaControllerStatus defines the observed state of KedaController
 // +k8s:openapi-gen=true
 type KedaControllerStatus struct {
-	Phase KedaControllerPhase `json:"phase"`
+	// +optional
+	Phase KedaControllerPhase `json:"phase,omitempy"`
 	// +optional
 	Reason string `json:"reason,omitempty"`
-
 	// +optional
 	Version string `json:"version,omitempty"`
+	// +optional
+	ConfigMapDataSum string `json:"configmadatasum,omitempty"`
+	// +optional
+	SecretDataSum string `json:"secretdatasum,omitempty"`
+
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 }
@@ -82,16 +87,16 @@ func (kcs *KedaControllerStatus) SetReason(r string) {
 }
 
 func (kcs *KedaControllerStatus) MarkIgnored(r string) {
-	kcs.Phase = PhaseIgnored 
+	kcs.Phase = PhaseIgnored
 	kcs.Reason = r
 }
 
 func (kcs *KedaControllerStatus) MarkInstallSucceeded(r string) {
-	kcs.Phase = PhaseInstallSucceeded 
+	kcs.Phase = PhaseInstallSucceeded
 	kcs.Reason = r
 }
 
 func (kcs *KedaControllerStatus) MarkInstallFailed(r string) {
-	kcs.Phase = PhaseFailed 
+	kcs.Phase = PhaseFailed
 	kcs.Reason = r
 }
