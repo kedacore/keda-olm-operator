@@ -279,6 +279,7 @@ func (r *ReconcileKedaController) installController(instance *kedav1alpha1.KedaC
 	if len(instance.Spec.LogTimeFormat) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeFormat(instance.Spec.LogTimeFormat, r.scheme, log))
 	}
+
 	if err := r.resourcesController.Transform(transforms...); err != nil {
 		log.Error(err, "Unable to transform KEDA Controller manifest")
 		return err
@@ -305,6 +306,11 @@ func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.Ke
 		transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue, r.scheme, log),
 		transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.scheme, log),
 	}
+	
+	argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
+	newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
+	transforms = append(transforms, transform.AddPathsToCerts(newArgs, argsPrefixes, r.scheme, log)...)
+
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.scheme, log))
 	}
