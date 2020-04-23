@@ -15,13 +15,26 @@ import (
 )
 
 var (
-	logLevelsKedaOperator = []string{"debug", "info", "error"}
+	logLevelsKedaOperator      = []string{"debug", "info", "error"}
+	logTimeFormatsKedaOperator = []string{"epoch", "millis", "nano", "iso8601"}
 )
 
-const (
-	logLevelPrefixKedaOperator  = "--zap-level="
-	logLevelPrefixMetricsServer = "--v="
+type Prefix string
 
+const (
+	LogLevelKedaOperator      Prefix = "--zap-level="
+	LogTimeFormatKedaOperator        = "--zap-time-encoding="
+	LogLevelMetricsServer            = "--v="
+	ClientCAFile                     = "--client-ca-file="
+	TLSCertFile                      = "--tls-cert-file="
+	TLSPrivateKeyFile                = "--tls-private-key-file="
+)
+
+func (p Prefix) String() string {
+	return string(p)
+}
+
+const (
 	containerNameKedaOperator  = "keda-operator"
 	containerNameMetricsServer = "keda-metrics-apiserver"
 )
@@ -175,23 +188,6 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 					if !certsVolumeMountFound {
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certsVolumeMount)
 					}
-
-					// add args with paths to the generated certs which are mounted from the ConfigMap and Secret in Volumes
-					argsPrefixes := []string{"--client-ca-file=", "--tls-cert-file=", "--tls-private-key-file="}
-					newArgs := []string{"--client-ca-file=/cabundle/service-ca.crt", "--tls-cert-file=/certs/tls.crt", "--tls-private-key-file=/certs/tls.key"}
-					for j := range argsPrefixes {
-						argFound := false
-						for k := range containers[i].Args {
-							if strings.HasPrefix(containers[i].Args[k], argsPrefixes[j]) {
-								containers[i].Args[k] = newArgs[j]
-								argFound = true
-								break
-							}
-						}
-						if !argFound {
-							containers[i].Args = append(containers[i].Args, newArgs[j])
-						}
-					}
 				}
 				break
 			}
@@ -203,6 +199,14 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 		}
 		return nil
 	}
+}
+
+func AddPathsToCerts(values []string, prefixes []Prefix, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
+	transforms := []mf.Transformer{}
+	for i := range values {
+		transforms = append(transforms, replaceContainerArg(values[i], prefixes[i], containerNameMetricsServer, scheme, logger))
+	}
+	return transforms
 }
 
 func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
@@ -226,7 +230,28 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 		}
 	}
 
-	return replaceLogLevel(logLevelPrefixKedaOperator+logLevel, logLevelPrefixKedaOperator, containerNameKedaOperator, scheme, logger)
+	var prefix Prefix = LogLevelKedaOperator
+	return replaceContainerArg(logLevel, prefix, containerNameKedaOperator, scheme, logger)
+}
+
+func ReplaceKedaOperatorLogTimeFormat(logTimeFormat string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+
+	found := false
+	for _, format := range logTimeFormatsKedaOperator {
+		if logTimeFormat == format {
+			found = true
+		}
+	}
+
+	if !found {
+		logger.Info("Ignoring speficied Log format for Keda Operator, it needs to be set to ", strings.Join(logTimeFormatsKedaOperator, ", "))
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+
+	var prefix Prefix = LogTimeFormatKedaOperator
+	return replaceContainerArg(logTimeFormat, prefix, containerNameKedaOperator, scheme, logger)
 }
 
 func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
@@ -243,10 +268,11 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 		}
 	}
 
-	return replaceLogLevel(logLevelPrefixMetricsServer+logLevel, logLevelPrefixMetricsServer, containerNameMetricsServer, scheme, logger)
+	var prefix Prefix = LogLevelMetricsServer
+	return replaceContainerArg(logLevel, prefix, containerNameMetricsServer, scheme, logger)
 }
 
-func replaceLogLevel(logLevel string, logLevelPrefix string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func replaceContainerArg(value string, prefix Prefix, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		changed := false
 		if u.GetKind() == "Deployment" {
@@ -257,15 +283,22 @@ func replaceLogLevel(logLevel string, logLevelPrefix string, containerName strin
 			containers := deploy.Spec.Template.Spec.Containers
 			for i, container := range containers {
 				if container.Name == containerName {
+					argFound := false
 					for j, arg := range container.Args {
-						if strings.HasPrefix(arg, logLevelPrefix) {
-							if arg != logLevel {
-								logger.Info("Replacing ", "deployment", container.Name, "log level", logLevel, "previous", arg)
-								containers[i].Args[j] = logLevel
+						if strings.HasPrefix(arg, prefix.String()) {
+							argFound = true
+							if trimmedArg := strings.TrimPrefix(arg, prefix.String()); trimmedArg != value {
+								logger.Info("Replacing", "deployment", container.Name, prefix.String(), value, "previous", trimmedArg)
+								containers[i].Args[j] = prefix.String()+value
 								changed = true
 							}
 							break
 						}
+					}
+					if !argFound {
+						logger.Info("Adding", "deployment", container.Name, prefix.String(), value)
+						containers[i].Args = append(containers[i].Args, prefix.String()+value)
+						changed = true
 					}
 					break
 				}

@@ -35,6 +35,8 @@ spec:
               type: string
             logLevelMetrics:
               type: string
+            logTimeFormat:
+              type: string
             watchNamespace:
               type: string
           type: object
