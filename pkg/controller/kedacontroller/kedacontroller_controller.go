@@ -177,8 +177,9 @@ func (r *ReconcileKedaController) Reconcile(request reconcile.Request) (reconcil
 			}
 			// Remove kedaControllerFinalizer. Once all finalizers have been
 			// removed, the object will be deleted.
+			patch := client.MergeFrom(instance.DeepCopy())
 			instance.SetFinalizers(remove(instance.GetFinalizers(), kedaControllerFinalizer))
-			err := r.client.Update(context.TODO(), instance)
+			err := r.client.Patch(context.TODO(), instance, patch)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
