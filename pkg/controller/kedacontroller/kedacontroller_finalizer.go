@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/pkg/apis/keda/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -39,10 +40,11 @@ func (r *ReconcileKedaController) finalizeKedaController(logger logr.Logger, ins
 // addFinalizer adds finalizer to the KedaController
 func (r *ReconcileKedaController) addFinalizer(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Adding Finalizer for the KedaController")
-	instance.SetFinalizers(append(instance.GetFinalizers(), kedaControllerFinalizer))
 
 	// Update CR
-	err := r.client.Update(context.TODO(), instance)
+	patch := client.MergeFrom(instance.DeepCopy())
+	instance.SetFinalizers(append(instance.GetFinalizers(), kedaControllerFinalizer))
+	err := r.client.Patch(context.TODO(), instance, patch)
 	if err != nil {
 		logger.Error(err, "Failed to update KedaController with finalizer")
 		return err
