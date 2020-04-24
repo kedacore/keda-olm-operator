@@ -299,6 +299,8 @@ func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.Ke
 		log.Error(err, "Unable to check Metrics Server ConfigMap is present")
 		return err
 	}
+	argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
+	newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
 
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
@@ -306,10 +308,8 @@ func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.Ke
 		transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue, r.scheme, log),
 		transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.scheme, log),
 	}
-	
-	argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
-	newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
-	transforms = append(transforms, transform.AddPathsToCerts(newArgs, argsPrefixes, r.scheme, log)...)
+
+	transforms = append(transforms, transform.EnsurePathsToCertsInDeployment(newArgs, argsPrefixes, r.scheme, log)...)
 
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.scheme, log))

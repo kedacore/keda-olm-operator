@@ -201,7 +201,7 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 	}
 }
 
-func AddPathsToCerts(values []string, prefixes []Prefix, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
+func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
 	transforms := []mf.Transformer{}
 	for i := range values {
 		transforms = append(transforms, replaceContainerArg(values[i], prefixes[i], containerNameMetricsServer, scheme, logger))
