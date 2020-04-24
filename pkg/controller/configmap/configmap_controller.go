@@ -31,7 +31,11 @@ var log = logf.Log.WithName("controller_configmap")
 // Add creates a new ConfigMap Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+
+	if util.RunningOnOpenshift(log, mgr.GetClient()) {
+		return add(mgr, newReconciler(mgr))
+	}
+	return nil
 }
 
 // newReconciler returns a new reconcile.Reconciler

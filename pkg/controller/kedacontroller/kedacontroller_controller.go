@@ -295,21 +295,29 @@ func (r *ReconcileKedaController) installController(instance *kedav1alpha1.KedaC
 func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.KedaController) error {
 	log.Info("Reconciling Metrics Server Deployment")
 
-	if err := r.ensureMetricsServerConfigMap(instance); err != nil {
-		log.Error(err, "Unable to check Metrics Server ConfigMap is present")
-		return err
-	}
-	argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
-	newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
-
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
-		transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.scheme, log),
-		transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue, r.scheme, log),
-		transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.scheme, log),
 	}
 
-	transforms = append(transforms, transform.EnsurePathsToCertsInDeployment(newArgs, argsPrefixes, r.scheme, log)...)
+	// certificates rotation works only on Openshift due to openshift/service-ca-operator
+	if util.RunningOnOpenshift(log, r.client) {
+		if err := r.ensureMetricsServerConfigMap(instance); err != nil {
+			log.Error(err, "Unable to check Metrics Server ConfigMap is present")
+			return err
+		}
+
+		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
+		newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
+
+		transforms = append(transforms,
+			transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.scheme, log),
+			transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue, r.scheme, log),
+			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.scheme, log),
+		)
+		transforms = append(transforms, transform.EnsurePathsToCertsInDeployment(newArgs, argsPrefixes, r.scheme, log)...)
+	}else{
+		log.Info("Not running on OpenShift -> using generated self-signed cert for KEDA Metrics Server")
+	}
 
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.scheme, log))
