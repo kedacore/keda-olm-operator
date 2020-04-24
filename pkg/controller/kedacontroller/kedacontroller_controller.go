@@ -192,7 +192,7 @@ func (r *ReconcileKedaController) Reconcile(request reconcile.Request) (reconcil
 		if err := r.addFinalizer(reqLogger, instance); err != nil {
 			return reconcile.Result{}, err
 		}
-		return reconcile.Result{}, nil
+		return reconcile.Result{Requeue: true}, nil
 	}
 
 	status := instance.Status.DeepCopy()
