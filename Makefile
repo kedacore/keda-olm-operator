@@ -52,3 +52,9 @@ generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate k8s
 	$(GO_BUILD_VARS) operator-sdk generate crds
 
+##################################################
+# Test                                           #
+##################################################
+.PHONY: test-unit
+test-unit:
+	$(GO_BUILD_VARS) go test ./...
