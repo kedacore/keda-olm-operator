@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	mfc "github.com/manifestival/controller-runtime-client"
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/pkg/apis/keda/v1alpha1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	mf "github.com/jcrossley3/manifestival"
+	mf "github.com/manifestival/manifestival"
 )
 
 var (
@@ -64,7 +65,7 @@ func setupReconcileKedaController(s *runtime.Scheme) (*ReconcileKedaController, 
 
 	r := &ReconcileKedaController{client: cl, scheme: s}
 
-	manifest, err := mf.NewManifest(fmt.Sprintf("%s,%s,%s", wd+"/"+resourceClusterRole, wd+"/"+resourceRoleBinding, wd+"/"+resourceOperator), false, cl)
+	manifest, err := mfc.NewManifest(fmt.Sprintf("%s,%s,%s", wd+"/"+resourceClusterRole, wd+"/"+resourceRoleBinding, wd+"/"+resourceOperator), cl)
 	if err != nil {
 		return nil, err
 	}
@@ -157,26 +158,22 @@ func TestReplaceKedaOperatorLogTimeFormat(t *testing.T) {
 					Namespace: namespace,
 				},
 			}
-
 			_, err = r.Reconcile(req)
 			if err != nil {
 				t.Fatalf("Failed to reconcile: %v", err)
 			}
 
-			for _, res := range r.resourcesController.Resources {
-				if res.GetKind() == "Deployment" {
-					u := res.DeepCopy()
+			for _, res := range r.resourcesController.Filter(mf.ByKind("Deployment")).Resources() {
+				u := res.DeepCopy()
 
-					dep := &appsv1.Deployment{}
-					if err := s.Convert(u, dep, nil); err != nil {
-						t.Fatalf("Failed to convert: %v", err)
-					}
+				dep := &appsv1.Deployment{}
+				if err := s.Convert(u, dep, nil); err != nil {
+					t.Fatalf("Failed to convert: %v", err)
+				}
 
-					err = checkDeploymentArgs(*dep, test.actualLogTimeFormat, logTimeFormatPrefix, containerName)
-					if err != nil {
-						t.Fatalf("%v", err)
-					}
-
+				err = checkDeploymentArgs(*dep, test.actualLogTimeFormat, logTimeFormatPrefix, containerName)
+				if err != nil {
+					t.Fatalf("%v", err)
 				}
 			}
 
@@ -244,7 +241,7 @@ func TestReplaceKedaOperatorLogLevel(t *testing.T) {
 				t.Fatalf("Failed to reconcile: %v", err)
 			}
 
-			for _, res := range r.resourcesController.Resources {
+			for _, res := range r.resourcesController.Filter(mf.ByKind("Deployment")).Resources() {
 				if res.GetKind() == "Deployment" {
 					u := res.DeepCopy()
 

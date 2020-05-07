@@ -14,15 +14,15 @@ const (
 
 // finalizeKedaController is deleting resources for the respective KedaController
 func (r *ReconcileKedaController) finalizeKedaController(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
-	if err := r.resourcesGeneral.DeleteAll(); err != nil {
+	if err := r.resourcesGeneral.Delete(); err != nil {
 		logger.Info("error finalized KedaController general", "error", err)
 		return err
 	}
-	if err := r.resourcesController.DeleteAll(); err != nil {
+	if err := r.resourcesController.Delete(); err != nil {
 		logger.Info("error finalized KedaController controller", "error", err)
 		return err
 	}
-	if err := r.resourcesMetrics.DeleteAll(); err != nil {
+	if err := r.resourcesMetrics.Delete(); err != nil {
 		logger.Info("error finalized KedaController metrics", "error", err)
 		return err
 	}

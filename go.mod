@@ -5,7 +5,8 @@ go 1.13
 require (
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.4
-	github.com/jcrossley3/manifestival v0.0.0-20191210210340-41c7c3a22365
+	github.com/manifestival/controller-runtime-client v0.2.0
+	github.com/manifestival/manifestival v0.5.0
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.17.4
