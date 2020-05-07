@@ -263,7 +263,7 @@ func (r *ReconcileKedaController) installSA(instance *kedav1alpha1.KedaControlle
 	}
 	r.resourcesGeneral = manifest
 
-	if err := r.resourcesMetrics.Apply(); err != nil {
+	if err := r.resourcesGeneral.Apply(); err != nil {
 		log.Error(err, "Unable to install ServiceAccount")
 		return err
 	}
@@ -291,7 +291,7 @@ func (r *ReconcileKedaController) installController(instance *kedav1alpha1.KedaC
 	}
 	r.resourcesController = manifest
 
-	if err := r.resourcesMetrics.Apply(); err != nil {
+	if err := r.resourcesController.Apply(); err != nil {
 		log.Error(err, "Unable to install KEDA Controller")
 		return err
 	}
