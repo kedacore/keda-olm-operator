@@ -58,3 +58,7 @@ generate-api:
 .PHONY: test-unit
 test-unit:
 	$(GO_BUILD_VARS) go test ./...
+
+.PHONY: test-e2e
+test-e2e:
+	$(GO_BUILD_VARS) operator-sdk test local ./test --operator-namespace=keda
