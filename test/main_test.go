@@ -13,14 +13,12 @@ import (
 )
 
 var (
-	name				= "keda"
-
-	olmOperator			= "keda-olm-operator"
-	operator			= "keda-operator"
-	metricsAPIServer	= "keda-metrics-apiserver"
-
-	retryInterval		= time.Second * 5
-	timeout				= time.Second * 30
+	name             = "keda"
+	olmOperator      = "keda-olm-operator"
+	operator         = "keda-operator"
+	metricsAPIServer = "keda-metrics-apiserver"
+	retryInterval    = time.Second * 5
+	timeout          = time.Second * 30
 )
 
 func TestMain(m *testing.M) {
