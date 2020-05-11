@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	name      			= "keda"
+	name				= "keda"
 
 	olmOperator			= "keda-olm-operator"
 	operator			= "keda-operator"
 	metricsAPIServer	= "keda-metrics-apiserver"
 
-	retryInterval 		= time.Second*5
+	retryInterval		= time.Second*5
 	timeout				= time.Second*30
 )
 
