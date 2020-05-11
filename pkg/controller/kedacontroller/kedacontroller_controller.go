@@ -5,7 +5,8 @@ import (
 	goerrors "errors"
 	"fmt"
 
-	mf "github.com/jcrossley3/manifestival"
+	mfc "github.com/manifestival/controller-runtime-client"
+	mf "github.com/manifestival/manifestival"
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/pkg/apis/keda/v1alpha1"
 	"github.com/kedacore/keda-olm-operator/pkg/controller/kedacontroller/transform"
 	"github.com/kedacore/keda-olm-operator/pkg/controller/util"
@@ -115,19 +116,19 @@ type ReconcileKedaController struct {
 
 // InjectClient creates manifestival resources at start
 func (r *ReconcileKedaController) InjectClient(c client.Client) error {
-	manifest, err := mf.NewManifest(fmt.Sprintf("%s", resourceServiceAccount), false, c)
+	manifest, err := mfc.NewManifest(fmt.Sprintf("%s", resourceServiceAccount), c)
 	if err != nil {
 		return err
 	}
 	r.resourcesGeneral = manifest
 
-	manifest, err = mf.NewManifest(fmt.Sprintf("%s,%s,%s", resourceClusterRole, resourceRoleBinding, resourceOperator), false, c)
+	manifest, err = mfc.NewManifest(fmt.Sprintf("%s,%s,%s", resourceClusterRole, resourceRoleBinding, resourceOperator), c)
 	if err != nil {
 		return err
 	}
 	r.resourcesController = manifest
 
-	manifest, err = mf.NewManifest(fmt.Sprintf("%s,%s,%s,%s,%s", resourceMetricsClusterRole, resourceMetricsRoleBinding, resourceMetricsDeployment, resourceMetricsService, resourceMetricsAPIService), false, c)
+	manifest, err = mfc.NewManifest(fmt.Sprintf("%s,%s,%s,%s,%s", resourceMetricsClusterRole, resourceMetricsRoleBinding, resourceMetricsDeployment, resourceMetricsService, resourceMetricsAPIService), c)
 	if err != nil {
 		return err
 	}
@@ -255,15 +256,18 @@ func (r *ReconcileKedaController) removeNamespace(namespace string) error {
 func (r *ReconcileKedaController) installSA(instance *kedav1alpha1.KedaController) error {
 	log.Info("Reconciling Keda ServiceAccount")
 	transforms := []mf.Transformer{mf.InjectOwner(instance)}
-	if err := r.resourcesGeneral.Transform(transforms...); err != nil {
+	manifest, err := r.resourcesGeneral.Transform(transforms...)
+	if err != nil {
 		log.Error(err, "Unable to transform ServiceAccount manifest")
 		return err
 	}
+	r.resourcesGeneral = manifest
 
-	if err := r.resourcesGeneral.ApplyAll(); err != nil {
+	if err := r.resourcesGeneral.Apply(); err != nil {
 		log.Error(err, "Unable to install ServiceAccount")
 		return err
 	}
+
 	return nil
 }
 
@@ -280,15 +284,18 @@ func (r *ReconcileKedaController) installController(instance *kedav1alpha1.KedaC
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeFormat(instance.Spec.LogTimeFormat, r.scheme, log))
 	}
 
-	if err := r.resourcesController.Transform(transforms...); err != nil {
-		log.Error(err, "Unable to transform KEDA Controller manifest")
+	manifest, err := r.resourcesController.Transform(transforms...)
+	if err != nil {
+		log.Error(err, "Unable to transform KEDA Controller manifest")		
 		return err
 	}
+	r.resourcesController = manifest
 
-	if err := r.resourcesController.ApplyAll(); err != nil {
+	if err := r.resourcesController.Apply(); err != nil {
 		log.Error(err, "Unable to install KEDA Controller")
 		return err
 	}
+
 	return nil
 }
 
@@ -322,15 +329,18 @@ func (r *ReconcileKedaController) installMetricsServer(instance *kedav1alpha1.Ke
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.scheme, log))
 	}
-	if err := r.resourcesMetrics.Transform(transforms...); err != nil {
+	manifest, err := r.resourcesMetrics.Transform(transforms...)
+	if err != nil {
 		log.Error(err, "Unable to transform Metrics Server manifest")
 		return err
 	}
+	r.resourcesMetrics = manifest
 
-	if err := r.resourcesMetrics.ApplyAll(); err != nil {
+	if err := r.resourcesMetrics.Apply(); err != nil {
 		log.Error(err, "Unable to install Metrics Server")
 		return err
 	}
+
 	return nil
 }
 
