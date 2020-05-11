@@ -19,15 +19,15 @@ var (
 	operator			= "keda-operator"
 	metricsAPIServer	= "keda-metrics-apiserver"
 
-	retryInterval		= time.Second*5
-	timeout				= time.Second*30
+	retryInterval		= time.Second * 5
+	timeout				= time.Second * 30
 )
 
 func TestMain(m *testing.M) {
 	framework.MainEntry(m)
 }
 
-func setupContext(t *testing.T) *framework.Context{
+func setupContext(t *testing.T) *framework.Context {
 	kedacontrollerList := &kedav1alpha1.KedaControllerList{}
 	err := framework.AddToFrameworkScheme(apis.AddToScheme, kedacontrollerList)
 	if err != nil {
