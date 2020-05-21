@@ -57,7 +57,7 @@ generate-api:
 ##################################################
 .PHONY: test-unit
 test-unit:
-	$(GO_BUILD_VARS) go test ./...
+	$(GO_BUILD_VARS) go test ./pkg/controller/...
 
 .PHONY: test-e2e
 test-e2e:
