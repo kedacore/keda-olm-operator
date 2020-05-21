@@ -1,0 +1,17 @@
+name: nightly unit test
+on:
+  schedule:
+    - cron: "0 0 * * *"
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    container: kedacore/build-tools:v2
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Run unit tests
+        run: make test-unit
