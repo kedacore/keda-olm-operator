@@ -16,7 +16,7 @@ jobs:
         run: make test-unit
 
       - name: Setup kubernetes
-        uses: engineerd/setup-kind@v0.3.0
+        uses: engineerd/setup-kind@v0.4.0
       
       - name: Run e2e tests
         run: |
