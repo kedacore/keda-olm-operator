@@ -1,4 +1,4 @@
-name: nightly tests
+name: Nightly tests
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -16,3 +16,11 @@ jobs:
 
       - name: Run unit tests
         run: make test-unit
+
+      - name: Setup kubernetes
+        uses: engineerd/setup-kind@v0.3.0
+      
+      - name: Run e2e tests
+        run: |
+          kubectl create namespace keda
+          make test-e2e
