@@ -1,0 +1,25 @@
+name: Create cluster using KinD
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  kind:
+    runs-on: ubuntu-latest
+    # tu pride nejaky nas image
+    container: moj-test:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Setup kubernetes
+        uses: engineerd/setup-kind@v0.3.0
+      
+      - name: Verify
+        run: kubectl get pods -n kube-system
+      
+      - name: Run e2e tests
+        run: |
+          kubectl create namespace keda
+          make test-e2e
