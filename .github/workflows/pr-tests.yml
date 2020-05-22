@@ -12,8 +12,8 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Run unit tests
-        run: make test-unit
+      # - name: Run unit tests
+      #   run: make test-unit
 
       - name: Setup kubernetes
         uses: engineerd/setup-kind@v0.4.0
