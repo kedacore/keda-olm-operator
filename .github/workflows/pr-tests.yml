@@ -8,7 +8,7 @@ jobs:
     container: kedacore/build-tools:v2
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@master
         with:
           fetch-depth: 1
 
