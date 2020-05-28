@@ -33,6 +33,7 @@ jobs:
         run: make publish
   
   test:
+    needs: Build
     name: Test
     runs-on: ubuntu-latest
     steps:
