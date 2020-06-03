@@ -14,7 +14,7 @@ Changes repository name in necessary files
 
 -h: print help
 -p: change repository to predefined value
--k: change repository to `kedacore`
+-k: change repository to "kedacore"
 ```
 
 ## keda-olm-locally
