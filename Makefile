@@ -50,7 +50,7 @@ build: generate-api
 .PHONY: generate-api
 generate-api:
 	$(GO_BUILD_VARS) operator-sdk generate k8s
-	$(GO_BUILD_VARS) operator-sdk generate crds
+	$(GO_BUILD_VARS) operator-sdk generate crds --crd-version=v1beta1
 
 ##################################################
 # Test                                           #
