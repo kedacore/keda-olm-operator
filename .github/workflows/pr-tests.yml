@@ -11,6 +11,9 @@ jobs:
           kind create cluster
           kubectl create namespace keda --context kind-kind
 
+      - name: GO Version
+        run: go version
+
       - name: Go modules cache
         uses: actions/cache@v1
         with:
