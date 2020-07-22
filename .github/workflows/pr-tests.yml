@@ -6,20 +6,32 @@ jobs:
     name: PR test
     runs-on: ubuntu-latest
     steps:
-
       - name: Setup kubernetes
         run: |
           kind create cluster
           kubectl create namespace keda --context kind-kind
 
+      - name: Install Go 1.14
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.14.4' 
+
+      - name: Go modules cache
+        uses: actions/cache@v1
+        with:
+          path: /go/pkg
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Install operator-sdk
         run: brew install operator-sdk
-      
+
       - name: Check out code
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      
+
       - name: Run unit tests
         run: make test-unit
 
