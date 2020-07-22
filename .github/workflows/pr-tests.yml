@@ -11,12 +11,10 @@ jobs:
           kind create cluster
           kubectl create namespace keda --context kind-kind
 
-      - uses: actions/setup-go@v2
+      - name: Install Go 1.14
+        uses: actions/setup-go@v2
         with:
-          go-version: '^1.14.5' 
-
-      - name: Go Version
-        run: go version
+          go-version: '1.14' 
 
       - name: Go modules cache
         uses: actions/cache@v1
