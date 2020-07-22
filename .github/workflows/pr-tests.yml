@@ -4,14 +4,14 @@ on: [pull_request]
 jobs:
   pr-test:
     name: PR test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Setup kubernetes
         run: |
           kind create cluster
           kubectl create namespace keda --context kind-kind
 
-      - name: GO Version
+      - name: Go Version
         run: go version
 
       - name: Go modules cache
