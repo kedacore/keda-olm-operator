@@ -1,0 +1,7 @@
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: kedacontroller-sample
+spec:
+  # Add fields here
+  foo: bar
