@@ -1,39 +1,41 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-  name: system
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
-  namespace: system
+  name: keda-operator
+  namespace: keda
   labels:
-    control-plane: controller-manager
+    app: keda-operator
+    app.kubernetes.io/name: keda-operator
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: operator
+    app.kubernetes.io/part-of: keda-operator
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      control-plane: controller-manager
-  replicas: 1
+      app: keda-operator
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        app: keda-operator
+        name: keda-operator
+      name: keda-operator
     spec:
+      serviceAccountName: keda-operator
       containers:
-      - command:
-        - /manager
-        args:
-        - --enable-leader-election
-        image: controller:latest
-        name: manager
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
+        - name: keda-operator
+          image: docker.io/kedacore/keda:latest
+          command:
+            - /keda
+          args:
+            - --enable-leader-election
+            - --zap-log-level=info
+            - --zap-encoder=console
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
       terminationGracePeriodSeconds: 10
+      nodeSelector:
+        beta.kubernetes.io/os: linux

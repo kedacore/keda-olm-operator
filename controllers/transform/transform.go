@@ -22,7 +22,7 @@ var (
 type Prefix string
 
 const (
-	LogLevelKedaOperator      Prefix = "--zap-level="
+	LogLevelKedaOperator      Prefix = "--zap-log-level="
 	LogTimeFormatKedaOperator        = "--zap-time-encoding="
 	LogLevelMetricsServer            = "--v="
 	ClientCAFile                     = "--client-ca-file="
@@ -289,7 +289,7 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 							argFound = true
 							if trimmedArg := strings.TrimPrefix(arg, prefix.String()); trimmedArg != value {
 								logger.Info("Replacing", "deployment", container.Name, prefix.String(), value, "previous", trimmedArg)
-								containers[i].Args[j] = prefix.String()+value
+								containers[i].Args[j] = prefix.String() + value
 								changed = true
 							}
 							break

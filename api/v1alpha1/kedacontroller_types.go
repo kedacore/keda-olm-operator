@@ -29,7 +29,6 @@ const (
 	PhaseFailed                               = "Installation Failed"
 )
 
-
 // KedaControllerSpec defines the desired state of KedaController
 // +kubebuilder:subresource:status
 type KedaControllerSpec struct {

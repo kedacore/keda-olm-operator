@@ -1,6 +1,6 @@
 domain: sh
 layout: go.kubebuilder.io/v2
-projectName: kedaolmnew
+projectName: knew
 repo: github.com/kedacore/keda-olm-operator
 resources:
 - group: keda

@@ -1,14 +1,36 @@
-# Current Operator version
+##################################################
+# Variables                                      #
+##################################################
+IMAGE_TAG      ?= master
+IMAGE_REGISTRY ?= docker.io
+# IMAGE_REPO     ?= kedacore
+IMAGE_REPO     ?= samuelmacko
+
+IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(IMAGE_TAG)
+
+
+ARCH       ?=amd64
+CGO        ?=0
+TARGET_OS  ?=linux
 VERSION ?= 0.0.1
-# Default bundle image tag
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
-# Options for 'bundle-build'
+
+GIT_VERSION = $(shell git describe --always --abbrev=7)
+GIT_COMMIT  = $(shell git rev-list -1 HEAD)
+DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
+
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
 ifneq ($(origin DEFAULT_CHANNEL), undefined)
 BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
+
+GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
+
+# Current Operator version
+# Default bundle image tag
+BUNDLE_IMG ?= controller-bundle:$(VERSION)
+# Options for 'bundle-build'
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
@@ -23,19 +45,46 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: manager
+##################################################
+# All                                            #
+##################################################
+# all: manager
+all: build
 
-# Run tests
-test: generate fmt vet manifests
-	go test ./... -coverprofile cover.out
+##################################################
+# PUBLISH                                        #
+##################################################
+publish: docker-build
+	# docker push $(IMAGE_ADAPTER)
+	docker push $(IMAGE_CONTROLLER)
 
-# Build manager binary
-manager: generate fmt vet
-	go build -o bin/manager main.go
+##################################################
+# Release                                        #
+##################################################
+.PHONY: release
+release: manifests kustomize
+	cd config/manager && \
+	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
+	cd config/metrics-server && \
+    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-adapter=${IMAGE_ADAPTER}
+	cd config/default && \
+    $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
+	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
 
+.PHONY: set-version
+set-version:
+	@sed -i 's@Version   =.*@Version   = "$(VERSION)"@g' ./version/version.go;
+
+# Push the docker image
+docker-push:
+	docker push ${IMG}
+
+##################################################
+# RUN / (UN)INSTALL / DEPLOY                     #
+##################################################
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
-	go run ./main.go
+	$(GO_BUILD_VARS) go run ./main.go
 
 # Install CRDs into a cluster
 install: manifests kustomize
@@ -50,29 +99,33 @@ deploy: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
+# Undeploy controller
+.PHONY: undeploy
+undeploy:
+	$(KUSTOMIZE) build config/default | kubectl delete -f -
+
+##################################################
+# Build                                          #
+##################################################	
+.PHONY: build
+build: manifests set-version manager
+
+# Build the docker image
+docker-build: build
+	docker build . -t ${IMAGE_CONTROLLER}
+	# docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} .
+
+# Build manager binary
+manager: generate fmt vet
+	go build -o bin/manager main.go
+
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-# Run go fmt against code
-fmt:
-	go fmt ./...
-
-# Run go vet against code
-vet:
-	go vet ./...
-
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
-# Build the docker image
-docker-build: test
-	docker build . -t ${IMG}
-
-# Push the docker image
-docker-push:
-	docker push ${IMG}
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -106,15 +159,17 @@ else
 KUSTOMIZE=$(shell which kustomize)
 endif
 
-# Generate bundle manifests and metadata, then validate generated files.
-.PHONY: bundle
-bundle: manifests
-	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	operator-sdk bundle validate ./bundle
+# Run go fmt against code
+fmt:
+	go fmt ./...
 
-# Build the bundle image.
-.PHONY: bundle-build
-bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+# Run go vet against code
+vet:
+	go vet ./...
+
+##################################################
+# Test                                           #
+##################################################
+# Run tests
+test: generate fmt vet manifests
+	go test ./... -coverprofile cover.out
