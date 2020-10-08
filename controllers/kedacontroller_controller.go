@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -71,23 +72,9 @@ type KedaControllerReconciler struct {
 	resourcesMetrics    mf.Manifest
 }
 
-// note nicim z tohto si niesom isty, este sa na to pozriet
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers,verbs=get;list;watch;create;update;patch;delete
 // // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers/status,verbs=get;update;patch
-
-// note pridane zo zbynkovich
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
-// +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
-// +kubebuilder:rbac:groups="*",resources="*",verbs=get
-
-// z navodu
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list
-
-// od zbynka
-// +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
-// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs="*"
-// +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status;events;pods;services;services;secrets;external,verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 
@@ -188,24 +175,62 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, manifestController, manifestMetrics mf.Manifest, err error) {
+	manifest, err := mf.NewManifest(pathname)
+	if err != nil {
+		return
+	}
+
+	var generalResources, controllerResources, metricsResources []unstructured.Unstructured
+
+	for _, r := range manifest.Resources() {
+		switch kind := r.GetKind(); kind {
+		case "APIService", "RoleBinding", "Service":
+			metricsResources = append(metricsResources, r)
+		case "ClusterRole", "ClusterRoleBinding", "Deployment":
+			if name := r.GetName(); name == "keda-operator" {
+				controllerResources = append(controllerResources, r)
+			} else {
+				metricsResources = append(metricsResources, r)
+			}
+		case "Namespace", "ServiceAccount":
+			generalResources = append(generalResources, r)
+		}
+	}
+
+	manifestClient := mfc.NewClient(c)
+	manifestGeneral, err = mf.ManifestFrom(mf.Slice(generalResources))
+	if err != nil {
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+	}
+	manifestGeneral.Client = manifestClient
+
+	manifestController, err = mf.ManifestFrom(mf.Slice(controllerResources))
+	if err != nil {
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+	}
+	manifestController.Client = manifestClient
+
+	manifestMetrics, err = mf.ManifestFrom(mf.Slice(metricsResources))
+	if err != nil {
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+	}
+	manifestMetrics.Client = manifestClient
+
+	return
+}
+
 // InjectClient creates manifestival resources at start
 func (r *KedaControllerReconciler) InjectClient(c client.Client) error {
-	manifest, err := mfc.NewManifest("config/general/resource_general.yaml", c)
-	if err != nil {
-		return err
-	}
-	r.resourcesGeneral = manifest
-	manifest, err = mfc.NewManifest("config/general/resource_controller.yaml", c)
-	if err != nil {
-		return err
-	}
-	r.resourcesController = manifest
 
-	manifest, err = mfc.NewManifest("config/general/resource_metrics.yaml", c)
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("config/general/keda-2.0.0-rc.yaml", c)
 	if err != nil {
 		return err
 	}
-	r.resourcesMetrics = manifest
+
+	r.resourcesGeneral = manifestGeneral
+	r.resourcesController = manifestController
+	r.resourcesMetrics = manifestMetrics
 	return nil
 }
 
