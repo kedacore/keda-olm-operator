@@ -1,0 +1,34 @@
+name: nightly tests
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  nightly-test:
+    name: Nightly test
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Setup kubernetes
+        run: |
+          kind create cluster
+          kubectl create namespace keda --context kind-kind
+
+      - name: Install Go 1.14
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.14.4' 
+
+      - name: Install operator-sdk
+        run: brew install operator-sdk
+      
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      
+      - name: Run unit tests
+        run: make test-unit
+
+      - name: Run e2e tests
+        run: make test-e2e
