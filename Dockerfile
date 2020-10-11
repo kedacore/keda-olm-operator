@@ -1,18 +1,31 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+# Build the manager binary
+FROM golang:1.13 as builder
 
-ENV OPERATOR=/usr/local/bin/keda-olm-operator \
-    USER_UID=1001 \
-    USER_NAME=keda-olm-operator
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 
-# install operator binary
-COPY bin/manager ${OPERATOR}
+COPY Makefile Makefile
+COPY .git/ .git/
 
-COPY bin /usr/local/bin
-RUN  /usr/local/bin/user_setup
+# Copy the go source
+COPY version/ version/
+COPY main.go main.go
+COPY api/ api/
+COPY controllers/ controllers/
 
-# install manifest[s]
-COPY config /config
+# Build
+RUN make manager
 
-ENTRYPOINT ["/usr/local/bin/entrypoint"]
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/bin/manager .
+USER nonroot:nonroot
 
-USER ${USER_UID}
+ENTRYPOINT ["/bin/manager"]

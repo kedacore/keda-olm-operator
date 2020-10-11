@@ -3,35 +3,16 @@
 ##################################################
 IMAGE_TAG      ?= master
 IMAGE_REGISTRY ?= docker.io
-# IMAGE_REPO     ?= kedacore
-IMAGE_REPO     ?= samuelmacko
+IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(IMAGE_TAG)
-
 
 ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 VERSION ?= 0.0.1
 
-GIT_VERSION = $(shell git describe --always --abbrev=7)
-GIT_COMMIT  = $(shell git rev-list -1 HEAD)
-DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
-
-ifneq ($(origin CHANNELS), undefined)
-BUNDLE_CHANNELS := --channels=$(CHANNELS)
-endif
-ifneq ($(origin DEFAULT_CHANNEL), undefined)
-BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
-endif
-
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
-
-# Current Operator version
-# Default bundle image tag
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
-# Options for 'bundle-build'
-BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
@@ -55,21 +36,7 @@ all: build
 # PUBLISH                                        #
 ##################################################
 publish: docker-build
-	# docker push $(IMAGE_ADAPTER)
 	docker push $(IMAGE_CONTROLLER)
-
-##################################################
-# Release                                        #
-##################################################
-.PHONY: release
-release: manifests kustomize
-	cd config/manager && \
-	$(KUSTOMIZE) edit set image docker.io/kedacore/keda=${IMAGE_CONTROLLER}
-	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image docker.io/kedacore/keda-metrics-adapter=${IMAGE_ADAPTER}
-	cd config/default && \
-    $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
-	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
 
 .PHONY: set-version
 set-version:
@@ -77,7 +44,7 @@ set-version:
 
 # Push the docker image
 docker-push:
-	docker push ${IMG}
+	docker push ${IMAGE_CONTROLLER}
 
 ##################################################
 # RUN / (UN)INSTALL / DEPLOY                     #
@@ -113,7 +80,6 @@ build: manifests set-version manager
 # Build the docker image
 docker-build: build
 	docker build . -t ${IMAGE_CONTROLLER}
-	# docker build -f Dockerfile.adapter -t ${IMAGE_ADAPTER} .
 
 # Build manager binary
 manager: generate fmt vet
@@ -171,5 +137,5 @@ vet:
 # Test                                           #
 ##################################################
 # Run tests
-test: generate fmt vet manifests
+test-unit: generate fmt vet manifests
 	go test ./... -coverprofile cover.out

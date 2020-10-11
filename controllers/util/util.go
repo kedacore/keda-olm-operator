@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"fmt"
 
-	// kedav1alpha1 "github.com/kedacore/keda-olm-operator/pkg/apis/keda/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 
 	"github.com/go-logr/logr"
