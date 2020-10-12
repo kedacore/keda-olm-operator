@@ -22,18 +22,6 @@ rules:
   - keda.sh
   resources:
   - kedacontrollers
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - keda.sh
-  resources:
-  - kedacontrollers
   - kedacontrollers/finalizers
   - kedacontrollers/status
   verbs:
