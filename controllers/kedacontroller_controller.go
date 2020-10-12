@@ -72,8 +72,6 @@ type KedaControllerReconciler struct {
 	resourcesMetrics    mf.Manifest
 }
 
-// +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers,verbs=get;list;watch;create;update;patch;delete
-// // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get

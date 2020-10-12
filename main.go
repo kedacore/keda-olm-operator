@@ -74,7 +74,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "b670c7de.sh",
+		LeaderElectionID:   "olm.keda.sh",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

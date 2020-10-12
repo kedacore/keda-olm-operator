@@ -25,7 +25,7 @@ RUN make manager
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /workspace/bin/manager .
+COPY --from=builder /workspace/manager .
 USER nonroot:nonroot
 
-ENTRYPOINT ["/bin/manager"]
+ENTRYPOINT ["/manager"]
