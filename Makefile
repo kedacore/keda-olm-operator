@@ -3,7 +3,8 @@
 ##################################################
 IMAGE_TAG      ?= master
 IMAGE_REGISTRY ?= docker.io
-IMAGE_REPO     ?= kedacore
+# IMAGE_REPO     ?= kedacore
+IMAGE_REPO     ?= samuelmacko
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(IMAGE_TAG)
 
@@ -30,8 +31,8 @@ all: build
 ##################################################
 # PUBLISH                                        #
 ##################################################
-publish: docker-build
-	docker push $(IMAGE_CONTROLLER)
+publish: docker-build docker-push
+	# docker push $(IMAGE_CONTROLLER)
 
 .PHONY: set-version
 set-version:
@@ -58,7 +59,6 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE_CONTROLLER}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # Undeploy controller
@@ -78,7 +78,7 @@ docker-build: build
 
 # Build manager binary
 manager: generate fmt vet
-	go build -o manager main.go
+	$(GO_BUILD_VARS) go build -o manager main.go
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen

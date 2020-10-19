@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,8 +23,6 @@ var (
 	name      = "keda"
 	namespace = "keda"
 
-	moduleName = "keda-olm-operator"
-
 	logLevelPrefix = "--zap-log-level="
 
 	containerName = "keda-operator"
@@ -40,14 +36,6 @@ var (
 		},
 	}
 )
-
-func basePath() string {
-	wd, _ := os.Getwd()
-	for !strings.HasSuffix(wd, moduleName) {
-		wd = filepath.Dir(wd)
-	}
-	return wd
-}
 
 func setupScheme() *runtime.Scheme {
 	s := scheme.Scheme

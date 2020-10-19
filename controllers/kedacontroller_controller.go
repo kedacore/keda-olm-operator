@@ -22,8 +22,10 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 
@@ -35,6 +37,7 @@ import (
 	"github.com/kedacore/keda-olm-operator/version"
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
+	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,6 +56,8 @@ const (
 	kedaControllerResourceNamespace = "keda"
 
 	installationNamespace = "keda"
+
+	moduleName = "keda-olm-operator"
 
 	metricsServcerServiceName        = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
@@ -75,6 +80,8 @@ type KedaControllerReconciler struct {
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
+//-- +kubebuilder:rbac:groups="",resources=configmaps,verbs="*"
+// +kubebuilder:rbac:groups="",resources=services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets;namespaces;serviceaccounts,verbs="*"
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -218,10 +225,19 @@ func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, 
 	return
 }
 
+func basePath() string {
+	wd, _ := os.Getwd()
+	for !strings.HasSuffix(wd, moduleName) {
+		wd = filepath.Dir(wd)
+	}
+	return wd
+}
+
 // InjectClient creates manifestival resources at start
 func (r *KedaControllerReconciler) InjectClient(c client.Client) error {
 
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("config/general/keda-2.0.0-rc.yaml", c)
+	wd := basePath()
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(wd+"/config/general/keda-2.0.0-rc.yaml", c)
 	if err != nil {
 		return err
 	}

@@ -2,40 +2,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: keda-operator
-  namespace: keda
-  labels:
-    app: keda-operator
-    app.kubernetes.io/name: keda-operator
-    app.kubernetes.io/version: latest
-    app.kubernetes.io/component: operator
-    app.kubernetes.io/part-of: keda-operator
+  name: keda-olm-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: keda-operator
+      name: keda-olm-operator
   template:
     metadata:
       labels:
-        app: keda-operator
-        name: keda-operator
-      name: keda-operator
+        name: keda-olm-operator
     spec:
-      serviceAccountName: keda-operator
+      serviceAccountName: keda-olm-operator
       containers:
-        - name: keda-operator
-          image: docker.io/kedacore/keda:latest
+        - name: keda-olm-operator
+          # image: docker.io/kedacore/keda-olm-operator:master
+          image: docker.io/samuelmacko/keda-olm-operator:master
           command:
-            - /keda
+            - /manager
           args:
-            - --enable-leader-election
-            - --zap-log-level=info
-            - --zap-encoder=console
+            - -zap-devel
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
               value: ""
-      terminationGracePeriodSeconds: 10
-      nodeSelector:
-        beta.kubernetes.io/os: linux

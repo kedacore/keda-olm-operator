@@ -11,12 +11,14 @@ RUN go mod download
 
 COPY Makefile Makefile
 COPY .git/ .git/
+COPY hack/ hack/
 
 # Copy the go source
 COPY version/ version/
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY config/general/ config/general/
 
 # Build
 RUN make manager
