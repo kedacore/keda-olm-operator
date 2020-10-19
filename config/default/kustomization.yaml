@@ -13,6 +13,7 @@ namespace: keda
 #  someName: someValue
 
 bases:
+- ../general
 - ../crd
 - ../rbac
 - ../manager

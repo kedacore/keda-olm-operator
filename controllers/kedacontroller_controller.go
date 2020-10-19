@@ -237,7 +237,7 @@ func basePath() string {
 func (r *KedaControllerReconciler) InjectClient(c client.Client) error {
 
 	wd := basePath()
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(wd+"/config/general/keda-2.0.0-rc.yaml", c)
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(wd+"/config/resources/keda-2.0.0-rc.yaml", c)
 	if err != nil {
 		return err
 	}

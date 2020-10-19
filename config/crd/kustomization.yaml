@@ -5,8 +5,6 @@ resources:
 - bases/keda.sh_kedacontrollers.yaml
 - bases/keda.sh_scaledjob.yaml
 - bases/keda.sh_scaledobject.yaml
-- role_binding.yaml
-- service_account.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

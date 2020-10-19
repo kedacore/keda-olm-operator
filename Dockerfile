@@ -18,7 +18,7 @@ COPY version/ version/
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
-COPY config/general/ config/general/
+COPY config/resources/ config/resources/
 
 # Build
 RUN make manager
