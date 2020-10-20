@@ -48,12 +48,12 @@ type SecretReconciler struct {
 
 // +kubebuilder:rbac:groups=keda.sh,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=keda.sh,resources=secrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs="*"
 
 func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("secret", req.NamespacedName)
 
-	// your logic here
 	r.Log.Info("Reconciling Secret containing Certificates")
 
 	// Fetch the Secret instance

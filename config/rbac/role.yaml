@@ -14,6 +14,7 @@ rules:
   - events
   - namespaces
   - persistentvolumeclaims
+  - pods
   - secrets
   - serviceaccounts
   - services
@@ -21,21 +22,32 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - '*'
+  - apiregistration.k8s.io
   resources:
-  - '*'
-  verbs:
-  - get
-- apiGroups:
-  - '*'
-  resources:
-  - '*/scale'
+  - apiservices
   verbs:
   - '*'
 - apiGroups:
   - apps
   resources:
+  - daemonsets
   - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resourceNames:
+  - keda-olm-operator
+  resources:
+  - deployments/finalizers
+  verbs:
+  - '*'
+- apiGroups:
+  - keda.sh
+  resources:
+  - '*'
   verbs:
   - '*'
 - apiGroups:
@@ -61,14 +73,6 @@ rules:
 - apiGroups:
   - keda.sh
   resources:
-  - kedacontrollers
-  - kedacontrollers/finalizers
-  - kedacontrollers/status
-  verbs:
-  - '*'
-- apiGroups:
-  - keda.sh
-  resources:
   - secrets
   verbs:
   - create
@@ -86,3 +90,25 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - create
+  - get
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  verbs:
+  - '*'
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - '*'
+  - list

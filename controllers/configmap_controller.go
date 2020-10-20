@@ -49,16 +49,12 @@ type ConfigMapReconciler struct {
 
 // +kubebuilder:rbac:groups=keda.sh,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=keda.sh,resources=configmaps/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs="*"
 
 func (r *ConfigMapReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("configmap", req.NamespacedName)
 
-	// your logic here
-
-	// return ctrl.Result{}, nil
-
-	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	r.Log.Info("Reconciling ConfigMap containing CA Bundle")
 
 	// Fetch the ConfigMap instance

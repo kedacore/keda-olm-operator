@@ -74,12 +74,14 @@ type KedaControllerReconciler struct {
 	resourcesMetrics    mf.Manifest
 }
 
-// +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
-// +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
-// +kubebuilder:rbac:groups="*",resources="*",verbs=get
-//-- +kubebuilder:rbac:groups="",resources=configmaps,verbs="*"
-// +kubebuilder:rbac:groups="",resources=services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets;namespaces;serviceaccounts,verbs="*"
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources="*",verbs="*"
+// +kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets,verbs="*"
+// +kubebuilder:rbac:groups=apps,resources=deployments;daemonsets;replicasets;statefulsets,verbs="*"
+// +kubebuilder:rbac:groups=apps,resourceNames=keda-olm-operator,resources=deployments/finalizers,verbs="*"
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings;clusterroles;rolebindings,verbs="*"
+// +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs="*"
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -226,7 +228,8 @@ func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, 
 // InjectClient creates manifestival resources at start
 func (r *KedaControllerReconciler) InjectClient(c client.Client) error {
 
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/config/resources/keda-2.0.0-rc.yaml", c)
+	// manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/config/resources/keda-2.0.0-rc.yaml", c)
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("config/resources/keda-2.0.0-rc.yaml", c)
 	if err != nil {
 		return err
 	}
