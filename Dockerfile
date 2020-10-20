@@ -18,7 +18,7 @@ COPY version/ version/
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
-COPY config/resources/ config/resources/
+COPY config/ config/
 
 # Build
 RUN make manager
@@ -27,6 +27,7 @@ RUN make manager
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
+COPY --from=builder /workspace/config/ config/
 COPY --from=builder /workspace/manager .
 USER nonroot:nonroot
 

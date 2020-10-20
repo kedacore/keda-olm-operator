@@ -27,8 +27,6 @@ var (
 
 	containerName = "keda-operator"
 
-	wd = basePath()
-
 	kedacontroller = &kedav1alpha1.KedaController{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -51,7 +49,7 @@ func setupReconcileKedaController(s *runtime.Scheme) (*KedaControllerReconciler,
 
 	r := &KedaControllerReconciler{Client: cl, Scheme: s, Log: ctrl.Log.WithName("unit test")}
 
-	_, manifest, _, err := parseManifestsFromFile(wd+"/config/general/keda-2.0.0-rc.yaml", cl)
+	_, manifest, _, err := parseManifestsFromFile("../config/resources/keda-2.0.0-rc.yaml", cl)
 	if err != nil {
 		return nil, err
 	}
