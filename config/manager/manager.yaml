@@ -19,7 +19,8 @@ spec:
           # image: docker.io/kedacore/keda-olm-operator:master
           image: docker.io/samuelmacko/keda-olm-operator:master
           command:
-            - /manager
+            # - /manager
+            - /workspace/manager
           args:
             - -zap-devel
           imagePullPolicy: Always

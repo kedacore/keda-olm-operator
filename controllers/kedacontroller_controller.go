@@ -108,6 +108,16 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		return ctrl.Result{}, err
 	}
 
+	// manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/config/resources/keda-2.0.0-rc.yaml", r.Client)
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/workspace/config/resources/keda-2.0.0-rc.yaml", r.Client)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	r.resourcesGeneral = manifestGeneral
+	r.resourcesController = manifestController
+	r.resourcesMetrics = manifestMetrics
+
 	if !isInteresting(req) {
 		msg := fmt.Sprintf("The KedaController resource needs to be created in namespace %s with name %s, otherwise it will be ignored", kedaControllerResourceNamespace, kedaControllerResourceName)
 		r.Log.Info(msg)
@@ -216,7 +226,7 @@ func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, 
 	}
 	manifestController.Client = manifestClient
 
-	manifestMetrics, err = mf.ManifestFrom(mf.Slice(metricsResources))
+	manifestMetrics, err = mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)))
 	if err != nil {
 		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
@@ -225,19 +235,32 @@ func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, 
 	return
 }
 
-// InjectClient creates manifestival resources at start
-func (r *KedaControllerReconciler) InjectClient(c client.Client) error {
+func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured.Unstructured {
 
-	// manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/config/resources/keda-2.0.0-rc.yaml", c)
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("config/resources/keda-2.0.0-rc.yaml", c)
-	if err != nil {
-		return err
+	sortedResources := make([]unstructured.Unstructured, 7)
+
+	for _, r := range *resources {
+		switch kind := r.GetKind(); kind {
+		case "ClusterRole":
+			sortedResources[0] = r
+		case "RoleBinding":
+			sortedResources[1] = r
+		case "ClusterRoleBinding":
+			if name := r.GetName(); name == "keda-hpa-controller-external-metrics" {
+				sortedResources[2] = r
+			} else {
+				sortedResources[3] = r
+			}
+		case "Service":
+			sortedResources[4] = r
+		case "Deployment":
+			sortedResources[5] = r
+		case "APIService":
+			sortedResources[6] = r
+		}
 	}
 
-	r.resourcesGeneral = manifestGeneral
-	r.resourcesController = manifestController
-	r.resourcesMetrics = manifestMetrics
-	return nil
+	return sortedResources
 }
 
 func (r *KedaControllerReconciler) createNamespace(namespace string) error {
