@@ -73,6 +73,14 @@ rules:
 - apiGroups:
   - keda.sh
   resources:
+  - kedacontrollers
+  - kedacontrollers/finalizers
+  - kedacontrollers/status
+  verbs:
+  - '*'
+- apiGroups:
+  - keda.sh
+  resources:
   - secrets
   verbs:
   - create

@@ -16,13 +16,9 @@ spec:
       serviceAccountName: keda-olm-operator
       containers:
         - name: keda-olm-operator
-          # image: docker.io/kedacore/keda-olm-operator:master
-          image: docker.io/samuelmacko/keda-olm-operator:master
+          image: docker.io/kedacore/keda-olm-operator:master
           command:
-            # - /manager
-            - /workspace/manager
-          args:
-            - -zap-devel
+            - /manager
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE

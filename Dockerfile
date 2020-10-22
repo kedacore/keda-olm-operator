@@ -26,12 +26,10 @@ RUN make manager
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-# FROM gcr.io/distroless/static:nonroot
-# WORKDIR /
-# # COPY --from=builder /workspace/config/ config/
-# # COPY --from=builder /workspace/manager .
-# COPY --from=builder /workspace/ .
-# USER nonroot:nonroot
-# 
-# ENTRYPOINT ["/manager"]
-ENTRYPOINT ["/workspace/manager"]
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/config/resources/ config/resources/
+COPY --from=builder /workspace/manager .
+USER nonroot:nonroot
+
+ENTRYPOINT ["/manager"]

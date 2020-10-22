@@ -62,6 +62,8 @@ const (
 	injectCABundleAnnotationValue    = "true"
 	injectservingCertAnnotation      = "service.beta.openshift.io/serving-cert-secret-name"
 	injectservingCertAnnotationValue = "keda-metrics-apiserver"
+	roleBindingName                  = "keda-auth-reader"
+	roleBindingNamespace             = "kube-system"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
@@ -74,6 +76,7 @@ type KedaControllerReconciler struct {
 	resourcesMetrics    mf.Manifest
 }
 
+// +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
 // +kubebuilder:rbac:groups=keda.sh,resources="*",verbs="*"
 // +kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets,verbs="*"
 // +kubebuilder:rbac:groups=apps,resources=deployments;daemonsets;replicasets;statefulsets,verbs="*"
@@ -107,16 +110,6 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
-
-	// manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/config/resources/keda-2.0.0-rc.yaml", r.Client)
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/workspace/config/resources/keda-2.0.0-rc.yaml", r.Client)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	r.resourcesGeneral = manifestGeneral
-	r.resourcesController = manifestController
-	r.resourcesMetrics = manifestMetrics
 
 	if !isInteresting(req) {
 		msg := fmt.Sprintf("The KedaController resource needs to be created in namespace %s with name %s, otherwise it will be ignored", kedaControllerResourceNamespace, kedaControllerResourceName)
@@ -184,6 +177,16 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 }
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/config/resources/keda-2.0.0-rc.yaml", r.Client)
+	if err != nil {
+		return err
+	}
+
+	r.resourcesGeneral = manifestGeneral
+	r.resourcesController = manifestController
+	r.resourcesMetrics = manifestMetrics
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.KedaController{}).
 		Owns(&appsv1.Deployment{}).
@@ -369,6 +372,10 @@ func (r *KedaControllerReconciler) installMetricsServer(instance *kedav1alpha1.K
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.Scheme, r.Log))
 	}
+
+	// replace namespace in RoleBinding from keda to kube-system
+	transforms = append(transforms, transform.ReplaceNamespace(roleBindingName, roleBindingNamespace, r.Scheme, r.Log))
+
 	manifest, err := r.resourcesMetrics.Transform(transforms...)
 	if err != nil {
 		r.Log.Error(err, "Unable to transform Metrics Server manifest")
