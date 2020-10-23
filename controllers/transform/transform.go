@@ -8,10 +8,11 @@ import (
 	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
 var (
@@ -38,6 +39,26 @@ const (
 	containerNameKedaOperator  = "keda-operator"
 	containerNameMetricsServer = "keda-metrics-apiserver"
 )
+
+func ReplaceNamespace(name string, namespace string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetName() == name {
+			logger.Info("Changing namespace to " + namespace)
+
+			rolebinding := &rbacv1.RoleBinding{}
+			if err := scheme.Convert(u, rolebinding, nil); err != nil {
+				return err
+			}
+
+			rolebinding.Namespace = namespace
+
+			if err := scheme.Convert(rolebinding, u, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
 
 func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
@@ -76,7 +97,7 @@ func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *
 func EnsureCertInjectionForAPIService(annotation string, annotationValue string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "APIService" {
-			apiService := &apiregistrationv1beta1.APIService{}
+			apiService := &apiregistrationv1.APIService{}
 			if err := scheme.Convert(u, apiService, nil); err != nil {
 				return err
 			}

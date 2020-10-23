@@ -6,13 +6,14 @@ namespace: keda
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-# namePrefix: knew-
+# namePrefix: keda-olm-operator-
 
 # Labels to add to all resources and selectors.
 #commonLabels:
 #  someName: someValue
 
 bases:
+- ../general
 - ../crd
 - ../rbac
 - ../manager

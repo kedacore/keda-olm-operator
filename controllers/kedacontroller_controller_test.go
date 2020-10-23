@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,13 +23,9 @@ var (
 	name      = "keda"
 	namespace = "keda"
 
-	moduleName = "keda-olm-operator"
-
 	logLevelPrefix = "--zap-log-level="
 
 	containerName = "keda-operator"
-
-	wd = basePath()
 
 	kedacontroller = &kedav1alpha1.KedaController{
 		ObjectMeta: metav1.ObjectMeta{
@@ -40,14 +34,6 @@ var (
 		},
 	}
 )
-
-func basePath() string {
-	wd, _ := os.Getwd()
-	for !strings.HasSuffix(wd, moduleName) {
-		wd = filepath.Dir(wd)
-	}
-	return wd
-}
 
 func setupScheme() *runtime.Scheme {
 	s := scheme.Scheme
@@ -63,7 +49,7 @@ func setupReconcileKedaController(s *runtime.Scheme) (*KedaControllerReconciler,
 
 	r := &KedaControllerReconciler{Client: cl, Scheme: s, Log: ctrl.Log.WithName("unit test")}
 
-	_, manifest, _, err := parseManifestsFromFile(wd+"/config/general/keda-2.0.0-rc.yaml", cl)
+	_, manifest, _, err := parseManifestsFromFile("../config/resources/keda-2.0.0-rc.yaml", cl)
 	if err != nil {
 		return nil, err
 	}

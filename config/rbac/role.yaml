@@ -4,18 +4,44 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: manager-role
+  name: keda-olm-operator
 rules:
 - apiGroups:
-  - '*'
+  - ""
   resources:
-  - '*'
+  - configmaps
+  - endpoints
+  - events
+  - namespaces
+  - persistentvolumeclaims
+  - pods
+  - secrets
+  - serviceaccounts
+  - services
+  - services/finalizers
   verbs:
-  - get
-- apiGroups:
   - '*'
+- apiGroups:
+  - apiregistration.k8s.io
   resources:
-  - '*/scale'
+  - apiservices
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resourceNames:
+  - keda-olm-operator
+  resources:
+  - deployments/finalizers
   verbs:
   - '*'
 - apiGroups:
@@ -26,3 +52,25 @@ rules:
   - kedacontrollers/status
   verbs:
   - '*'
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - create
+  - get
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  verbs:
+  - '*'
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - '*'
+  - list

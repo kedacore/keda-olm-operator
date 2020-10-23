@@ -2,6 +2,7 @@
 FROM golang:1.15 as builder
 
 WORKDIR /workspace
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -11,12 +12,14 @@ RUN go mod download
 
 COPY Makefile Makefile
 COPY .git/ .git/
+COPY hack/ hack/
 
 # Copy the go source
 COPY version/ version/
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY config/ config/
 
 # Build
 RUN make manager
@@ -25,7 +28,8 @@ RUN make manager
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /workspace/bin/manager .
+COPY --from=builder /workspace/config/resources/ config/resources/
+COPY --from=builder /workspace/manager .
 USER nonroot:nonroot
 
-ENTRYPOINT ["/bin/manager"]
+ENTRYPOINT ["/manager"]

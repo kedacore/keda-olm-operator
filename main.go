@@ -31,6 +31,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 	"github.com/kedacore/keda-olm-operator/controllers"
 	"github.com/kedacore/keda-olm-operator/version"
+	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	"runtime"
 )
 
@@ -49,6 +50,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
+	utilruntime.Must(apiregistrationv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -74,7 +76,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "b670c7de.sh",
+		LeaderElectionID:   "olm-operator.keda.sh",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -87,6 +89,22 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KedaController")
+		os.Exit(1)
+	}
+	if err = (&controllers.ConfigMapReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("ConfigMap"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ConfigMap")
+		os.Exit(1)
+	}
+	if err = (&controllers.SecretReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Secret"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

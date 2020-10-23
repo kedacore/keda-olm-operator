@@ -54,12 +54,16 @@ const (
 
 	installationNamespace = "keda"
 
+	moduleName = "keda-olm-operator"
+
 	metricsServcerServiceName        = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
 	injectCABundleAnnotation         = "service.beta.openshift.io/inject-cabundle"
 	injectCABundleAnnotationValue    = "true"
 	injectservingCertAnnotation      = "service.beta.openshift.io/serving-cert-secret-name"
 	injectservingCertAnnotationValue = "keda-metrics-apiserver"
+	roleBindingName                  = "keda-auth-reader"
+	roleBindingNamespace             = "kube-system"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
@@ -72,11 +76,14 @@ type KedaControllerReconciler struct {
 	resourcesMetrics    mf.Manifest
 }
 
-// +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers,verbs=get;list;watch;create;update;patch;delete
-// // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
-// +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
-// +kubebuilder:rbac:groups="*",resources="*",verbs=get
+// +kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets,verbs="*"
+// +kubebuilder:rbac:groups=apps,resources=deployments;daemonsets;replicasets;statefulsets,verbs="*"
+// +kubebuilder:rbac:groups=apps,resourceNames=keda-olm-operator,resources=deployments/finalizers,verbs="*"
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings;clusterroles;rolebindings,verbs="*"
+// +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs="*"
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -169,6 +176,16 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 }
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("/config/resources/keda-2.0.0-rc.yaml", r.Client)
+	if err != nil {
+		return err
+	}
+
+	r.resourcesGeneral = manifestGeneral
+	r.resourcesController = manifestController
+	r.resourcesMetrics = manifestMetrics
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.KedaController{}).
 		Owns(&appsv1.Deployment{}).
@@ -211,7 +228,7 @@ func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, 
 	}
 	manifestController.Client = manifestClient
 
-	manifestMetrics, err = mf.ManifestFrom(mf.Slice(metricsResources))
+	manifestMetrics, err = mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)))
 	if err != nil {
 		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
@@ -220,18 +237,32 @@ func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, 
 	return
 }
 
-// InjectClient creates manifestival resources at start
-func (r *KedaControllerReconciler) InjectClient(c client.Client) error {
+func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured.Unstructured {
 
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("config/general/keda-2.0.0-rc.yaml", c)
-	if err != nil {
-		return err
+	sortedResources := make([]unstructured.Unstructured, 7)
+
+	for _, r := range *resources {
+		switch kind := r.GetKind(); kind {
+		case "ClusterRole":
+			sortedResources[0] = r
+		case "RoleBinding":
+			sortedResources[1] = r
+		case "ClusterRoleBinding":
+			if name := r.GetName(); name == "keda-hpa-controller-external-metrics" {
+				sortedResources[2] = r
+			} else {
+				sortedResources[3] = r
+			}
+		case "Service":
+			sortedResources[4] = r
+		case "Deployment":
+			sortedResources[5] = r
+		case "APIService":
+			sortedResources[6] = r
+		}
 	}
 
-	r.resourcesGeneral = manifestGeneral
-	r.resourcesController = manifestController
-	r.resourcesMetrics = manifestMetrics
-	return nil
+	return sortedResources
 }
 
 func (r *KedaControllerReconciler) createNamespace(namespace string) error {
@@ -340,6 +371,10 @@ func (r *KedaControllerReconciler) installMetricsServer(instance *kedav1alpha1.K
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.Scheme, r.Log))
 	}
+
+	// replace namespace in RoleBinding from keda to kube-system
+	transforms = append(transforms, transform.ReplaceNamespace(roleBindingName, roleBindingNamespace, r.Scheme, r.Log))
+
 	manifest, err := r.resourcesMetrics.Transform(transforms...)
 	if err != nil {
 		r.Log.Error(err, "Unable to transform Metrics Server manifest")
