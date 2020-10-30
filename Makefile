@@ -7,10 +7,10 @@ IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(IMAGE_TAG)
 
-ARCH       ?=amd64
-CGO        ?=0
-TARGET_OS  ?=linux
-VERSION ?= v2
+ARCH		?=amd64
+CGO			?=0
+TARGET_OS	?=linux
+VERSION 	?= v2
 
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 

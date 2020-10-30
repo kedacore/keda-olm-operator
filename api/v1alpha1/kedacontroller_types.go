@@ -32,6 +32,7 @@ const (
 // KedaControllerSpec defines the desired state of KedaController
 // +kubebuilder:subresource:status
 type KedaControllerSpec struct {
+	// Important: Run "make" to regenerate code after modifying this file
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
 	// +optional
@@ -40,13 +41,11 @@ type KedaControllerSpec struct {
 	LogLevelMetrics string `json:"logLevelMetrics,omitempty"`
 	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
-
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 }
 
 // KedaControllerStatus defines the observed state of KedaController
 type KedaControllerStatus struct {
+	// Important: Run "make" to regenerate code after modifying this file
 	// +optional
 	Phase KedaControllerPhase `json:"phase,omitempy"`
 	// +optional
@@ -57,9 +56,6 @@ type KedaControllerStatus struct {
 	ConfigMapDataSum string `json:"configmadatasum,omitempty"`
 	// +optional
 	SecretDataSum string `json:"secretdatasum,omitempty"`
-
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 }
 
 // +kubebuilder:object:root=true
