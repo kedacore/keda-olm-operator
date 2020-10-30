@@ -5,18 +5,6 @@ VERSION        ?= master
 IMAGE_REGISTRY ?= docker.io
 IMAGE_REPO     ?= kedacore
 
-<<<<<<< HEAD
-BUNDLE_VERSION ?= 2.0.0
-# Default bundle image tag
-BUNDLE_IMG ?= $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle:$(BUNDLE_VERSION)
-
-IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(IMAGE_TAG)
-
-ARCH		?= amd64
-CGO			?= 0
-TARGET_OS	?= linux
-VERSION 	?= v2
-=======
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
 
 ARCH       ?=amd64
@@ -24,7 +12,10 @@ CGO        ?=0
 TARGET_OS  ?=linux
 
 GIT_COMMIT  = $(shell git rev-list -1 HEAD)
->>>>>>> 0da31e8... auto create keda namespace, go 1.15.3 & minor fixes (#46)
+ARCH		?=amd64
+CGO			?=0
+TARGET_OS	?=linux
+VERSION 	?= v2
 
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 
@@ -153,36 +144,4 @@ vet:
 ##################################################
 # Run tests
 test-unit: generate fmt vet manifests
-<<<<<<< HEAD
 	go test ./... -coverprofile cover.out
-
-##################################################
-# Bundle                                           #
-##################################################
-
-# Default bundle image tag
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
-# Options for 'bundle-build'
-ifneq ($(origin CHANNELS), undefined)
-BUNDLE_CHANNELS := --channels=$(CHANNELS)
-endif
-ifneq ($(origin DEFAULT_CHANNEL), undefined)
-BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
-endif
-BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-
-# Generate bundle manifests and metadata, then validate generated files.
-.PHONY: bundle
-bundle: manifests
-	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE_CONTROLLER}
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(BUNDLE_VERSION) $(BUNDLE_METADATA_OPTS)
-	operator-sdk bundle validate ./bundle
-
-# Build the bundle image.
-.PHONY: bundle-build
-bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-=======
-	go test ./... -coverprofile cover.out
->>>>>>> 0da31e8... auto create keda namespace, go 1.15.3 & minor fixes (#46)

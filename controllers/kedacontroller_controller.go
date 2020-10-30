@@ -20,13 +20,24 @@ import (
 	"context"
 	goerrors "errors"
 	"fmt"
-
-	"github.com/go-logr/logr"
+	"github.com/kedacore/keda-olm-operator/controllers/transform"
+	"github.com/kedacore/keda-olm-operator/controllers/util"
+	"github.com/kedacore/keda-olm-operator/version"
 	mfc "github.com/manifestival/controller-runtime-client"
-	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
+	mf "github.com/manifestival/manifestival"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,12 +46,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
-	"github.com/kedacore/keda-olm-operator/controllers/transform"
-	"github.com/kedacore/keda-olm-operator/controllers/util"
-	"github.com/kedacore/keda-olm-operator/version"
 )
 
 const (

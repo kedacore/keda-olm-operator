@@ -10,6 +10,7 @@ COPY go.sum go.sum
 RUN go mod download
 
 COPY Makefile Makefile
+COPY hack/ hack/
 
 # Copy the go source
 COPY hack/ hack/

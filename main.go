@@ -19,6 +19,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/kedacore/keda-olm-operator/version"
+	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	"os"
 	"runtime"
 
@@ -31,7 +33,8 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 	"github.com/kedacore/keda-olm-operator/controllers"
-	"github.com/kedacore/keda-olm-operator/version"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+	// +kubebuilder:scaffold:imports
 )
 
 var (
