@@ -2,16 +2,25 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
+<<<<<<< HEAD
     alm-examples: '[{"apiVersion":"keda.sh/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0","logTimeFormat":"epoch"}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauth","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject","labels":{"deploymentName":"example-deployment"}},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication"},"spec":{"secretTargetRef":[{"parameter":"exmaple-secret-parameter","name":"example-secret-name","key":"example-role-key"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0"}}]'
     capabilities: Seamless Upgrades
     operators.operatorframework.io/builder: operator-sdk-v1.1.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
   name: keda-olm-operator.v2.0.0
+=======
+    alm-examples: '[]'
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.1.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+  name: keda-olm-operator.vX.Y.Z
+>>>>>>> c505ac5... build bundle
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+<<<<<<< HEAD
     - name: kedacontrollers.keda.sh
       description: |
           Represents an installation of a particular version of KEDA Controller.
@@ -185,3 +194,38 @@ spec:
   provider:
     name: KEDA Community
   version: 2.0.0
+=======
+    - description: KedaController is the Schema for the kedacontrollers API
+      displayName: Keda Controller
+      kind: KedaController
+      name: kedacontrollers.keda.sh
+      version: v1alpha1
+  description: test-description
+  displayName: test-displayname
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - test-keyword
+  links:
+  - name: Keda Olm Operator
+    url: https://keda-olm-operator.domain
+  maturity: alpha
+  provider:
+    name: test-providersname
+    url: test-relevanturl
+  version: 0.0.0
+>>>>>>> c505ac5... build bundle
