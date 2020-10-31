@@ -2,14 +2,20 @@
 # Variables                                      #
 ##################################################
 IMAGE_TAG      ?= master
-IMAGE_REGISTRY ?= docker.io
-IMAGE_REPO     ?= kedacore
+# IMAGE_REGISTRY ?= docker.io
+IMAGE_REGISTRY ?= quay.io
+# IMAGE_REPO     ?= kedacore
+IMAGE_REPO     ?= samuelmacko
+
+BUNDLE_VERSION ?= 2.0.0
+# Default bundle image tag
+BUNDLE_IMG ?= $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle:$(BUNDLE_VERSION)
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(IMAGE_TAG)
 
-ARCH		?=amd64
-CGO			?=0
-TARGET_OS	?=linux
+ARCH		?= amd64
+CGO			?= 0
+TARGET_OS	?= linux
 VERSION 	?= v2
 
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
@@ -132,3 +138,28 @@ vet:
 # Run tests
 test-unit: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
+
+
+# Default bundle image tag
+BUNDLE_IMG ?= controller-bundle:$(VERSION)
+# Options for 'bundle-build'
+ifneq ($(origin CHANNELS), undefined)
+BUNDLE_CHANNELS := --channels=$(CHANNELS)
+endif
+ifneq ($(origin DEFAULT_CHANNEL), undefined)
+BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
+endif
+BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
+
+# Generate bundle manifests and metadata, then validate generated files.
+.PHONY: bundle
+bundle: manifests
+	operator-sdk generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE_CONTROLLER}
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(BUNDLE_VERSION) $(BUNDLE_METADATA_OPTS)
+	operator-sdk bundle validate ./bundle
+
+# Build the bundle image.
+.PHONY: bundle-build
+bundle-build:
+	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
