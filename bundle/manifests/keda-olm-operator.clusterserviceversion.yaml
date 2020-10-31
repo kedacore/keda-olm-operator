@@ -5,10 +5,10 @@ metadata:
   namespace: placeholder
   annotations:
     alm-examples: >-
-      [{"apiVersion":"keda.k8s.io/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0","logTimeFormat":"epoch"}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauth","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject","labels":{"deploymentName":"example-deployment"}},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication"},"spec":{"secretTargetRef":[{"parameter":"exmaple-secret-parameter","name":"example-secret-name","key":"example-role-key"}]}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.k8s.io/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0"}}]
+      [{"apiVersion":"keda.sh/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0","logTimeFormat":"epoch"}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauth","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject","labels":{"deploymentName":"example-deployment"}},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication"},"spec":{"secretTargetRef":[{"parameter":"exmaple-secret-parameter","name":"example-secret-name","key":"example-role-key"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0"}}]
     categories: Cloud Provider
     certified: 'false'
-    createdAt: '2020-07-08T00:00:00.000Z'
+    createdAt: '2020-10-31:00:00.000Z'
     description: 'Operator that provides KEDA, a Kubernetes-based event driver autoscaler'
     containerImage: 'docker.io/kedacore/keda-olm-operator:1.5.0'
     support: KEDA Community
@@ -131,7 +131,7 @@ spec:
             displayName: Version
             x-descriptors:
               - 'urn:alm:descriptor:text'
-      - name: triggerauthentications.keda.k8s.io
+      - name: triggerauthentications.keda.sh
         displayName: TriggerAuthentication
         kind: TriggerAuthentication
         version: v1alpha1
@@ -156,7 +156,7 @@ spec:
             x-descriptors:
               - 'urn:alm:descriptor:io.kubernetes:Secret'
         statusDescriptors: []
-      - name: scaledobjects.keda.k8s.io
+      - name: scaledobjects.keda.sh
         displayName: ScaledObject
         kind: ScaledObject
         version: v1alpha1
@@ -328,7 +328,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: docker.io/samuelmacko/keda-olm-operator:master
+                image: docker.io/kedacore/keda-olm-operator:master
                 imagePullPolicy: Always
                 name: keda-olm-operator
                 resources: {}

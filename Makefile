@@ -2,10 +2,8 @@
 # Variables                                      #
 ##################################################
 IMAGE_TAG      ?= master
-# IMAGE_REGISTRY ?= docker.io
-IMAGE_REGISTRY ?= quay.io
-# IMAGE_REPO     ?= kedacore
-IMAGE_REPO     ?= samuelmacko
+IMAGE_REGISTRY ?= docker.io
+IMAGE_REPO     ?= kedacore
 
 BUNDLE_VERSION ?= 2.0.0
 # Default bundle image tag

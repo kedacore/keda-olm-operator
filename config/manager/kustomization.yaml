@@ -1,9 +1,8 @@
 resources:
 - manager.yaml
-# note tu prepisat na docker.io/kedacore
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: controller
-  newName: quay.io/samuelmacko/keda-olm-operator
+  newName: quay.io/kedacore/keda-olm-operator
   newTag: master
