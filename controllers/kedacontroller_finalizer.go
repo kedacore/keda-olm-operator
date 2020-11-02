@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 )
 
 const (

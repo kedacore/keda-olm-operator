@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.15 as builder
+FROM golang:1.15.3 as builder
 
 WORKDIR /workspace
 
@@ -11,15 +11,16 @@ COPY go.sum go.sum
 RUN go mod download
 
 COPY Makefile Makefile
-COPY .git/ .git/
-COPY hack/ hack/
 
 # Copy the go source
+COPY hack/ hack/
 COPY version/ version/
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 COPY config/ config/
+
+COPY .git/ .git/
 
 # Build
 RUN make manager
@@ -29,7 +30,7 @@ RUN make manager
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/config/resources/ config/resources/
-COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/bin/manager .
 USER nonroot:nonroot
 
 ENTRYPOINT ["/manager"]
