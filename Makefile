@@ -137,6 +137,9 @@ vet:
 test-unit: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
 
+##################################################
+# Bundle                                           #
+##################################################
 
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
