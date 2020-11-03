@@ -18,33 +18,27 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"runtime"
 
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"fmt"
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 	"github.com/kedacore/keda-olm-operator/controllers"
 	"github.com/kedacore/keda-olm-operator/version"
-	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
-	"runtime"
 )
 
 var (
 	scheme   = apimachineryruntime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
-
-func printVersion() {
-	setupLog.Info(fmt.Sprintf("Operator Version: %s", version.Version))
-	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-}
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -69,17 +63,30 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	printVersion()
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "olm-operator.keda.sh",
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		HealthProbeBindAddress: ":8081",
+		Port:                   9443,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "olm-operator.keda.sh",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	// Add readiness probe
+	err = mgr.AddReadyzCheck("ready-ping", healthz.Ping)
+	if err != nil {
+		setupLog.Error(err, "Unable to add a readiness check")
+		os.Exit(1)
+	}
+
+	// Add liveness probe
+	err = mgr.AddHealthzCheck("health-ping", healthz.Ping)
+	if err != nil {
+		setupLog.Error(err, "Unable to add a health check")
 		os.Exit(1)
 	}
 
@@ -110,6 +117,11 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
+	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
+	setupLog.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
+	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
