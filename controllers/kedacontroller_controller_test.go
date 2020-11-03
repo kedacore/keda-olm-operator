@@ -48,7 +48,7 @@ func setupReconcileKedaController(s *runtime.Scheme) (*KedaControllerReconciler,
 
 	r := &KedaControllerReconciler{Client: cl, Scheme: s, Log: ctrl.Log.WithName("unit test")}
 
-	_, manifest, _, err := parseManifestsFromFile("../config/resources/keda-2.0.0-rc.yaml", cl)
+	_, manifest, _, err := parseManifestsFromFile("../"+resourcesPath, cl)
 	if err != nil {
 		return nil, err
 	}
