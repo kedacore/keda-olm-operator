@@ -10,10 +10,18 @@ Operator for deploying KEDA controller on OpenShift or any Kubernetes cluster wi
 
 ## Installation 
 
+Please note that you can not run both KEDA v1 and v2 on the same Kubernetes cluster. You need to uninstall KEDA v1 first, in order to install and use KEDA v2.
+Don't forget to uninstall KEDA v1 CRDs as well, to ensure that, please run:
+```bash
+kubectl delete crd scaledobjects.keda.k8s.io
+kubectl delete crd triggerauthentications.keda.k8s.io 
+
+```
+
+
 ### Operator Hub Installation
 1. On Operator Hub Marketplace locate and install `KEDA` operator
-2. Create namespace `keda` 
-3. Create `KedaController` resource in `keda` namespace
+2. Create `KedaController` resource in `keda` namespace
 
 ![Operator Hub Installation Demo](images/keda-olm-install.gif)
 
@@ -21,15 +29,11 @@ Operator for deploying KEDA controller on OpenShift or any Kubernetes cluster wi
 ### Manual installation
 
 The following will install [KEDA](https://github.com/kedacore/keda) and configure it
-appropriately for your cluster, please run this commands in `keda` namespace:
+appropriately for your cluster, please run these commands:
 
-```
-kubectl create namespace keda
-kubectl apply -f deploy/crds/keda.k8s.io_kedacontrollers_crd.yaml
-kubectl apply -f deploy/resources/crds/keda.k8s.io_scaledobjects_crd.yaml 
-kubectl apply -f deploy/resources/crds/keda.k8s.io_triggerauthentications_crd.yaml 
-kubectl apply -n keda -f deploy/
-kubectl apply -n keda -f deploy/crds/keda.k8s.io_v1alpha1_kedacontroller_cr.yaml  
+```bash
+make deploy                                                                  # deploy KEDA OLM Operator
+kubectl apply -n keda -f config/samples/keda_v1alpha1_kedacontroller.yaml    # install KEDA
 ```
 
 To be clear, the operator will be deployed in the `keda` namespace,
@@ -38,7 +42,7 @@ and then it will install KEDA into this namespace.
 ## The `KedaController` Custom Resource
 
 The installation of KEDA is triggered by the creation of
-[a `KedaController` custom resource](deploy/crds/keda.k8s.io_v1alpha1_kedacontroller_cr.yaml ). 
+[a `KedaController` custom resource](config/samples/keda_v1alpha1_kedacontroller.yaml). 
 Only custom resource named `keda` in namespace `keda` will trigger the installation, 
 reconfiguration, or removal of the KEDA Controller resources.
 
@@ -83,19 +87,17 @@ spec:
 ### How to uninstall KEDA Controller
 Locate installed `KEDA` Operator in `keda` namespace and then remove created `KedaController` resoure or simply delete the `KedaController` resource:
 
-```
-kubectl delete -n keda -f deploy/crds/keda.k8s.io_v1alpha1_kedacontroller_cr.yaml 
+```bash
+kubectl delete -n keda -f config/samples/keda_v1alpha1_kedacontroller.yaml
 ```
 
 ### How to uninstall KEDA OLM Operator
 To remove KEDA OLM Operator from your cluster, on Operator Hub locate and uninstall `KEDA` operator. 
 
 In case of manual installation, run these commands:
-```
-kubectl delete -n keda -f deploy/
-kubectl delete -f deploy/crds/keda.k8s.io_kedacontrollers_crd.yaml
-kubectl delete -f deploy/resources/crds/keda.k8s.io_scaledobjects_crd.yaml 
-kubectl delete -f deploy/resources/crds/keda.k8s.io_triggerauthentications_crd.yaml 
+
+```bash
+make undeploy
 ```
 
 ## Development
@@ -113,26 +115,15 @@ It can be convenient to run the operator outside of the cluster to
 test changes. The following command will build the operator and use
 your current "kube config" to connect to the cluster:
 
+```bash
+make install    # install KedaController CRD in the cluster
+make run        # run operator locally
 ```
-operator-sdk run --local --watch-namespace="" 
-```
-
-Pass `--help` for further details on the various `operator-sdk`
-subcommands, and pass `--help` to the operator itself to see its
-available options:
-
-```
-operator-sdk run --local --operator-flags "--help"
-```
-
 
 ### Building the Operator Image
 
 To build the operator:
 
-```
+```bash
 make build
 ```
-
-The image should match what's in [deploy/operator.yaml](deploy/operator.yaml) 
-and correspond to the contents of [deploy/resources](deploy/resources/).
