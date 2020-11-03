@@ -1,22 +1,17 @@
 ##################################################
 # Variables                                      #
 ##################################################
-IMAGE_TAG      ?= master
-# IMAGE_REGISTRY ?= docker.io
-IMAGE_REGISTRY ?= quay.io
-# IMAGE_REPO     ?= kedacore
-IMAGE_REPO     ?= samuelmacko
-
-BUNDLE_VERSION ?= 2.0.0
-# Default bundle image tag
-BUNDLE_IMG ?= $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle:$(BUNDLE_VERSION)
+VERSION        ?= 2.0.0
+IMAGE_REGISTRY ?= docker.io
+IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
 
-ARCH		?= amd64
-CGO			?= 0
-TARGET_OS	?= linux
-VERSION 	?= v2
+ARCH       ?=amd64
+CGO        ?=0
+TARGET_OS  ?=linux
+
+GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 
@@ -164,7 +159,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 bundle: manifests
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE_CONTROLLER}
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(BUNDLE_VERSION) $(BUNDLE_METADATA_OPTS)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 # Build the bundle image.

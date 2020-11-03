@@ -14,6 +14,8 @@ COPY hack/ hack/
 
 # Copy the go source
 COPY hack/ hack/
+# workaround for https://github.com/moby/moby/issues/37965#issue-366585696
+RUN true
 COPY version/ version/
 COPY main.go main.go
 COPY api/ api/

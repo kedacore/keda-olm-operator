@@ -4,13 +4,183 @@ metadata:
   name: keda-olm-operator.v2.0.0
   namespace: placeholder
   annotations:
-    alm-examples: >-
-      [{"apiVersion":"keda.sh/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0","logTimeFormat":"epoch"}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauth","namespace":"example-namespace"},"spec":{"secretTargetRef":[{"key":"example-role-key","name":"example-secret-name","parameter":"exmaple-secret-parameter"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject","labels":{"deploymentName":"example-deployment"}},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"TriggerAuthentication","metadata":{"name":"example-triggerauthentication"},"spec":{"secretTargetRef":[{"parameter":"exmaple-secret-parameter","name":"example-secret-name","key":"example-role-key"}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"ScaledObject","metadata":{"name":"example-scaledobject"},"spec":{"scaleTargetRef":{"deploymentName":"example-deployment","containerName":"example-container"},"pollingInterval":30,"cooldownPeriod":300,"minReplicaCount":0,"maxReplicaCount":100,"triggers":[{"type":"example-trigger","metadata":{"namespace":"examle-namespace"}}]}},{"apiVersion":"keda.sh/v1alpha1","kind":"KedaController","metadata":{"name":"keda","namespace":"keda"},"spec":{"watchNamespace":"","logLevel":"info","logLevelMetrics":"0"}}]
+    alm-examples: '[
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "KedaController",
+        "metadata": {
+          "name": "keda",
+          "namespace": "keda"
+        },
+        "spec": {
+          "watchNamespace": "",
+          "logLevel": "info",
+          "logLevelMetrics": "0",
+          "logTimeFormat": "epoch"
+        }
+      },
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "TriggerAuthentication",
+        "metadata": {
+          "name": "example-triggerauthentication",
+          "namespace": "example-namespace"
+        },
+        "spec": {
+          "secretTargetRef": [
+            {
+              "key": "example-role-key",
+              "name": "example-secret-name",
+              "parameter": "exmaple-secret-parameter"
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "ScaledObject",
+        "metadata": {
+          "name": "example-scaledobject"
+        },
+        "spec": {
+          "scaleTargetRef": {
+            "deploymentName": "example-deployment",
+            "containerName": "example-container"
+          },
+          "pollingInterval": 30,
+          "cooldownPeriod": 300,
+          "minReplicaCount": 0,
+          "maxReplicaCount": 100,
+          "triggers": [
+            {
+              "type": "example-trigger",
+              "metadata": {
+                "namespace": "examle-namespace"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "TriggerAuthentication",
+        "metadata": {
+          "name": "example-triggerauth",
+          "namespace": "example-namespace"
+        },
+        "spec": {
+          "secretTargetRef": [
+            {
+              "key": "example-role-key",
+              "name": "example-secret-name",
+              "parameter": "exmaple-secret-parameter"
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "ScaledObject",
+        "metadata": {
+          "name": "example-scaledobject",
+          "labels": {
+            "deploymentName": "example-deployment"
+          }
+        },
+        "spec": {
+          "scaleTargetRef": {
+            "deploymentName": "example-deployment",
+            "containerName": "example-container"
+          },
+          "pollingInterval": 30,
+          "cooldownPeriod": 300,
+          "minReplicaCount": 0,
+          "maxReplicaCount": 100,
+          "triggers": [
+            {
+              "type": "example-trigger",
+              "metadata": {
+                "namespace": "examle-namespace"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "TriggerAuthentication",
+        "metadata": {
+          "name": "example-triggerauthentication"
+        },
+        "spec": {
+          "secretTargetRef": [
+            {
+              "parameter": "exmaple-secret-parameter",
+              "name": "example-secret-name",
+              "key": "example-role-key"
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "ScaledObject",
+        "metadata": {
+          "name": "example-scaledobject"
+        },
+        "spec": {
+          "scaleTargetRef": {
+            "deploymentName": "example-deployment",
+            "containerName": "example-container"
+          },
+          "pollingInterval": 30,
+          "cooldownPeriod": 300,
+          "minReplicaCount": 0,
+          "maxReplicaCount": 100,
+          "triggers": [
+            {
+              "type": "example-trigger",
+              "metadata": {
+                "namespace": "examle-namespace"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "keda.sh/v1alpha1",
+        "kind": "ScaledJob",
+        "metadata": {
+          "name": "scaledjob-sample"
+        },
+        "spec": {
+          "jobTargetRef": {
+            "parallelism": 1,
+            "completions": 1,
+            "activeDeadlineSeconds": 600,
+            "backoffLimit": 6,
+            "template": "## template"
+          },
+          "pollingInterval": 30,
+          "successfulJobsHistoryLimit": 5,
+          "failedJobsHistoryLimit": 5,
+          "maxReplicaCount": 100,
+          "triggers": [
+            {
+              "type": "example-trigger",
+              "metadata": {
+                "property": "examle-property"
+              }
+            }
+          ]
+        }
+      }
+    ]'
     categories: Cloud Provider
     certified: 'false'
     createdAt: '2020-10-31:00:00.000Z'
     description: 'Operator that provides KEDA, a Kubernetes-based event driver autoscaler'
-    containerImage: 'docker.io/kedacore/keda-olm-operator:1.5.0'
+    containerImage: 'docker.io/kedacore/keda-olm-operator:2.0.0'
     support: KEDA Community
     capabilities: Seamless Upgrades
     repository: 'https://github.com/kedacore/keda-olm-operator'
@@ -18,32 +188,9 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
 spec:
   apiservicedefinitions: {}
-  displayName: KEDA
-  description: >+
-    ## About the managed application
-
-    KEDA is a Kubernetes-based event driven autoscaler.  KEDA can monitor event
-    sources like Kafka, RabbitMQ, or cloud event sources and feed the metrics
-    from those sources into the Kubernetes horizontal pod autoscaler.  With
-    KEDA, you can have event driven and serverless scale of deployments within
-    any Kubernetes cluster.
-
-    ## About this Operator
-
-    The KEDA Operator deploys and manages installation of KEDA Controller in the
-    cluster. Install this operator and follow installation instructions on how
-    to install KEDA in you cluster.
-
-    ### How to install KEDA in the cluster
-
-    The installation of KEDA is triggered by the creation of `KedaController`
-    resource. 
-
-    Only resource named `keda` in namespace `keda` will trigger the
-    installation, reconfiguration or removal of the KEDA Controller resource.
-
-
-    There could be only one KEDA Controller in the cluster. 
+  # todo zmenit
+  displayName: KEDA-test
+  description: "## About the managed application\nKEDA is a Kubernetes-based event driven autoscaler.  KEDA can monitor event sources like Kafka, RabbitMQ, or cloud event sources and feed the metrics from those sources into the Kubernetes horizontal pod autoscaler.  With KEDA, you can have event driven and serverless scale of deployments within any Kubernetes cluster.\n## About this Operator\nThe KEDA Operator deploys and manages installation of KEDA Controller in the cluster. Install this operator and follow installation instructions on how to install KEDA in you cluster.\n### How to install KEDA in the cluster\nThe installation of KEDA is triggered by the creation of `KedaController` resource. \nOnly resource named `keda` in namespace `keda` will trigger the installation, reconfiguration or removal of the KEDA Controller resource.\n\nThere could be only one KEDA Controller in the cluster. \n"
   maturity: alpha
   version: 2.0.0
   # replaces: keda.v1.5.0
@@ -228,9 +375,11 @@ spec:
             displayName: Last Active Time
             x-descriptors:
               - 'urn:alm:descriptor:text'
-      - kind: ScaledJob
-        name: scaledjobs.keda.sh
+      - name: scaledjobs.keda.sh
+        displayName: ScaledJob
+        kind: ScaledJob
         version: v1alpha1
+        description: ScaledJob is the Schema for the scaledjobs API
     required: []
   install:
     strategy: deployment
@@ -313,11 +462,15 @@ spec:
           replicas: 1
           selector:
             matchLabels:
+              app.kubernetes.io/part-of: keda-olm-operator
+              app.kubernetes.io/version: master
               name: keda-olm-operator
           strategy: {}
           template:
             metadata:
               labels:
+                app.kubernetes.io/part-of: keda-olm-operator
+                app.kubernetes.io/version: master
                 name: keda-olm-operator
             spec:
               containers:
@@ -330,8 +483,24 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 image: docker.io/kedacore/keda-olm-operator:master
                 imagePullPolicy: Always
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 25
                 name: keda-olm-operator
-                resources: {}
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 20
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 500Mi
+                  requests:
+                    cpu: 100m
+                    memory: 100Mi
               serviceAccountName: keda-olm-operator
   installModes:
     - type: OwnNamespace

@@ -32,20 +32,26 @@ const (
 // KedaControllerSpec defines the desired state of KedaController
 // +kubebuilder:subresource:status
 type KedaControllerSpec struct {
-	// Important: Run "make" to regenerate code after modifying this file
+	// Logging level for KEDA Controller
+	// allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+	// default value: info
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
 	// +optional
 	LogTimeFormat string `json:"logTimeFormat,omitempty"`
+	// Logging level for Metrics Server
+	// allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
+	// default value: "0"
 	// +optional
 	LogLevelMetrics string `json:"logLevelMetrics,omitempty"`
 	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
+
+	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // KedaControllerStatus defines the observed state of KedaController
 type KedaControllerStatus struct {
-	// Important: Run "make" to regenerate code after modifying this file
 	// +optional
 	Phase KedaControllerPhase `json:"phase,omitempy"`
 	// +optional
@@ -56,6 +62,8 @@ type KedaControllerStatus struct {
 	ConfigMapDataSum string `json:"configmadatasum,omitempty"`
 	// +optional
 	SecretDataSum string `json:"secretdatasum,omitempty"`
+
+	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +kubebuilder:object:root=true

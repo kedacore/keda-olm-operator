@@ -22,10 +22,14 @@ spec:
         description: KedaController is the Schema for the kedacontrollers API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -33,9 +37,14 @@ spec:
             description: KedaControllerSpec defines the desired state of KedaController
             properties:
               logLevel:
-                description: 'Important: Run "make" to regenerate code after modifying this file'
+                description: 'Logging level for KEDA Controller allowed values: ''debug'',
+                  ''info'', ''error'', or an integer value greater than 0, specified
+                  as string default value: info'
                 type: string
               logLevelMetrics:
+                description: 'Logging level for Metrics Server allowed values: "0"
+                  for info, "4" for debug, or an integer value greater than 0, specified
+                  as string default value: "0"'
                 type: string
               logTimeFormat:
                 type: string
@@ -48,7 +57,6 @@ spec:
               configmadatasum:
                 type: string
               phase:
-                description: 'Important: Run "make" to regenerate code after modifying this file'
                 type: string
               reason:
                 type: string
