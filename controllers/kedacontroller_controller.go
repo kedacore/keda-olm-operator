@@ -53,6 +53,8 @@ const (
 
 	moduleName = "keda-olm-operator"
 
+	resourcesPath = "resources/keda-2.0.0-rc.yaml"
+
 	metricsServcerServiceName        = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
 	injectCABundleAnnotation         = "service.beta.openshift.io/inject-cabundle"
@@ -75,7 +77,7 @@ type KedaControllerReconciler struct {
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile("config/resources/keda-2.0.0-rc.yaml", r.Client)
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(resourcesPath, r.Client)
 	if err != nil {
 		return err
 	}
