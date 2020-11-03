@@ -11,10 +11,9 @@ jobs:
     container: kedacore/build-tools:main
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v1
         with:
           fetch-depth: 1
-          lfs: true
 
       - name: Install Go 1.15.3
         uses: actions/setup-go@v2
