@@ -7,5 +7,5 @@ images:
   newName: docker.io/kedacore/keda-olm-operator
   newTag: 2.0.0
 - name: docker.io/kedacore/keda-olm-operator
-  newName: docker.io/samuelmacko/keda-olm-operator
+  newName: docker.io/kedacore/keda-olm-operator
   newTag: 2.0.0

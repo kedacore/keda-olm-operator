@@ -188,8 +188,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
 spec:
   apiservicedefinitions: {}
-  # todo zmenit
-  displayName: KEDA-test
+  displayName: KEDA
   description: "## About the managed application\nKEDA is a Kubernetes-based event driven autoscaler.  KEDA can monitor event sources like Kafka, RabbitMQ, or cloud event sources and feed the metrics from those sources into the Kubernetes horizontal pod autoscaler.  With KEDA, you can have event driven and serverless scale of deployments within any Kubernetes cluster.\n## About this Operator\nThe KEDA Operator deploys and manages installation of KEDA Controller in the cluster. Install this operator and follow installation instructions on how to install KEDA in you cluster.\n### How to install KEDA in the cluster\nThe installation of KEDA is triggered by the creation of `KedaController` resource. \nOnly resource named `keda` in namespace `keda` will trigger the installation, reconfiguration or removal of the KEDA Controller resource.\n\nThere could be only one KEDA Controller in the cluster. \n"
   maturity: alpha
   version: 2.0.0
