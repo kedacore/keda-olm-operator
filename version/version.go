@@ -2,7 +2,7 @@ package version
 
 var (
 	// Version of the operator
-	Version = "v2"
+	Version = "2.0.0"
 	// GitCommit stores the current commit hash
 	GitCommit string
 )
