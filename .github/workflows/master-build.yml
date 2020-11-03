@@ -8,17 +8,17 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    container: kedacore/build-tools:v2
+    container: kedacore/build-tools:main
     steps:
       - name: Check out code
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
 
-      - name: Install Go 1.14
+      - name: Install Go 1.15.3
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.14.4' 
+          go-version: '^1.15.3' 
           
       - name: Go modules cache
         uses: actions/cache@v1
@@ -47,10 +47,10 @@ jobs:
           kind create cluster
           kubectl create namespace keda --context kind-kind
 
-      - name: Install Go 1.14
+      - name: Install Go 1.15
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.14.4' 
+          go-version: '^1.15.3' 
           
       - name: Install operator-sdk
         run: brew install operator-sdk

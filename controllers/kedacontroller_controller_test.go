@@ -5,18 +5,17 @@ import (
 	"strings"
 	"testing"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
-	ctrl "sigs.k8s.io/controller-runtime"
-
+	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	mf "github.com/manifestival/manifestival"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 )
 
 var (
