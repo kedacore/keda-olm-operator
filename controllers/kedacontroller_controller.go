@@ -287,8 +287,8 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 	if len(instance.Spec.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(instance.Spec.LogLevel, r.Scheme, logger))
 	}
-	if len(instance.Spec.LogTimeFormat) > 0 {
-		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeFormat(instance.Spec.LogTimeFormat, r.Scheme, logger))
+	if len(instance.Spec.LogEncoder) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(instance.Spec.LogEncoder, r.Scheme, logger))
 	}
 
 	manifest, err := r.resourcesController.Transform(transforms...)

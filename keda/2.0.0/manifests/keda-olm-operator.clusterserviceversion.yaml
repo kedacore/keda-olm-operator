@@ -16,7 +16,7 @@ metadata:
           "watchNamespace": "",
           "logLevel": "info",
           "logLevelMetrics": "0",
-          "logTimeFormat": "epoch"
+          "logEncoder": "console"
         }
       },
       {
@@ -248,7 +248,7 @@ spec:
               - 'urn:alm:descriptor:com.tectonic.ui:text'
           - displayName: Log Format
             description: "Log Format for KEDA Operator, allowed values: 'epoch', 'millis', 'nano', or 'iso8601'"
-            path: logTimeFormat
+            path: logEncoder
             x-descriptors:
               - 'urn:alm:descriptor:com.tectonic.ui:text'
           - path: logLevelMetrics

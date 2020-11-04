@@ -1,0 +1,29 @@
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  ###
+  # THERE SHOULD BE ONLY ONE INSTANCE OF THIS RESOURCE PER CLUSTER 
+  # with Name set to 'keda' created in namespace 'keda'
+  ###
+
+  ## Namespace that should be watched by KEDA Controller, 
+  # omit or set empty to watch all namespaces (default setting)
+  watchNamespace: ""
+
+  ## Logging level for KEDA Controller 
+  # allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+  # default value: info
+  logLevel: info
+
+  ## Logging format for KEDA Operator
+  # allowed values are json and console
+  # default value: console
+  logEncoder: console
+
+  ## Logging level for Metrics Server
+  # allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
+  # default value: "0"
+  logLevelMetrics: "0"

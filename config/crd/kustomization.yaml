@@ -5,6 +5,7 @@ resources:
 - bases/keda.sh_kedacontrollers.yaml
 - bases/keda.sh_scaledjob.yaml
 - bases/keda.sh_scaledobject.yaml
+- bases/keda.sh_triggerauthentications.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

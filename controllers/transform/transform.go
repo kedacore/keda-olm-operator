@@ -16,19 +16,19 @@ import (
 )
 
 var (
-	logLevelsKedaOperator      = []string{"debug", "info", "error"}
-	logTimeFormatsKedaOperator = []string{"epoch", "millis", "nano", "iso8601"}
+	logLevelsKedaOperator   = []string{"debug", "info", "error"}
+	logEncodersKedaOperator = []string{"json", "console"}
 )
 
 type Prefix string
 
 const (
-	LogLevelKedaOperator      Prefix = "--zap-log-level="
-	LogTimeFormatKedaOperator        = "--zap-time-encoding="
-	LogLevelMetricsServer            = "--v="
-	ClientCAFile                     = "--client-ca-file="
-	TLSCertFile                      = "--tls-cert-file="
-	TLSPrivateKeyFile                = "--tls-private-key-file="
+	LogLevelKedaOperator   Prefix = "--zap-log-level="
+	LogEncoderKedaOperator        = "--zap-encoder="
+	LogLevelMetricsServer         = "--v="
+	ClientCAFile                  = "--client-ca-file="
+	TLSCertFile                   = "--tls-cert-file="
+	TLSPrivateKeyFile             = "--tls-private-key-file="
 )
 
 func (p Prefix) String() string {
@@ -255,24 +255,24 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 	return replaceContainerArg(logLevel, prefix, containerNameKedaOperator, scheme, logger)
 }
 
-func ReplaceKedaOperatorLogTimeFormat(logTimeFormat string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 
 	found := false
-	for _, format := range logTimeFormatsKedaOperator {
-		if logTimeFormat == format {
+	for _, format := range logEncodersKedaOperator {
+		if logEncoder == format {
 			found = true
 		}
 	}
 
 	if !found {
-		logger.Info("Ignoring speficied Log format for Keda Operator, it needs to be set to ", strings.Join(logTimeFormatsKedaOperator, ", "))
+		logger.Info("Ignoring speficied Log encoder for Keda Operator, it needs to be set to ", strings.Join(logEncodersKedaOperator, ", "))
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
 	}
 
-	var prefix Prefix = LogTimeFormatKedaOperator
-	return replaceContainerArg(logTimeFormat, prefix, containerNameKedaOperator, scheme, logger)
+	var prefix Prefix = LogEncoderKedaOperator
+	return replaceContainerArg(logEncoder, prefix, containerNameKedaOperator, scheme, logger)
 }
 
 func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
