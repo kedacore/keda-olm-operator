@@ -48,7 +48,6 @@ spec:
 
   maturity: alpha
   version: 1.4.1
-  replaces: keda.v1.3.0
   skips: []
   minKubeVersion: 1.13.0
   keywords:
