@@ -6,7 +6,7 @@ metadata:
   creationTimestamp: null
   labels:
     app.kubernetes.io/part-of: keda-olm-operator
-    app.kubernetes.io/version: master
+    app.kubernetes.io/version: 2.0.0
   name: kedacontrollers.keda.sh
 spec:
   group: keda.sh
@@ -33,13 +33,14 @@ spec:
           spec:
             description: KedaControllerSpec defines the desired state of KedaController
             properties:
+              logEncoder:
+                description: 'Logging format for KEDA Controller allowed values are json and console default value: console'
+                type: string
               logLevel:
                 description: 'Logging level for KEDA Controller allowed values: ''debug'', ''info'', ''error'', or an integer value greater than 0, specified as string default value: info'
                 type: string
               logLevelMetrics:
                 description: 'Logging level for Metrics Server allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string default value: "0"'
-                type: string
-              logTimeFormat:
                 type: string
               watchNamespace:
                 type: string

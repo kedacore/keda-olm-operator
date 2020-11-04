@@ -37,8 +37,11 @@ type KedaControllerSpec struct {
 	// default value: info
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
+	// Logging format for KEDA Controller
+	// allowed values are json and console
+	// default value: console
 	// +optional
-	LogTimeFormat string `json:"logTimeFormat,omitempty"`
+	LogEncoder string `json:"logEncoder,omitempty"`
 	// Logging level for Metrics Server
 	// allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
 	// default value: "0"

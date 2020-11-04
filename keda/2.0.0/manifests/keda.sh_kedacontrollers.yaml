@@ -39,7 +39,7 @@ spec:
               logLevelMetrics:
                 description: 'Logging level for Metrics Server allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string default value: "0"'
                 type: string
-              logTimeFormat:
+              logEncoder:
                 type: string
               watchNamespace:
                 type: string
