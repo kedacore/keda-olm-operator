@@ -2,11 +2,103 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    alm-examples: '[ { "apiVersion": "keda.sh/v1alpha1", "kind": "KedaController", "metadata": { "name": "keda", "namespace": "keda" }, "spec": { "watchNamespace": "", "logLevel": "info", "logLevelMetrics": "0", "logEncoder": "console" } }, { "apiVersion": "keda.sh/v1alpha1", "kind": "TriggerAuthentication", "metadata": { "name": "example-triggerauthentication", "namespace": "example-namespace" }, "spec": { "secretTargetRef": [ { "key": "example-role-key", "name": "example-secret-name", "parameter": "exmaple-secret-parameter" } ] } }, { "apiVersion": "keda.sh/v1alpha1", "kind": "ScaledObject", "metadata": { "name": "example-scaledobject" }, "spec": { "scaleTargetRef": { "deploymentName": "example-deployment", "containerName": "example-container" }, "pollingInterval": 30, "cooldownPeriod": 300, "minReplicaCount": 0, "maxReplicaCount": 100, "triggers": [ { "type": "example-trigger", "metadata": { "namespace": "examle-namespace" } } ] } }, { "apiVersion": "keda.sh/v1alpha1", "kind": "TriggerAuthentication", "metadata": { "name": "example-triggerauth", "namespace": "example-namespace" }, "spec": { "secretTargetRef": [ { "key": "example-role-key", "name": "example-secret-name", "parameter": "exmaple-secret-parameter" } ] } }, { "apiVersion": "keda.sh/v1alpha1", "kind": "ScaledObject", "metadata": { "name": "example-scaledobject", "labels": { "deploymentName": "example-deployment" } }, "spec": { "scaleTargetRef": { "deploymentName": "example-deployment", "containerName": "example-container" }, "pollingInterval": 30, "cooldownPeriod": 300, "minReplicaCount": 0, "maxReplicaCount": 100, "triggers": [ { "type": "example-trigger", "metadata": { "namespace": "examle-namespace" } } ] } }, { "apiVersion": "keda.sh/v1alpha1", "kind": "TriggerAuthentication", "metadata": { "name": "example-triggerauthentication" }, "spec": { "secretTargetRef": [ { "parameter": "exmaple-secret-parameter", "name": "example-secret-name", "key": "example-role-key" } ] } }, { "apiVersion": "keda.sh/v1alpha1", "kind": "ScaledObject", "metadata": { "name": "example-scaledobject" }, "spec": { "scaleTargetRef": { "deploymentName": "example-deployment", "containerName": "example-container" }, "pollingInterval": 30, "cooldownPeriod": 300, "minReplicaCount": 0, "maxReplicaCount": 100, "triggers": [ { "type": "example-trigger", "metadata": { "namespace": "examle-namespace" } } ] } }, { "apiVersion": "keda.sh/v1alpha1", "kind": "ScaledJob", "metadata": { "name": "scaledjob-sample" }, "spec": { "jobTargetRef": { "parallelism": 1, "completions": 1, "activeDeadlineSeconds": 600, "backoffLimit": 6, "template": "## template" }, "pollingInterval": 30, "successfulJobsHistoryLimit": 5, "failedJobsHistoryLimit": 5, "maxReplicaCount": 100, "triggers": [ { "type": "example-trigger", "metadata": { "property": "examle-property" } } ] } } ]'
-    capabilities: Seamless Upgrades
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "keda.sh/v1alpha1",
+          "kind": "KedaController",
+          "metadata": {
+            "name": "keda",
+            "namespace": "keda"
+          },
+          "spec": {
+            "logEncoder": "console",
+            "logLevel": "info",
+            "logLevelMetrics": "0",
+            "watchNamespace": ""
+          }
+        },
+        {
+          "apiVersion": "keda.sh/v1alpha1",
+          "kind": "ScaledJob",
+          "metadata": {
+            "name": "scaledjob-sample"
+          },
+          "spec": {
+            "failedJobsHistoryLimit": 5,
+            "jobTargetRef": {
+              "activeDeadlineSeconds": 600,
+              "backoffLimit": 6,
+              "completions": 1,
+              "parallelism": 1,
+              "template": null
+            },
+            "maxReplicaCount": 100,
+            "pollingInterval": 30,
+            "successfulJobsHistoryLimit": 5,
+            "triggers": [
+              {
+                "metadata": {
+                  "property": "examle-property"
+                },
+                "type": "example-trigger"
+              }
+            ]
+          }
+        },
+        {
+          "apiVersion": "keda.sh/v1alpha1",
+          "kind": "ScaledObject",
+          "metadata": {
+            "name": "example-scaledobject"
+          },
+          "spec": {
+            "cooldownPeriod": 300,
+            "maxReplicaCount": 100,
+            "minReplicaCount": 0,
+            "pollingInterval": 30,
+            "scaleTargetRef": {
+              "name": "example-deployment"
+            },
+            "triggers": [
+              {
+                "metadata": {
+                  "property": "examle-property"
+                },
+                "type": "example-trigger"
+              }
+            ]
+          }
+        },
+        {
+          "apiVersion": "keda.k8s.io/v1alpha1",
+          "kind": "TriggerAuthentication",
+          "metadata": {
+            "name": "example-triggerauthentication"
+          },
+          "spec": {
+            "secretTargetRef": [
+              {
+                "parameter": "exmaple-secret-parameter",
+                "name": "example-secret-name",
+                "key": "example-role-key"
+              }
+            ]
+          }
+        }
+      ]
+    capabilities: Basic Install
+    categories: Cloud Provider
+    certified: "false"
+    containerImage: docker.io/kedacore/keda-olm-operator:2.0.0
+    createdAt: "2020-11-04T00:00:00.000Z"
+    description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
+    operatorframework.io/suggested-namespace: keda
     operators.operatorframework.io/builder: operator-sdk-v1.1.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
-  name: keda-olm-operator.v2.0.0
+    repository: https://github.com/kedacore/keda-olm-operator
+    support: KEDA Community
+  name: keda.v2.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -17,21 +109,238 @@ spec:
       displayName: KedaController
       kind: KedaController
       name: kedacontrollers.keda.sh
+      resources:
+      - kind: Deployment
+        name: ""
+        version: v1
+      - kind: Service
+        name: ""
+        version: v1
+      - kind: ReplicaSet
+        name: ""
+        version: v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: 'Log Level for KEDA Operator, allowed values: ''debug'', ''info'', ''error'', or an integer value greater than 0, specified as string'
+        displayName: Log Level
+        path: logLevel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Log format for KEDA Operator, allowed values are 'json' and 'console'
+        displayName: Log Format
+        path: logEncoder
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Log Level for KEDA Metrics Server, allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string'
+        displayName: Log Level Metrics
+        path: logLevelMetrics
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Namespace that should the created KEDA controller watch, blank means all namespaces
+        displayName: Watch Namespace
+        path: watchNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - description: Phase
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes.phase
+      - description: Reason
+        displayName: Reason
+        path: reason
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes.phase:reason
+      - description: Version
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:text
       version: v1alpha1
     - description: Describes authentication parameters
       displayName: TriggerAuthentication
       kind: TriggerAuthentication
       name: triggerauthentications.keda.sh
+      resources:
+      - kind: Secret
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Env
+        displayName: Env
+        path: env
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Pod Identity
+        displayName: Pod Identity
+        path: podIdentity
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Secret Target Ref
+        displayName: Secret Target Ref
+        path: secretTargetRef
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Secret
       version: v1alpha1
     - description: Defines how KEDA should scale your application and what the triggers are
       displayName: ScaledObject
       kind: ScaledObject
       name: scaledobjects.keda.sh
+      resources:
+      - kind: Deployment
+        name: ""
+        version: v1
+      - kind: Service
+        name: ""
+        version: v1
+      - kind: ReplicaSet
+        name: ""
+        version: v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Cooldown Period
+        displayName: Cooldown Period
+        path: cooldownPeriod
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Max Replica Count
+        displayName: Max Replica Count
+        path: maxReplicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Min Replica Count
+        displayName: Min Replica Count
+        path: minReplicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Polling Interval
+        displayName: Polling Interval
+        path: pollingInterval
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Scale Target Ref
+        displayName: Scale Target Ref
+        path: scaleTargetRef
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Triggers
+        displayName: Triggers
+        path: triggers
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - description: ScaleTarget Kind
+        displayName: ScaleTarget Kind
+        path: scaleTargetKind
+        x-descriptors:
+        - urn:alm:descriptor:text
+      - description: External Metric Names
+        displayName: External Metric Names
+        path: externalMetricNames
+        x-descriptors:
+        - urn:alm:descriptor:text
+      - description: Resource Metric Names
+        displayName: Resource Metric Names
+        path: resourceMetricNames
+        x-descriptors:
+        - urn:alm:descriptor:text
+      - description: Last Active Time
+        displayName: Last Active Time
+        path: lastActiveTime
+        x-descriptors:
+        - urn:alm:descriptor:text
+      - description: Original Replica Count
+        displayName: Original Replica Count
+        path: originalReplicaCount
+        x-descriptors:
+        - urn:alm:descriptor:text
+      - description: Conditions
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes.conditions
       version: v1alpha1
-    - description: ScaledJob is the Schema for the scaledjobs API
+    - description: Defines how KEDA should scale your jobs and what the triggers
       displayName: ScaledJob
       kind: ScaledJob
       name: scaledjobs.keda.sh
+      resources:
+      - kind: Job
+        name: ""
+        version: v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Job Target Ref
+        displayName: Job Target Ref
+        path: jobTargetRef
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Polling Interval
+        displayName: Polling Interval
+        path: pollingInterval
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: How many completed jobs should be kept
+        displayName: Successful Jobs History Limit
+        path: successfulJobsHistoryLimit
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: How many failed jobs should be kept
+        displayName: Failed Jobs History Limit
+        path: failedJobsHistoryLimit
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Max Replica Count
+        displayName: Max Replica Count
+        path: maxReplicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Scaling Strategy
+        displayName: Scaling Strategy
+        path: scalingStrategy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      statusDescriptors:
+      - description: Last Active Time
+        displayName: Last Active Time
+        path: lastActiveTime
+        x-descriptors:
+        - urn:alm:descriptor:text
+      - description: Conditions
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes.conditions
+      version: v1alpha1
+    - description: KedaController is the Schema for the kedacontrollers API
+      displayName: Keda Controller
+      kind: KedaController
+      name: kedacontrollers.keda.sh.keda.sh
       version: v1alpha1
   description: "## About the managed application\nKEDA is a Kubernetes-based event driven autoscaler.  KEDA can monitor event sources like Kafka, RabbitMQ, or cloud event sources and feed the metrics from those sources into the Kubernetes horizontal pod autoscaler.  With KEDA, you can have event driven and serverless scale of deployments within any Kubernetes cluster.\n## About this Operator\nThe KEDA Operator deploys and manages installation of KEDA Controller in the cluster. Install this operator and follow installation instructions on how to install KEDA in you cluster.\n### How to install KEDA in the cluster\nThe installation of KEDA is triggered by the creation of `KedaController` resource. \nOnly resource named `keda` in namespace `keda` will trigger the installation, reconfiguration or removal of the KEDA Controller resource.\n\nThere could be only one KEDA Controller in the cluster. \n"
   displayName: KEDA
@@ -40,7 +349,6 @@ spec:
     mediatype: image/png
   install:
     spec:
-      permissions: []
       clusterPermissions:
       - rules:
         - apiGroups:
@@ -118,11 +426,15 @@ spec:
           replicas: 1
           selector:
             matchLabels:
+              app.kubernetes.io/part-of: keda-olm-operator
+              app.kubernetes.io/version: master
               name: keda-olm-operator
           strategy: {}
           template:
             metadata:
               labels:
+                app.kubernetes.io/part-of: keda-olm-operator
+                app.kubernetes.io/version: master
                 name: keda-olm-operator
             spec:
               containers:
@@ -133,10 +445,26 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: docker.io/kedacore/keda-olm-operator:master
+                image: docker.io/kedacore/keda-olm-operator:2.0.0
                 imagePullPolicy: Always
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 25
                 name: keda-olm-operator
-                resources: {}
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 20
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 500Mi
+                  requests:
+                    cpu: 100m
+                    memory: 100Mi
               serviceAccountName: keda-olm-operator
     strategy: deployment
   installModes:
@@ -152,6 +480,9 @@ spec:
   - keda
   - scaling
   - event
+  labels:
+    alm-owner-keda: keda
+    operated-by: keda
   links:
   - name: Homepage
     url: https://keda.sh
@@ -159,7 +490,12 @@ spec:
     url: https://github.com/kedacore/keda
   - name: Slack Channel
     url: https://kubernetes.slack.com/messages/CKZJ36A5D
+  maintainers:
+  - email: keda-core@googlegroups.com
+    name: KEDA Community
   maturity: alpha
+  minKubeVersion: 1.16.0
   provider:
     name: KEDA Community
+  selector: {}
   version: 2.0.0
