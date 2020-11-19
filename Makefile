@@ -142,10 +142,16 @@ vet:
 test-unit: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
 
+##################################################
+# Bundle / Index                                 #
+##################################################
 
 # Default bundle image tag
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
+BUNDLE = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle:$(VERSION)
+INDEX = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-index:$(VERSION)
 # Options for 'bundle-build'
+DEFAULT_CHANNEL=alpha
+
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
@@ -158,11 +164,28 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 .PHONY: bundle
 bundle: manifests
 	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE_CONTROLLER}
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	docker build -f bundle.Dockerfile -t $(BUNDLE) .
+
+.PHONY: bundle-push
+bundle-push:
+	docker push ${BUNDLE}
+	operator-sdk bundle validate ${BUNDLE}
+
+.PHONY: index-build
+index-build:
+	opm index add --bundles ${BUNDLE} --tag ${INDEX} -u docker
+
+
+.PHONY: index-push
+index-push:
+	docker push ${INDEX}
+
+.PHONY: deploy-olm
+deploy-olm: bundle-build bundle-push index-build index-push
+
