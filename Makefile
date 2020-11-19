@@ -147,10 +147,11 @@ test-unit: generate fmt vet manifests
 ##################################################
 
 # Default bundle image tag
-# BUNDLE_IMG ?= controller-bundle:$(VERSION)
 BUNDLE = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle:$(VERSION)
 INDEX = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-index:$(VERSION)
 # Options for 'bundle-build'
+DEFAULT_CHANNEL=alpha
+
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
@@ -162,15 +163,9 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
 bundle: manifests
-	mv bundle/manifests/keda.clusterserviceversion.yaml bundle/manifests/keda-olm-operator.clusterserviceversion.yaml
 	operator-sdk generate kustomize manifests -q
-	# cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE_CONTROLLER}
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
-	mv bundle/manifests/keda-olm-operator.clusterserviceversion.yaml bundle/manifests/keda.clusterserviceversion.yaml
-	sed -i 's/keda-olm-operator/keda/' bundle/metadata/annotations.yaml
-	sed -i 's/keda-olm-operator.v2.0.0/keda.v2.0.0/' config/manifests/bases/keda-olm-operator.clusterserviceversion.yaml
-	sed -i 's/keda-olm-operator.v2.0.0/keda.v2.0.0/' bundle/manifests/keda.clusterserviceversion.yaml
 
 # Build the bundle image.
 .PHONY: bundle-build
