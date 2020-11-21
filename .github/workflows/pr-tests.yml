@@ -32,8 +32,5 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Run unit tests
-        run: make test-unit
-
-      # - name: Run e2e tests
-      #   run: make test-e2e
+      - name: Run tests
+        run: make test
