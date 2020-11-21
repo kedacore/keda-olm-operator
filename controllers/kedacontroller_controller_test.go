@@ -76,7 +76,7 @@ var _ = Describe("Keda OLM operator", func() {
 
 			Eventually(func() error {
 				return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
-			}, timeout, interval).Should(Succeed())
+			}, timeout, interval).ShouldNot(Succeed())
 		})
 
 		Context("When deploying in \"keda\" namespace", func() {
@@ -103,7 +103,7 @@ var _ = Describe("Keda OLM operator", func() {
 
 				Eventually(func() error {
 					return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
-				}, timeout, interval).Should(Succeed())
+				}, timeout, interval).ShouldNot(Succeed())
 			})
 		})
 	})
