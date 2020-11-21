@@ -67,9 +67,9 @@ jobs:
           arch=$(go env GOARCH)
           version=2.3.1
           curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_${version}_${os}_${arch}.tar.gz | tar -xz -C /tmp/
-          mkdir -p /usr/local/kubebuilder/bin
-          cd kubebuilder_${version}_${os}_${arch}/bin
-          mv etcd kube-apiserver /usr/local/kubebuilder/bin
+          sudo mkdir -p /usr/local/kubebuilder/bin
+          cd /tmp/kubebuilder_${version}_${os}_${arch}/bin
+          sudo mv etcd kube-apiserver /usr/local/kubebuilder/bin
 
       - name: Run tests
         run: make test
