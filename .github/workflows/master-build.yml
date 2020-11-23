@@ -61,8 +61,15 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Run unit tests
-        run: make test-unit
+      - name: Download etcd and kube-apiserver
+        run: |
+          os=$(go env GOOS)
+          arch=$(go env GOARCH)
+          version=2.3.1
+          curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_${version}_${os}_${arch}.tar.gz | tar -xz -C /tmp/
+          sudo mkdir -p /usr/local/kubebuilder/bin
+          cd /tmp/kubebuilder_${version}_${os}_${arch}/bin
+          sudo mv etcd kube-apiserver /usr/local/kubebuilder/bin
 
-      # - name: Run e2e tests
-      #   run: make test-e2e
+      - name: Run tests
+        run: make test

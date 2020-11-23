@@ -20,6 +20,7 @@ import (
 	"context"
 	goerrors "errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
@@ -77,7 +78,12 @@ type KedaControllerReconciler struct {
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(resourcesPath, r.Client)
+	fullResourcesPath, err := filepath.Abs("../" + resourcesPath)
+	if err != nil {
+		return err
+	}
+
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(fullResourcesPath, r.Client)
 	if err != nil {
 		return err
 	}

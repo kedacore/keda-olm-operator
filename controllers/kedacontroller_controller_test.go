@@ -1,160 +1,205 @@
+/*
+Copyright 2020 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package controllers
 
 import (
+	"context"
 	"errors"
 	"strings"
-	"testing"
-
-	mf "github.com/manifestival/manifestival"
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
+
+	mfc "github.com/manifestival/controller-runtime-client"
+	mf "github.com/manifestival/manifestival"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var (
-	name      = "keda"
-	namespace = "keda"
+var _ = Describe("Keda OLM operator", func() {
+	const (
+		namespace = "keda"
+		name      = "keda"
+	)
 
-	logLevelPrefix = "--zap-log-level="
+	var (
+		ctx                    context.Context
+		kedaControllerInstance *kedav1alpha1.KedaController
+		namespacedName         = types.NamespacedName{Namespace: namespace, Name: name}
+		err                    error
+		timeout                = time.Second * 10
+		interval               = time.Millisecond * 250
+		scheme                 *runtime.Scheme
+	)
 
-	containerName = "keda-operator"
+	Describe("Deploying KedaController manifest", func() {
+		const (
+			kedaManifestFilepath = "../config/samples/keda_v1alpha1_kedacontroller.yaml"
+		)
 
-	kedacontroller = &kedav1alpha1.KedaController{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-	}
-)
+		var manifest mf.Manifest
 
-func setupScheme() *runtime.Scheme {
-	s := scheme.Scheme
-	s.AddKnownTypes(kedav1alpha1.GroupVersion, kedacontroller)
-	return s
-}
+		BeforeEach(func() {
+			scheme = k8sManager.GetScheme()
+			manifest, err = mf.NewManifest(kedaManifestFilepath)
+			Expect(err).To(BeNil())
+			manifest.Client = mfc.NewClient(k8sClient)
 
-func setupReconcileKedaController(s *runtime.Scheme) (*KedaControllerReconciler, error) {
+			ctx = context.Background()
+			kedaControllerInstance = &kedav1alpha1.KedaController{}
+		})
 
-	objs := []runtime.Object{kedacontroller}
+		AfterEach(func() {
+			manifest, err = changeNamespace(manifest, namespace, scheme)
+			Expect(err).To(BeNil())
 
-	cl := fake.NewFakeClient(objs...)
+			Expect(manifest.Delete()).Should(Succeed())
 
-	r := &KedaControllerReconciler{Client: cl, Scheme: s, Log: ctrl.Log.WithName("unit test")}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
+			}, timeout, interval).ShouldNot(Succeed())
+		})
 
-	_, manifest, _, err := parseManifestsFromFile("../"+resourcesPath, cl)
-	if err != nil {
-		return nil, err
-	}
-	r.resourcesController = manifest
+		Context("When deploying in \"keda\" namespace", func() {
+			It("Should deploy KedaController", func() {
 
-	if err := r.addFinalizer(r.Log, kedacontroller); err != nil {
-		return nil, err
-	}
+				Expect(manifest.Apply()).Should(Succeed())
 
-	return r, nil
-}
+				Eventually(func() error {
+					return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
+				}, timeout, interval).Should(Succeed())
 
-func checkDeploymentArgs(dep appsv1.Deployment, expected string, prefix string, containerName string) error {
+			})
+		})
+
+		Context("When deploying not in \"keda\" namespace", func() {
+			const changedNamespace = "default"
+
+			It("Should not deploy KedaController", func() {
+
+				manifest, err = changeNamespace(manifest, changedNamespace, scheme)
+				Expect(err).To(BeNil())
+
+				Expect(manifest.Apply()).Should(Succeed())
+
+				Eventually(func() error {
+					return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
+				}, timeout, interval).ShouldNot(Succeed())
+			})
+		})
+	})
+
+	Describe("Changing parameters", func() {
+		const (
+			kind           = "Deployment"
+			deploymentName = "keda-operator"
+			containerName  = "keda-operator"
+			logLevelPrefix = "--zap-log-level="
+		)
+
+		var dep = &appsv1.Deployment{}
+
+		BeforeEach(func() {
+			scheme = k8sManager.GetScheme()
+		})
+
+		Context("When changing \"--zap-log-level\"", func() {
+			variants := []struct {
+				initialLogLevel string
+				actualLogLevel  string
+			}{
+				{
+					initialLogLevel: "debug",
+					actualLogLevel:  "debug",
+				},
+				{
+					initialLogLevel: "info",
+					actualLogLevel:  "info",
+				},
+				{
+					initialLogLevel: "error",
+					actualLogLevel:  "error",
+				},
+				{
+					initialLogLevel: "",
+					actualLogLevel:  "info",
+				},
+				{
+					initialLogLevel: "foo",
+					actualLogLevel:  "info",
+				},
+			}
+
+			for _, variant := range variants {
+				It("Should change it", func() {
+					kedaControllerInstance.Spec.LogLevel = variant.initialLogLevel
+
+					_, err = kedaControllerReconciler.Reconcile(reconcile.Request{NamespacedName: namespacedName})
+					Expect(err).To(BeNil())
+
+					for _, res := range kedaControllerReconciler.resourcesController.Filter(mf.ByKind(kind)).Resources() {
+						if res.GetName() == deploymentName {
+							u := res.DeepCopy()
+							Expect(scheme.Convert(u, dep, nil)).To(Succeed())
+
+							value, err := getDeploymentArgsForPrefix(dep, logLevelPrefix, containerName)
+							Expect(err).To(BeNil())
+							Expect(value).To(Equal(variant.actualLogLevel))
+						}
+					}
+				})
+			}
+		})
+	})
+})
+
+func getDeploymentArgsForPrefix(dep *appsv1.Deployment, prefix string, containerName string) (string, error) {
 	for _, container := range dep.Spec.Template.Spec.Containers {
 		if container.Name == containerName {
 			for _, arg := range container.Args {
 				if strings.HasPrefix(arg, prefix) {
-					trimmedArg := strings.TrimPrefix(arg, prefix)
-					if trimmedArg == expected {
-						return nil
-					}
-					return errors.New("Wrong log time format, expected: " + expected + " got: " + trimmedArg)
+					return strings.TrimPrefix(arg, prefix), nil
 				}
 			}
+			return "", errors.New("Could not find an argument with given prefix: " + prefix)
 		}
 	}
-	return errors.New("Could not find a container: " + containerName)
+	return "", errors.New("Could not find a container: " + containerName)
 }
 
-func TestReplaceKedaOperatorLogLevel(t *testing.T) {
+func changeNamespace(manifest mf.Manifest, namespace string, scheme *runtime.Scheme) (mf.Manifest, error) {
+	transformer := func(u *unstructured.Unstructured) error {
+		kedaControllerInstance := &kedav1alpha1.KedaController{}
+		if err := scheme.Convert(u, kedaControllerInstance, nil); err != nil {
+			return err
+		}
 
-	tests := []struct {
-		name            string
-		initialLogLevel string
-		actualLogLevel  string
-	}{
-		{
-			name:            "Change debug",
-			initialLogLevel: "debug",
-			actualLogLevel:  "debug",
-		},
-		{
-			name:            "Change info",
-			initialLogLevel: "info",
-			actualLogLevel:  "info",
-		},
-		{
-			name:            "Change error",
-			initialLogLevel: "error",
-			actualLogLevel:  "error",
-		},
-		{
-			name:            "Change empty",
-			initialLogLevel: "",
-			actualLogLevel:  "info",
-		},
-		{
-			name:            "Change wrong imput",
-			initialLogLevel: "foo",
-			actualLogLevel:  "info",
-		},
+		kedaControllerInstance.Namespace = namespace
+
+		if err := scheme.Convert(kedaControllerInstance, u, nil); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-
-			kedacontroller.Spec = kedav1alpha1.KedaControllerSpec{
-				LogLevel: test.initialLogLevel,
-			}
-
-			s := setupScheme()
-
-			r, err := setupReconcileKedaController(s)
-			if err != nil {
-				t.Fatalf("Failed to set up reconciler: %v", err)
-			}
-
-			req := reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      name,
-					Namespace: namespace,
-				},
-			}
-
-			_, err = r.Reconcile(req)
-			if err != nil {
-				t.Fatalf("Failed to reconcile: %v", err)
-			}
-
-			for _, res := range r.resourcesController.Filter(mf.ByKind("Deployment")).Resources() {
-				if res.GetKind() == "Deployment" {
-					u := res.DeepCopy()
-
-					dep := &appsv1.Deployment{}
-					if err := s.Convert(u, dep, nil); err != nil {
-						t.Fatalf("Failed to convert: %v", err)
-					}
-
-					err = checkDeploymentArgs(*dep, test.actualLogLevel, logLevelPrefix, containerName)
-					if err != nil {
-						t.Fatalf("%v", err)
-					}
-
-				}
-			}
-
-		})
-	}
+	return manifest.Transform(transformer)
 }

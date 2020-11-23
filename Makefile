@@ -139,8 +139,9 @@ vet:
 # Test                                           #
 ##################################################
 # Run tests
-test-unit: generate fmt vet manifests
-	go test ./... -coverprofile cover.out
+.PHONY: test
+test:
+	go test ./... -v -ginkgo.v -coverprofile cover.out
 
 ##################################################
 # Bundle / Index                                 #
