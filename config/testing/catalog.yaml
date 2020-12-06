@@ -1,0 +1,9 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: test-catalog
+  namespace: olm
+spec:
+  sourceType: grpc
+  # ! toto prepisat na kedacore
+  image: docker.io/samuelmacko/keda-olm-operator-index:2.0.0

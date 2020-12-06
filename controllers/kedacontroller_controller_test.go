@@ -33,6 +33,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"fmt"
+	// corev1 "k8s.io/api/core/v1"
+	// "k8s.io/apimachinery/pkg/runtime/schema"
+	// "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Keda OLM operator", func() {
@@ -85,8 +89,28 @@ var _ = Describe("Keda OLM operator", func() {
 				Expect(manifest.Apply()).Should(Succeed())
 
 				Eventually(func() error {
+					// ! tuna nemozem kontrolovat kedacontroller instance ale pod/description
+					// ! kedacontroller kind vytvori aj ked nebezi keda-olm-operator
 					return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
 				}, timeout, interval).Should(Succeed())
+
+				ctx = context.Background()
+				// pod := &corev1.PodList{}
+				// pod := &appsv1.DeploymentList{}
+				pod := &kedav1alpha1.KedaControllerList{}
+				// lso := &client.ListOptions{
+				// 	Namespace: "keda",
+				// }
+				// u := &unstructured.UnstructuredList{}
+				// u.SetGroupVersionKind(schema.GroupVersionKind{
+				// 	Group:   "apps",
+				// 	Kind:    "DeploymentList",
+				// 	Version: "v1",
+				// })
+				// _ = k8sClient.List(ctx, u, lso)
+				// fmt.Println("list:", u)
+				_ = k8sClient.List(ctx, pod)
+				fmt.Println("list:", pod)
 
 			})
 		})
@@ -103,7 +127,8 @@ var _ = Describe("Keda OLM operator", func() {
 
 				Eventually(func() error {
 					return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
-				}, timeout, interval).ShouldNot(Succeed())
+				// }, timeout, interval).ShouldNot(Succeed())
+				}, timeout, interval).Should(Succeed())
 			})
 		})
 	})
