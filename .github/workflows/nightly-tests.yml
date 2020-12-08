@@ -8,15 +8,6 @@ jobs:
     name: Nightly test
     runs-on: ubuntu-latest
     steps:
-      - name: Build and deploy KEDA olm operator index
-        run: make deploy-olm
-
-      - name: Setup test environment
-        run: |
-          kind create cluster
-          kubectl apply -f config/testing/crds.yaml
-          kubectl apply -f config/testing/olm.yaml
-
       - name: Install Go 1.14
         uses: actions/setup-go@v2
         with:
@@ -39,6 +30,15 @@ jobs:
           sudo mkdir -p /usr/local/kubebuilder/bin
           cd /tmp/kubebuilder_${version}_${os}_${arch}/bin
           sudo mv etcd kube-apiserver /usr/local/kubebuilder/bin
+
+      - name: Build and deploy KEDA olm operator index
+        run: make deploy-olm
+
+      - name: Setup test environment
+        run: |
+          kind create cluster
+          kubectl apply -f config/testing/crds.yaml
+          kubectl apply -f config/testing/olm.yaml
 
       - name: Run tests
         run: make test
