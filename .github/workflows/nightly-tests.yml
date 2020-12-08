@@ -7,6 +7,7 @@ jobs:
   nightly-test:
     name: Nightly test
     runs-on: ubuntu-latest
+    container: kedacore/build-tools:main
     steps:
       - name: Install Go 1.14
         uses: actions/setup-go@v2

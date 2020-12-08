@@ -5,6 +5,7 @@ jobs:
   pr-test:
     name: PR test
     runs-on: ubuntu-latest
+    container: kedacore/build-tools:main
     steps:
       - name: Install Go 1.14
         uses: actions/setup-go@v2
