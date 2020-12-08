@@ -8,11 +8,14 @@ jobs:
     name: Nightly test
     runs-on: ubuntu-latest
     steps:
+      - name: Build and deploy KEDA olm operator index
+        run: make deploy-olm
 
-      - name: Setup kubernetes
+      - name: Setup test environment
         run: |
           kind create cluster
-          kubectl create namespace keda --context kind-kind
+          kubectl apply -f config/testing/crds.yaml
+          kubectl apply -f config/testing/olm.yaml
 
       - name: Install Go 1.14
         uses: actions/setup-go@v2

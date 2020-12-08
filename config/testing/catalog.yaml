@@ -5,5 +5,4 @@ metadata:
   namespace: olm
 spec:
   sourceType: grpc
-  # ! toto prepisat na kedacore
-  image: docker.io/samuelmacko/keda-olm-operator-index:2.0.0
+  image: docker.io/kedacore/keda-olm-operator-index:2.0.0

@@ -17,14 +17,19 @@ limitations under the License.
 package controllers
 
 import (
-	// "context"
-	"path/filepath"
+	"context"
+	"errors"
+	"strings"
 	"testing"
-	// "time"
+	"time"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
+	mfc "github.com/manifestival/controller-runtime-client"
+	mf "github.com/manifestival/manifestival"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,27 +38,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	mf "github.com/manifestival/manifestival"
-	mfc "github.com/manifestival/controller-runtime-client"
-	// "k8s.io/apimachinery/pkg/types"
-	// appsv1 "k8s.io/api/apps/v1"
-	// corev1 "k8s.io/api/core/v1"
-	// "sigs.k8s.io/controller-runtime/pkg/client"
-	// +kubebuilder:scaffold:imports
-	"fmt"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
+const (
+	olmOperatorPrefix     = "keda-olm-operator"
+	namespace             = "keda"
+	namespaceManifest     = "../config/testing/namespace.yaml"
+	catalogManifest       = "../config/testing/catalog.yaml"
+	operatorGroupManifest = "../config/testing/operator_group.yaml"
+	subscriptionManifest  = "../config/testing/subscription.yaml"
+)
+
 var (
+	ctx                      = context.Background()
 	cfg                      *rest.Config
 	k8sClient                client.Client
 	testEnv                  *envtest.Environment
 	k8sManager               ctrl.Manager
 	kedaControllerReconciler *KedaControllerReconciler
-	manifest mf.Manifest
-	err error
+	manifest                 mf.Manifest
+	err                      error
+	timeout                  = time.Second * 150
+	interval                 = time.Millisecond * 250
 )
 
 func TestAPIs(t *testing.T) {
@@ -68,9 +77,8 @@ var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
 	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
-	}
+	useExistingCluster := true
+	testEnv = &envtest.Environment{UseExistingCluster: &useExistingCluster}
 
 	cfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
@@ -85,58 +93,26 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	kedaControllerReconciler = &KedaControllerReconciler{
-		Client: k8sManager.GetClient(),
-		Log:    ctrl.Log.WithName("controllers-test").WithName("KedaController"),
-		Scheme: k8sManager.GetScheme(),
-	}
-	err = (kedaControllerReconciler).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-
-	// Expect(deployManifest("../config/testing/crds.yaml", k8sManager)).Should(Succeed())
-	// time.Sleep(3 * time.Second)
-	// Expect(deployManifest("../config/testing/olm.yaml", k8sManager)).Should(Succeed())
-	// time.Sleep(3 * time.Second)
-	// Expect(deployManifest("../config/testing/namespace.yaml", k8sManager)).Should(Succeed())
-	// // Expect(deployManifest("../config/testing/catalog.yaml", k8sManager)).Should(Succeed())
-	// Expect(deployManifest("../config/testing/operator_group.yaml", k8sManager)).Should(Succeed())
-	// Expect(deployManifest("../config/testing/subscription.yaml", k8sManager)).Should(Succeed())
-
-	// ctx := context.Background()
-
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
 
-	// kedaControllerInstance := &kedav1alpha1.KedaController{}
-	// kedaControllerInstance := &appsv1.Deployment{}
-	// kedaControllerInstance := &corev1.Pod{}
-	// namespacedName := types.NamespacedName{Namespace: "keda", Name: "keda-olm-operator"}
-	// timeout := time.Second * 60
-	// interval := time.Millisecond * 250
-	fmt.Println("tu to este bolo")
-	// Eventually(func() error {
-	// 	return k8sClient.Get(ctx, namespacedName, kedaControllerInstance)
-	// }, timeout, interval).Should(Succeed())
-	// fmt.Println("tu uz to asi neni")
-
-	// lso := &client.ListOptions{
-	// 	Namespace: "keda",
-	// }
-
-	// pod := &corev1.PodList{}
-	// time.Sleep(5 * time.Second)
-	// _ = k8sClient.List(ctx, pod, lso)
-	// _ = k8sClient.List(ctx, pod)
-	// fmt.Println("list:", pod)
+	Expect(deployManifest(namespaceManifest, k8sClient)).Should(Succeed())
+	Expect(deployManifest(catalogManifest, k8sClient)).Should(Succeed())
+	Expect(deployManifest(operatorGroupManifest, k8sClient)).Should(Succeed())
+	Expect(deployManifest(subscriptionManifest, k8sClient)).Should(Succeed())
 
 	go func() {
 		err = k8sManager.Start(ctrl.SetupSignalHandler())
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
+	Eventually(func() error {
+		_, err = getPod(olmOperatorPrefix, namespace, k8sClient, ctx)
+		return err
+	}, timeout, interval).Should(Succeed())
+
 	close(done)
-}, 60)
+}, 300)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
@@ -144,11 +120,45 @@ var _ = AfterSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 })
 
-func deployManifest(pathname string, manager ctrl.Manager) error {
-	manifest, err := mf.NewManifest(pathname)
+func getPod(namePrefix string, namespace string, c client.Client, ctx context.Context) (pod *corev1.Pod, err error) {
+	pod = &corev1.Pod{}
+	podList := &corev1.PodList{}
+	lo := &client.ListOptions{Namespace: namespace}
+	err = c.List(ctx, podList, lo)
+	if err != nil {
+		return
+	}
+	found := false
+	for _, p := range podList.Items {
+		podName := p.ObjectMeta.Name
+		if strings.HasPrefix(podName, namePrefix) {
+			found = true
+			err = c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: podName}, pod)
+			if err != nil {
+				return
+			}
+			break
+		}
+	}
+	if !found {
+		err = errors.New("Pod with name prefix: " + namePrefix + " was not found in namespace: " + namespace)
+	}
+	return
+}
+
+func deployManifest(pathname string, c client.Client) error {
+	manifest, err := createManifest(pathname, c)
 	if err != nil {
 		return err
 	}
-	manifest.Client = mfc.NewClient(manager.GetClient())
 	return manifest.Apply()
+}
+
+func createManifest(pathname string, c client.Client) (manifest mf.Manifest, err error) {
+	manifest, err = mf.NewManifest(pathname)
+	if err != nil {
+		return
+	}
+	manifest.Client = mfc.NewClient(c)
+	return
 }

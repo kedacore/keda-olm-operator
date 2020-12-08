@@ -189,4 +189,3 @@ index-push:
 
 .PHONY: deploy-olm
 deploy-olm: bundle-build bundle-push index-build index-push
-
