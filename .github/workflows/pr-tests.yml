@@ -2,10 +2,43 @@ name: pr tests
 on: [pull_request]
 
 jobs:
-  pr-test:
-    name: PR test
+  deploy-olm-index:
+    name: Deploy-olm-index
     runs-on: ubuntu-latest
     container: kedacore/build-tools:main
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+          lfs: true
+
+      - name: Install Go 1.15.3
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.3' 
+          
+      - name: Go modules cache
+        uses: actions/cache@v1
+        with:
+          path: /go/pkg
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Login to Docker Hub
+        env:
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
+      - name: Build and deploy KEDA olm operator index
+        run: make deploy-olm
+
+  pr-test:
+    needs: Deploy-olm-index
+    name: PR test
+    runs-on: ubuntu-latest
     steps:
       - name: Install Go 1.14
         uses: actions/setup-go@v2
@@ -21,10 +54,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Install operator-sdk
-        run: |
-          RELEASE_VERSION=v1.2.0
-          curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
-          chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && sudo mkdir -p /usr/local/bin/ && sudo cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
+        run: brew install operator-sdk
 
       - name: Check out code
         uses: actions/checkout@v2
@@ -40,15 +70,6 @@ jobs:
           sudo mkdir -p /usr/local/kubebuilder/bin
           cd /tmp/kubebuilder_${version}_${os}_${arch}/bin
           sudo mv etcd kube-apiserver /usr/local/kubebuilder/bin
-
-      - name: Login to Docker Hub
-        env:
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
-
-      - name: Build and deploy KEDA olm operator index
-        run: make deploy-olm
 
       - name: Setup test environment
         run: |
