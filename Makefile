@@ -175,13 +175,12 @@ bundle-build:
 
 .PHONY: bundle-push
 bundle-push:
-	docker push ${BUNDLE}
 	operator-sdk bundle validate ${BUNDLE}
+	docker push ${BUNDLE}
 
 .PHONY: index-build
 index-build:
 	opm index add --bundles ${BUNDLE} --tag ${INDEX} -u docker
-
 
 .PHONY: index-push
 index-push:
