@@ -35,6 +35,9 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
+      - name: Build and deploy KEDA olm operator index
+        run: make deploy-olm
+
       - name: Publish
         run: make publish
   
@@ -43,11 +46,6 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Setup kubernetes
-        run: |
-          kind create cluster
-          kubectl create namespace keda --context kind-kind
-
       - name: Install Go 1.15
         uses: actions/setup-go@v2
         with:
@@ -70,6 +68,15 @@ jobs:
           sudo mkdir -p /usr/local/kubebuilder/bin
           cd /tmp/kubebuilder_${version}_${os}_${arch}/bin
           sudo mv etcd kube-apiserver /usr/local/kubebuilder/bin
+
+      - name: Build and deploy KEDA olm operator index
+        run: make deploy-olm
+
+      - name: Setup test environment
+        run: |
+          kind create cluster
+          kubectl apply -f config/testing/crds.yaml
+          kubectl apply -f config/testing/olm.yaml
 
       - name: Run tests
         run: make test
