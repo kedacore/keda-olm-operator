@@ -140,8 +140,11 @@ vet:
 ##################################################
 # Run tests
 .PHONY: test
-test:
-	go test ./... -v -ginkgo.v -coverprofile cover.out
+test-functionality:
+	go test ./... -v -ginkgo.v -coverprofile cover.out -test.type functionality -ginkgo.focus "Testing functionality"
+
+test-deployment:
+	go test ./... -v -ginkgo.v -coverprofile cover.out -test.type deployment -ginkgo.focus "Deploying KedaController manifest"
 
 ##################################################
 # Bundle / Index                                 #

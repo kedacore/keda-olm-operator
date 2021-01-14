@@ -6,6 +6,6 @@ metadata:
 spec:
   channel: alpha
   installPlanApproval: Automatic
-  name: keda
+  name: keda-moja
   source: test-catalog
   sourceNamespace: olm

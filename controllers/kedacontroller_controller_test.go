@@ -19,28 +19,25 @@ package controllers
 import (
 	"context"
 	"errors"
-	"strings"
-	"time"
-
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
+	mf "github.com/manifestival/manifestival"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/kedacore/keda-olm-operator/controllers/transform"
-	mf "github.com/manifestival/manifestival"
-	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"strings"
+	"time"
 )
 
-var _ = Describe("Keda OLM operator", func() {
+var _ = Describe("Deploying KedaController manifest", func() {
 	const (
 		olmOperatorName      = "keda-olm-operator"
 		operatorName         = "keda-operator"
 		kedaManifestFilepath = "../config/samples/keda_v1alpha1_kedacontroller.yaml"
 		timeout              = time.Second * 60
 		interval             = time.Millisecond * 250
+		namespace            = "keda"
 	)
 
 	var (
@@ -50,7 +47,18 @@ var _ = Describe("Keda OLM operator", func() {
 		manifest mf.Manifest
 	)
 
-	Describe("Deploying KedaController manifest", func() {
+	BeforeEach(func() {
+		Eventually(func() error {
+			_, err = getObject("Pod", olmOperatorName, namespace, k8sClient, ctx)
+			return err
+		}, timeout, interval).Should(Succeed())
+
+	})
+
+	var _ = Describe("Changing namespace", func() {
+
+		const ()
+
 		BeforeEach(func() {
 			scheme = k8sManager.GetScheme()
 			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
@@ -58,13 +66,13 @@ var _ = Describe("Keda OLM operator", func() {
 		})
 
 		AfterEach(func() {
-			manifest, err = changeNamespace(manifest, namespace, scheme)
+			manifest, err = changeAttribute(manifest, "namespace", namespace, scheme)
 			Expect(err).To(BeNil())
 
 			Expect(manifest.Delete()).Should(Succeed())
 
 			Eventually(func() error {
-				_, err = getPod(operatorName, namespace, k8sClient, ctx)
+				_, err = getObject("Pod", operatorName, namespace, k8sClient, ctx)
 				return err
 			}, timeout, interval).ShouldNot(Succeed())
 		})
@@ -75,7 +83,7 @@ var _ = Describe("Keda OLM operator", func() {
 				Expect(manifest.Apply()).Should(Succeed())
 
 				Eventually(func() error {
-					_, err = getPod(operatorName, namespace, k8sClient, ctx)
+					_, err = getObject("Pod", operatorName, namespace, k8sClient, ctx)
 					return err
 				}, timeout, interval).Should(Succeed())
 			})
@@ -86,51 +94,51 @@ var _ = Describe("Keda OLM operator", func() {
 
 			It("Should not deploy KedaController", func() {
 
-				manifest, err = changeNamespace(manifest, changedNamespace, scheme)
+				manifest, err = changeAttribute(manifest, "namespace", "default", scheme)
 				Expect(err).To(BeNil())
 
 				Expect(manifest.Apply()).Should(Succeed())
 
 				Eventually(func() error {
-					_, err = getPod(operatorName, namespace, k8sClient, ctx)
+					_, err = getObject("Pod", operatorName, namespace, k8sClient, ctx)
 					return err
 				}, timeout, interval).ShouldNot(Succeed())
 			})
 		})
 	})
+})
 
-	Describe("Changing parameters", func() {
+var _ = Describe("Testing functionality", func() {
+
+	var _ = Describe("Changing parameters", func() {
+
 		const (
-			containerName   = "keda-operator"
-			logLevelPrefix  = "--zap-log-level="
-			defaultLogLevel = "info"
+			deploymentName       = "keda-operator"
+			containerName        = "keda-operator"
+			logLevelPrefix       = "--zap-log-level="
+			apiVersion           = "keda.sh/v1alpha1"
+			kind                 = "KedaController"
+			name                 = "keda"
+			namespace            = "keda"
+			kedaManifestFilepath = "../config/samples/keda_v1alpha1_kedacontroller.yaml"
 		)
 
 		var (
-			arg string
-			pod = &corev1.Pod{}
-			log = ctrl.Log.WithName("test")
+			ctx      = context.Background()
+			timeout  = time.Second * 60
+			interval = time.Millisecond * 250
+			scheme   *runtime.Scheme
+			manifest mf.Manifest
+			err      error
+			arg      string
+			dep      = &appsv1.Deployment{}
 		)
 
 		BeforeEach(func() {
 			scheme = k8sManager.GetScheme()
-			Expect(deployManifest(kedaManifestFilepath, k8sClient)).Should(Succeed())
-			Eventually(func() error {
-				_, err = getPod(operatorName, namespace, k8sClient, ctx)
-				return err
-			}, timeout, interval).Should(Succeed())
-
-			pod, err = getPod(operatorName, namespace, k8sClient, ctx)
+			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
 			Expect(err).To(BeNil())
-		})
-
-		AfterEach(func() {
-			Expect(manifest.Delete()).Should(Succeed())
-
-			Eventually(func() error {
-				_, err = getPod(operatorName, namespace, k8sClient, ctx)
-				return err
-			}, timeout, interval).ShouldNot(Succeed())
+			Expect(manifest.Apply()).Should(Succeed())
 		})
 
 		Context("When changing \"--zap-log-level\"", func() {
@@ -162,13 +170,20 @@ var _ = Describe("Keda OLM operator", func() {
 
 			for _, variant := range variants {
 				It("Should change it", func() {
-
-					transforms := []mf.Transformer{transform.ReplaceKedaOperatorLogLevel(variant.initialLogLevel, scheme, log)}
-					manifest, err = manifest.Transform(transforms...)
+					manifest, err = changeAttribute(manifest, "logLevel", variant.initialLogLevel, scheme)
 					Expect(err).To(BeNil())
-					manifest.Apply()
+					Expect(manifest.Apply()).Should(Succeed())
+					Eventually(func() error {
+						_, err = getObject("Deployment", deploymentName, namespace, k8sClient, ctx)
+						return err
+					}, timeout, interval).Should(Succeed())
 
-					arg, err = getPodArg(pod, logLevelPrefix, containerName)
+					u, err := getObject("Deployment", deploymentName, namespace, k8sClient, ctx)
+					Expect(err).To(BeNil())
+					err = scheme.Convert(u, dep, nil)
+					Expect(err).To(BeNil())
+
+					arg, err = getDepArg(dep, logLevelPrefix, containerName)
 					Expect(err).To(BeNil())
 					Expect(arg).To(Equal(variant.actualLogLevel))
 				})
@@ -177,8 +192,8 @@ var _ = Describe("Keda OLM operator", func() {
 	})
 })
 
-func getPodArg(pod *corev1.Pod, prefix string, containerName string) (string, error) {
-	for _, container := range pod.Spec.Containers {
+func getDepArg(dep *appsv1.Deployment, prefix string, containerName string) (string, error) {
+	for _, container := range dep.Spec.Template.Spec.Containers {
 		if container.Name == containerName {
 			for _, arg := range container.Args {
 				if strings.HasPrefix(arg, prefix) {
@@ -191,14 +206,21 @@ func getPodArg(pod *corev1.Pod, prefix string, containerName string) (string, er
 	return "", errors.New("Could not find a container: " + containerName)
 }
 
-func changeNamespace(manifest mf.Manifest, namespace string, scheme *runtime.Scheme) (mf.Manifest, error) {
+func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *runtime.Scheme) (mf.Manifest, error) {
 	transformer := func(u *unstructured.Unstructured) error {
 		kedaControllerInstance := &kedav1alpha1.KedaController{}
 		if err := scheme.Convert(u, kedaControllerInstance, nil); err != nil {
 			return err
 		}
 
-		kedaControllerInstance.Namespace = namespace
+		switch attr {
+		case "namespace":
+			kedaControllerInstance.Namespace = value
+		case "logLevel":
+			kedaControllerInstance.Spec.LogLevel = value
+		default:
+			return mf.Manifest{}, errors.New("Not a valid attribute")
+		}
 
 		if err := scheme.Convert(kedaControllerInstance, u, nil); err != nil {
 			return err
