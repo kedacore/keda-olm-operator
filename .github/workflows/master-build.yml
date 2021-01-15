@@ -39,8 +39,8 @@ jobs:
         run: |
           version=1.15.0
           curl -L https://github.com/operator-framework/operator-registry/releases/download/v${version}/linux-amd64-opm --output opm
-          sudo chmod +x opm
-          sudo mv opm /usr/local/bin
+          chmod +x opm
+          mv opm /usr/local/bin
 
       - name: Build and deploy KEDA olm operator index
         run: make deploy-olm
