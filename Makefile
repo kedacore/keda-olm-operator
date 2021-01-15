@@ -200,4 +200,4 @@ deploy-olm-testing:
 	make deploy-olm
 	sed -i 's/keda-test/keda/' bundle/metadata/annotations.yaml
 	sed -i 's/keda-test.v${VERSION}/keda.v${VERSION}/' bundle/manifests/keda.clusterserviceversion.yaml
-	sed -i 's/# replaces/replaces/' bundle/manifests/keda.clusterserviceversion.ya
+	sed -i 's/# replaces/replaces/' bundle/manifests/keda.clusterserviceversion.yaml
