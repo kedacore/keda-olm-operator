@@ -29,6 +29,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Download opm
+        run: |
+          version=1.15.0
+          curl -L https://github.com/operator-framework/operator-registry/releases/download/v${version}/linux-amd64-opm --output opm
+          sudo chmod +x opm
+          sudo mv opm /usr/local/bin
+
       - name: Login to Docker Hub
         env:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
