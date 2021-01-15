@@ -219,7 +219,7 @@ func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *ru
 		case "logLevel":
 			kedaControllerInstance.Spec.LogLevel = value
 		default:
-			return mf.Manifest{}, errors.New("Not a valid attribute")
+			return errors.New("Not a valid attribute")
 		}
 
 		if err := scheme.Convert(kedaControllerInstance, u, nil); err != nil {

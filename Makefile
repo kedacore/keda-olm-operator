@@ -178,8 +178,8 @@ bundle-build:
 
 .PHONY: bundle-push
 bundle-push:
-	operator-sdk bundle validate ${BUNDLE}
 	docker push ${BUNDLE}
+	operator-sdk bundle validate ${BUNDLE}
 
 .PHONY: index-build
 index-build:
@@ -191,3 +191,11 @@ index-push:
 
 .PHONY: deploy-olm
 deploy-olm: bundle-build bundle-push index-build index-push
+
+.PHONY: deploy-olm-testing
+deploy-olm-testing: 
+	sed -i 's/keda/keda-test/' bundle/metadata/annotations.yaml
+	sed -i 's/keda.v2.0.0/keda-test.v2.0.0/' bundle/manifests/keda.clusterserviceversion.yaml
+	make deploy-olm
+	sed -i 's/keda-test/keda/' bundle/metadata/annotations.yaml
+	sed -i 's/keda-test.v2.0.0/keda.v2.0.0/' bundle/manifests/keda.clusterserviceversion.yaml
