@@ -69,14 +69,13 @@ jobs:
           cd /tmp/kubebuilder_${version}_${os}_${arch}/bin
           sudo mv etcd kube-apiserver /usr/local/kubebuilder/bin
 
-      - name: Build and deploy KEDA olm operator index
-        run: make deploy-olm
+      - name: Run functionality tests
+        run: make test-functionality
 
-      - name: Setup test environment
+      - name: Setup test environment for deployment tests
         run: |
           kind create cluster
-          kubectl apply -f config/testing/crds.yaml
-          kubectl apply -f config/testing/olm.yaml
+          operator-sdk olm install
 
-      - name: Run tests
-        run: make test
+      - name: Run deployment tests
+        run: make test-deployment

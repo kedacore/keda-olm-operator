@@ -140,8 +140,11 @@ vet:
 ##################################################
 # Run tests
 .PHONY: test
-test:
-	go test ./... -v -ginkgo.v -coverprofile cover.out
+test-functionality:
+	go test ./... -v -ginkgo.v -coverprofile cover.out -test.type functionality -ginkgo.focus "Testing functionality"
+
+test-deployment:
+	go test ./... -v -ginkgo.v -coverprofile cover.out -test.type deployment -ginkgo.focus "Deploying KedaController manifest"
 
 ##################################################
 # Bundle / Index                                 #
@@ -175,8 +178,8 @@ bundle-build:
 
 .PHONY: bundle-push
 bundle-push:
-	operator-sdk bundle validate ${BUNDLE}
 	docker push ${BUNDLE}
+	operator-sdk bundle validate ${BUNDLE}
 
 .PHONY: index-build
 index-build:
@@ -188,3 +191,11 @@ index-push:
 
 .PHONY: deploy-olm
 deploy-olm: bundle-build bundle-push index-build index-push
+
+.PHONY: deploy-olm-testing
+deploy-olm-testing: 
+	sed -i 's/keda/keda-test/' bundle/metadata/annotations.yaml
+	sed -i 's/keda.v${VERSION}/keda-test.v${VERSION}/' bundle/manifests/keda.clusterserviceversion.yaml
+	make deploy-olm
+	sed -i 's/keda-test/keda/' bundle/metadata/annotations.yaml
+	sed -i 's/keda-test.v${VERSION}/keda.v${VERSION}/' bundle/manifests/keda.clusterserviceversion.yaml

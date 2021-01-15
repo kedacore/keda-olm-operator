@@ -19,33 +19,33 @@ package controllers
 import (
 	"context"
 	"errors"
-	"strings"
-	"testing"
-	"time"
-
+	"flag"
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"strings"
+	"testing"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	olmOperatorPrefix     = "keda-olm-operator"
-	namespace             = "keda"
 	namespaceManifest     = "../config/testing/namespace.yaml"
 	catalogManifest       = "../config/testing/catalog.yaml"
 	operatorGroupManifest = "../config/testing/operator_group.yaml"
@@ -61,9 +61,12 @@ var (
 	kedaControllerReconciler *KedaControllerReconciler
 	manifest                 mf.Manifest
 	err                      error
-	timeout                  = time.Second * 150
-	interval                 = time.Millisecond * 250
+	testType                 string
 )
+
+func init() {
+	flag.StringVar(&testType, "test.type", "", "type of test: functionality / deployment")
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -77,39 +80,43 @@ var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
 	By("bootstrapping test environment")
-	useExistingCluster := true
-	testEnv = &envtest.Environment{UseExistingCluster: &useExistingCluster}
 
-	cfg, err = testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(cfg).ToNot(BeNil())
+	if testType == "functionality" {
+		testEnv = &envtest.Environment{
+			CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+		}
 
-	err = kedav1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
+		k8sManager, k8sClient, err = setupEnv(testEnv, scheme.Scheme)
+		Expect(err).ToNot(HaveOccurred())
 
-	// +kubebuilder:scaffold:scheme
-	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
-	})
-	Expect(err).ToNot(HaveOccurred())
+		Expect(deployManifest(namespaceManifest, k8sClient)).Should(Succeed())
 
-	k8sClient = k8sManager.GetClient()
-	Expect(k8sClient).ToNot(BeNil())
+		kedaControllerReconciler = &KedaControllerReconciler{
+			Client: k8sClient,
+			Log:    ctrl.Log.WithName("test").WithName("KedaController"),
+			Scheme: k8sManager.GetScheme(),
+		}
+		err = (kedaControllerReconciler).SetupWithManager(k8sManager)
+		Expect(err).ToNot(HaveOccurred())
 
-	Expect(deployManifest(namespaceManifest, k8sClient)).Should(Succeed())
-	Expect(deployManifest(catalogManifest, k8sClient)).Should(Succeed())
-	Expect(deployManifest(operatorGroupManifest, k8sClient)).Should(Succeed())
-	Expect(deployManifest(subscriptionManifest, k8sClient)).Should(Succeed())
+	} else {
+		useExistingCluster := true
+		testEnv = &envtest.Environment{UseExistingCluster: &useExistingCluster}
+
+		k8sManager, k8sClient, err = setupEnv(testEnv, scheme.Scheme)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(deployManifest(namespaceManifest, k8sClient)).Should(Succeed())
+
+		Expect(deployManifest(catalogManifest, k8sClient)).Should(Succeed())
+		Expect(deployManifest(operatorGroupManifest, k8sClient)).Should(Succeed())
+		Expect(deployManifest(subscriptionManifest, k8sClient)).Should(Succeed())
+	}
 
 	go func() {
 		err = k8sManager.Start(ctrl.SetupSignalHandler())
 		Expect(err).ToNot(HaveOccurred())
 	}()
-
-	Eventually(func() error {
-		_, err = getPod(olmOperatorPrefix, namespace, k8sClient, ctx)
-		return err
-	}, timeout, interval).Should(Succeed())
 
 	close(done)
 }, 300)
@@ -120,20 +127,66 @@ var _ = AfterSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 })
 
-func getPod(namePrefix string, namespace string, c client.Client, ctx context.Context) (pod *corev1.Pod, err error) {
-	pod = &corev1.Pod{}
-	podList := &corev1.PodList{}
+func setupEnv(testEnv *envtest.Environment, scheme *runtime.Scheme) (manager ctrl.Manager, client client.Client, err error) {
+	cfg, err = testEnv.Start()
+	if err != nil {
+		return
+	}
+
+	err = kedav1alpha1.AddToScheme(scheme)
+	if err != nil {
+		return
+	}
+
+	// +kubebuilder:scaffold:scheme
+	manager, err = ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme,
+	})
+	if err != nil {
+		return
+	}
+
+	client = manager.GetClient()
+	if err != nil {
+		return
+	}
+
+	return
+
+}
+
+func getObject(o Obj, namePrefix string, namespace string, c client.Client, ctx context.Context) (u *unstructured.Unstructured, err error) {
+	u = &unstructured.Unstructured{}
+	group, kind, version, err := o.getObjectGroupKindVersion()
+	if err != nil {
+		return
+	}
+	u.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   group,
+		Kind:    kind,
+		Version: version,
+	})
+	uList := &unstructured.UnstructuredList{}
+	group, kind, version, err = o.getListGroupKindVersion()
+	if err != nil {
+		return
+	}
+	uList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   group,
+		Kind:    kind,
+		Version: version,
+	})
 	lo := &client.ListOptions{Namespace: namespace}
-	err = c.List(ctx, podList, lo)
+	err = c.List(ctx, uList, lo)
 	if err != nil {
 		return
 	}
 	found := false
-	for _, p := range podList.Items {
-		podName := p.ObjectMeta.Name
-		if strings.HasPrefix(podName, namePrefix) {
+	for _, p := range uList.Items {
+		uName := p.GetName()
+		if strings.HasPrefix(uName, namePrefix) {
 			found = true
-			err = c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: podName}, pod)
+			err = c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: uName}, u)
 			if err != nil {
 				return
 			}
@@ -141,9 +194,57 @@ func getPod(namePrefix string, namespace string, c client.Client, ctx context.Co
 		}
 	}
 	if !found {
-		err = errors.New("Pod with name prefix: " + namePrefix + " was not found in namespace: " + namespace)
+		err = errors.New("Object with name prefix: " + namePrefix + " was not found in namespace: " + namespace)
 	}
 	return
+}
+
+func getObjects(o Obj, namespace string, c client.Client, ctx context.Context) (uList *unstructured.UnstructuredList, err error) {
+	group, kind, version, err := o.getListGroupKindVersion()
+	if err != nil {
+		return
+	}
+	uList = &unstructured.UnstructuredList{}
+	uList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   group,
+		Kind:    kind,
+		Version: version,
+	})
+	lo := &client.ListOptions{Namespace: namespace}
+	err = c.List(ctx, uList, lo)
+	if err != nil {
+		return
+	}
+	return
+}
+
+type Obj string
+
+const (
+	Pod        = "Pod"
+	Deployment = "Deployment"
+)
+
+func (o Obj) getListGroupKindVersion() (group, kind, version string, err error) {
+	switch o {
+	case Pod:
+		return "", "PodList", "v1", nil
+	case Deployment:
+		return "apps", "DeploymentList", "v1", nil
+	default:
+		return "", "", "", errors.New("Not a valid object")
+	}
+}
+
+func (o Obj) getObjectGroupKindVersion() (group, kind, version string, err error) {
+	switch o {
+	case Pod:
+		return "", "Pod", "v1", nil
+	case Deployment:
+		return "apps", "Deployment", "v1", nil
+	default:
+		return "", "", "", errors.New("Not a valid object")
+	}
 }
 
 func deployManifest(pathname string, c client.Client) error {
