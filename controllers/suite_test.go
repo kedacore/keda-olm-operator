@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"strings"
 	"testing"
-	"time"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -62,7 +61,6 @@ var (
 	kedaControllerReconciler *KedaControllerReconciler
 	manifest                 mf.Manifest
 	err                      error
-	timeout                  = time.Second * 300
 	testType                 string
 )
 
@@ -121,7 +119,7 @@ var _ = BeforeSuite(func(done Done) {
 	}()
 
 	close(done)
-}, timeout)
+}, 300)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
