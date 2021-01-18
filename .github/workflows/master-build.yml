@@ -34,37 +34,41 @@ jobs:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
-      
-      - name: Download opm
-        run: |
-          version=1.15.0
-          curl -L https://github.com/operator-framework/operator-registry/releases/download/v${version}/linux-amd64-opm --output opm
-          chmod +x opm
-          mv opm /usr/local/bin
-
-      - name: Build and deploy KEDA olm operator index
-        run: make deploy-olm
 
       - name: Publish
         run: make publish
   
-  test:
+  deploy-test:
     needs: Build
-    name: Test
+    name: Deploy-test
     runs-on: ubuntu-latest
     steps:
-      - name: Install Go 1.15
-        uses: actions/setup-go@v2
-        with:
-          go-version: '^1.15.3' 
+      - name: Login to Docker Hub
+        env:
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
           
       - name: Install operator-sdk
         run: brew install operator-sdk
+
+      - name: Download opm
+        run: |
+          version=1.15.0
+          curl -L https://github.com/operator-framework/operator-registry/releases/download/v${version}/linux-amd64-opm --output opm
+          sudo chmod +x opm
+          sudo mv opm /usr/bin
+
+      - name: Build and deploy KEDA olm operator index for deployment testing
+        run: make deploy-olm-testing
       
-      - name: Check out code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
+      - name: Setup test environment for deployment tests
+        run: |
+          kind create cluster
+          operator-sdk olm install
+
+      - name: Run deployment tests
+        run: make test-deployment
       
       - name: Download etcd and kube-apiserver
         run: |
@@ -78,11 +82,36 @@ jobs:
 
       - name: Run functionality tests
         run: make test-functionality
+  
+  deploy:
+    needs: Deploy-test
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+          lfs: true
 
-      - name: Setup test environment for deployment tests
-        run: |
-          kind create cluster
-          operator-sdk olm install
+      - name: Install Go 1.15.3
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.3' 
+          
+      - name: Go modules cache
+        uses: actions/cache@v1
+        with:
+          path: /go/pkg
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-      - name: Run deployment tests
-        run: make test-deployment
+      - name: Login to Docker Hub
+        env:
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
+      - name: Build and deploy KEDA olm operator index
+        run: make deploy-olm
