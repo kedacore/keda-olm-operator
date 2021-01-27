@@ -33,10 +33,6 @@ all: build
 ##################################################
 publish: docker-build docker-push
 
-.PHONY: set-version
-set-version:
-	@sed -i 's@Version =.*@Version = "$(VERSION)"@g' ./version/version.go;
-
 # Push the docker image
 docker-push:
 	docker push ${IMAGE_CONTROLLER}
@@ -82,7 +78,7 @@ docker-build:
 	docker build . -t ${IMAGE_CONTROLLER}
 
 # Build manager binary
-manager: generate set-version
+manager: generate
 	${GO_BUILD_VARS} go build \
 	-ldflags "-X=github.com/kedacore/keda-olm-operator/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda-olm-operator/version.Version=$(VERSION)" \
 	-o bin/manager main.go
@@ -139,7 +135,7 @@ vet:
 # Test                                           #
 ##################################################
 # Run tests
-.PHONY: test
+.PHONY: test-functionality
 test-functionality:
 	go test ./... -v -ginkgo.v -coverprofile cover.out -test.type functionality -ginkgo.focus "Testing functionality"
 

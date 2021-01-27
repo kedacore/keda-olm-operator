@@ -71,7 +71,7 @@ metadata:
           }
         },
         {
-          "apiVersion": "keda.k8s.io/v1alpha1",
+          "apiVersion": "keda.sh/v1alpha1",
           "kind": "TriggerAuthentication",
           "metadata": {
             "name": "example-triggerauthentication"
@@ -79,9 +79,9 @@ metadata:
           "spec": {
             "secretTargetRef": [
               {
-                "parameter": "exmaple-secret-parameter",
+                "key": "example-role-key",
                 "name": "example-secret-name",
-                "key": "example-role-key"
+                "parameter": "exmaple-secret-parameter"
               }
             ]
           }
@@ -106,15 +106,15 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Cloud Provider
     certified: "false"
-    containerImage: docker.io/kedacore/keda-olm-operator:2.0.0
-    createdAt: 2021-27-01T00:00:00.000Z
+    containerImage: docker.io/kedacore/keda-olm-operator:2.1.0
+    createdAt: "2021-27-01T00:00:00.000Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
     operators.operatorframework.io/builder: operator-sdk-v1.1.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
-  name: keda.v2.0.0
+  name: keda.v2.1.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -182,55 +182,65 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:text
       version: v1alpha1
-    - description: Describes authentication parameters
-      displayName: TriggerAuthentication
-      kind: TriggerAuthentication
-      name: triggerauthentications.keda.sh
+    - description: Defines how KEDA should scale your jobs and what the triggers
+      displayName: ScaledJob
+      kind: ScaledJob
+      name: scaledjobs.keda.sh
       resources:
+      - kind: Job
+        name: ""
+        version: v1
+      - kind: Pod
+        name: ""
+        version: v1
       - kind: Secret
         name: ""
         version: v1
-      specDescriptors:
-      - description: Env
-        displayName: Env
-        path: env
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
-      - description: Pod Identity
-        displayName: Pod Identity
-        path: podIdentity
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
-      - description: Secret Target Ref
-        displayName: Secret Target Ref
-        path: secretTargetRef
-        x-descriptors:
-        - urn:alm:descriptor:io.kubernetes:Secret
-      version: v1alpha1
-    - description: Describes cluster wide authentication parameters
-      displayName: ClusterTriggerAuthentication
-      kind: ClusterTriggerAuthentication
-      name: clustertriggerauthentications.keda.sh
-      resources:
-      - kind: Secret
+      - kind: ConfigMap
         name: ""
         version: v1
       specDescriptors:
-      - description: Env
-        displayName: Env
-        path: env
+      - description: Job Target Ref
+        displayName: Job Target Ref
+        path: jobTargetRef
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: Pod Identity
-        displayName: Pod Identity
-        path: podIdentity
+      - description: Polling Interval
+        displayName: Polling Interval
+        path: pollingInterval
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
-      - description: Secret Target Ref
-        displayName: Secret Target Ref
-        path: secretTargetRef
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: How many completed jobs should be kept
+        displayName: Successful Jobs History Limit
+        path: successfulJobsHistoryLimit
         x-descriptors:
-        - urn:alm:descriptor:io.kubernetes:Secret
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: How many failed jobs should be kept
+        displayName: Failed Jobs History Limit
+        path: failedJobsHistoryLimit
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Max Replica Count
+        displayName: Max Replica Count
+        path: maxReplicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Scaling Strategy
+        displayName: Scaling Strategy
+        path: scalingStrategy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:number
+      statusDescriptors:
+      - description: Last Active Time
+        displayName: Last Active Time
+        path: lastActiveTime
+        x-descriptors:
+        - urn:alm:descriptor:text
+      - description: Conditions
+        displayName: Conditions
+        path: conditions
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes.conditions
       version: v1alpha1
     - description: Defines how KEDA should scale your application and what the triggers are
       displayName: ScaledObject
@@ -318,70 +328,55 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:io.kubernetes.conditions
       version: v1alpha1
-    - description: Defines how KEDA should scale your jobs and what the triggers
-      displayName: ScaledJob
-      kind: ScaledJob
-      name: scaledjobs.keda.sh
+    - description: Describes authentication parameters
+      displayName: TriggerAuthentication
+      kind: TriggerAuthentication
+      name: triggerauthentications.keda.sh
       resources:
-      - kind: Job
-        name: ""
-        version: v1
-      - kind: Pod
-        name: ""
-        version: v1
       - kind: Secret
         name: ""
         version: v1
-      - kind: ConfigMap
+      specDescriptors:
+      - description: Env
+        displayName: Env
+        path: env
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Pod Identity
+        displayName: Pod Identity
+        path: podIdentity
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Secret Target Ref
+        displayName: Secret Target Ref
+        path: secretTargetRef
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Secret
+      version: v1alpha1
+    - description: Describes cluster wide authentication parameters
+      displayName: ClusterTriggerAuthentication
+      kind: ClusterTriggerAuthentication
+      name: clustertriggerauthentications.keda.sh
+      resources:
+      - kind: Secret
         name: ""
         version: v1
       specDescriptors:
-      - description: Job Target Ref
-        displayName: Job Target Ref
-        path: jobTargetRef
+      - description: Env
+        displayName: Env
+        path: env
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: Polling Interval
-        displayName: Polling Interval
-        path: pollingInterval
+      - description: Pod Identity
+        displayName: Pod Identity
+        path: podIdentity
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:number
-      - description: How many completed jobs should be kept
-        displayName: Successful Jobs History Limit
-        path: successfulJobsHistoryLimit
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Secret Target Ref
+        displayName: Secret Target Ref
+        path: secretTargetRef
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:number
-      - description: How many failed jobs should be kept
-        displayName: Failed Jobs History Limit
-        path: failedJobsHistoryLimit
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:number
-      - description: Max Replica Count
-        displayName: Max Replica Count
-        path: maxReplicaCount
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:number
-      - description: Scaling Strategy
-        displayName: Scaling Strategy
-        path: scalingStrategy
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:number
-      statusDescriptors:
-      - description: Last Active Time
-        displayName: Last Active Time
-        path: lastActiveTime
-        x-descriptors:
-        - urn:alm:descriptor:text
-      - description: Conditions
-        displayName: Conditions
-        path: conditions
-        x-descriptors:
-        - urn:alm:descriptor:io.kubernetes.conditions
-      version: v1alpha1
-    - description: KedaController is the Schema for the kedacontrollers API
-      displayName: Keda Controller
-      kind: KedaController
-      name: kedacontrollers.keda.sh.keda.sh
+        - urn:alm:descriptor:io.kubernetes:Secret
       version: v1alpha1
   description: "## About the managed application\nKEDA is a Kubernetes-based event driven autoscaler.  KEDA can monitor event sources like Kafka, RabbitMQ, or cloud event sources and feed the metrics from those sources into the Kubernetes horizontal pod autoscaler.  With KEDA, you can have event driven and serverless scale of deployments within any Kubernetes cluster.\n## About this Operator\nThe KEDA Operator deploys and manages installation of KEDA Controller in the cluster. Install this operator and follow installation instructions on how to install KEDA in you cluster.\n\n## Prerequisites for enabling this Operator\nPlease note that you can not run both KEDA 1.x and 2.x on the same Kubernetes cluster. You need to uninstall KEDA 1.x first, in order to install and use KEDA 2.x.\n\nDon't forget to uninstall KEDA v1 CRDs as well, to ensure that, please run:\n\n``` oc delete crd scaledobjects.keda.k8s.io ```\n\n``` oc delete crd triggerauthentications.keda.k8s.io  ```\n## How to install KEDA in the cluster\nThe installation of KEDA is triggered by the creation of `KedaController` resource. \n\nOnly resource named `keda` in namespace `keda` will trigger the installation, reconfiguration or removal of the KEDA Controller resource.\n\nThere could be only one KEDA Controller in the cluster. \n"
   displayName: KEDA
@@ -468,14 +463,14 @@ spec:
           selector:
             matchLabels:
               app.kubernetes.io/part-of: keda-olm-operator
-              app.kubernetes.io/version: master
+              app.kubernetes.io/version: 2.1.0
               name: keda-olm-operator
           strategy: {}
           template:
             metadata:
               labels:
                 app.kubernetes.io/part-of: keda-olm-operator
-                app.kubernetes.io/version: master
+                app.kubernetes.io/version: 2.1.0
                 name: keda-olm-operator
             spec:
               containers:
@@ -486,7 +481,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: docker.io/kedacore/keda-olm-operator:2.0.0
+                image: docker.io/kedacore/keda-olm-operator:2.1.0
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -538,5 +533,6 @@ spec:
   minKubeVersion: 1.16.0
   provider:
     name: KEDA Community
+  replaces: keda.v2.0.0
   selector: {}
-  version: 2.0.0
+  version: 2.1.0

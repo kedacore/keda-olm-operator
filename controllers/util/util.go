@@ -5,14 +5,14 @@ import (
 	"crypto/md5"
 	"fmt"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
-
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 )
 
 const (
@@ -78,7 +78,7 @@ func RunningOnOpenshift(logger logr.Logger, cl client.Client) bool {
 	gvk := schema.GroupVersionKind{Group: "route.openshift.io", Version: "v1", Kind: "route"}
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(gvk)
-	if err := cl.List(context.TODO(), list); err != nil {
+	if err := cl.List(context.TODO(), list, &client.ListOptions{}); err != nil {
 		if !meta.IsNoMatchError(err) {
 			logger.Error(err, "Unable to query for OpenShift Route")
 		}

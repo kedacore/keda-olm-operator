@@ -54,7 +54,7 @@ const (
 
 	moduleName = "keda-olm-operator"
 
-	resourcesPath = "resources/keda-2.0.0.yaml"
+	resourcesPath = "resources/keda.yaml"
 
 	metricsServcerServiceName        = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
