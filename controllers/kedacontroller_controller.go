@@ -54,6 +54,8 @@ const (
 
 	moduleName = "keda-olm-operator"
 
+	resourcesPath = "resources/keda-2.0.0.yaml"
+
 	metricsServcerServiceName        = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
 	injectCABundleAnnotation         = "service.beta.openshift.io/inject-cabundle"
@@ -62,10 +64,6 @@ const (
 	injectservingCertAnnotationValue = "keda-metrics-apiserver"
 	roleBindingName                  = "keda-auth-reader"
 	roleBindingNamespace             = "kube-system"
-)
-
-var (
-	resourcesPath = "resources/keda-" + version.Version + ".yaml"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
@@ -80,7 +78,7 @@ type KedaControllerReconciler struct {
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
-	fullResourcesPath, err := filepath.Abs("./" + resourcesPath)
+	fullResourcesPath, err := filepath.Abs("../" + resourcesPath)
 	if err != nil {
 		return err
 	}
