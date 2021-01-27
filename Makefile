@@ -75,7 +75,7 @@ build: fmt vet manifests manager
 
 # Build the docker image
 docker-build:
-	docker build . -t ${IMAGE_CONTROLLER}
+	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION}
 
 # Build manager binary
 manager: generate
