@@ -6,7 +6,7 @@ metadata:
   creationTimestamp: null
   labels:
     app.kubernetes.io/part-of: keda-olm-operator
-    app.kubernetes.io/version: 2.0.0
+    app.kubernetes.io/version: master
   name: scaledobjects.keda.sh
 spec:
   group: keda.sh
@@ -26,6 +26,12 @@ spec:
     - jsonPath: .spec.scaleTargetRef.name
       name: ScaleTargetName
       type: string
+    - jsonPath: .spec.minReplicaCount
+      name: Min
+      type: integer
+    - jsonPath: .spec.maxReplicaCount
+      name: Max
+      type: integer
     - jsonPath: .spec.triggers[*].type
       name: Triggers
       type: string
@@ -168,8 +174,11 @@ spec:
                   description: ScaleTriggers reference the scaler that will be used
                   properties:
                     authenticationRef:
-                      description: ScaledObjectAuthRef points to the TriggerAuthentication object that is used to authenticate the scaler with the environment
+                      description: ScaledObjectAuthRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that is used to authenticate the scaler with the environment
                       properties:
+                        kind:
+                          description: Kind of the resource being referred to. Defaults to TriggerAuthentication.
+                          type: string
                         name:
                           type: string
                       required:

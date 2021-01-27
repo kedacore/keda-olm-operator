@@ -87,23 +87,48 @@ metadata:
           }
         }
       ]
-    capabilities: Basic Install
+    capabilities: Seamless Upgrades
     categories: Cloud Provider
     certified: "false"
     containerImage: docker.io/kedacore/keda-olm-operator:2.0.0
-    createdAt: "2020-11-04T00:00:00.000Z"
+    createdAt: 2021-27-01T00:00:00.000Z
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
-    operators.operatorframework.io/builder: operator-sdk-v1.1.0
+    operators.operatorframework.io/builder: operator-sdk-v1.3.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
-  name: keda.v2.0.0
+  name: keda.v2.1.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: Describes cluster wide authentication parameters
+      displayName: ClusterTriggerAuthentication
+      kind: ClusterTriggerAuthentication
+      name: clustertriggerauthentications.keda.sh
+      resources:
+      - kind: Secret
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Env
+        displayName: Env
+        path: env
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Pod Identity
+        displayName: Pod Identity
+        path: podIdentity
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Secret Target Ref
+        displayName: Secret Target Ref
+        path: secretTargetRef
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Secret
+      version: v1alpha1
     - description: |
         Represents an installation of a particular version of KEDA Controller.
       displayName: KedaController
@@ -422,14 +447,14 @@ spec:
           selector:
             matchLabels:
               app.kubernetes.io/part-of: keda-olm-operator
-              app.kubernetes.io/version: 2.0.0
+              app.kubernetes.io/version: master
               name: keda-olm-operator
           strategy: {}
           template:
             metadata:
               labels:
                 app.kubernetes.io/part-of: keda-olm-operator
-                app.kubernetes.io/version: 2.0.0
+                app.kubernetes.io/version: master
                 name: keda-olm-operator
             spec:
               containers:
@@ -440,7 +465,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: docker.io/kedacore/keda-olm-operator:2.0.0
+                image: docker.io/zroubalik/keda-olm-operator:master
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -493,4 +518,4 @@ spec:
   provider:
     name: KEDA Community
   selector: {}
-  version: 2.0.0
+  version: 2.1.0
