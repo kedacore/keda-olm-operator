@@ -78,7 +78,7 @@ type KedaControllerReconciler struct {
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
-	fullResourcesPath, err := filepath.Abs("./" + resourcesPath)
+	fullResourcesPath, err := filepath.Abs("../" + resourcesPath)
 	if err != nil {
 		return err
 	}
