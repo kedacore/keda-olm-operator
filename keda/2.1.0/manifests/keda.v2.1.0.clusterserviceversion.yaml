@@ -107,7 +107,7 @@ metadata:
     categories: Cloud Provider
     certified: "false"
     containerImage: docker.io/kedacore/keda-olm-operator:2.1.0
-    createdAt: "2021-27-01T00:00:00.000Z"
+    createdAt: "2021-01-27T00:00:00.000Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
     operators.operatorframework.io/builder: operator-sdk-v1.1.0
