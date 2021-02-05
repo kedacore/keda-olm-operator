@@ -193,8 +193,8 @@ deploy-olm-testing:
 	sed -i 's/keda/keda-test/' bundle/metadata/annotations.yaml
 	sed -i 's/keda.v${VERSION}/keda-test.v${VERSION}/' bundle/manifests/keda.clusterserviceversion.yaml
 
-	BUNDLE = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle-testing:$(VERSION)
-	INDEX = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-index-testing:$(VERSION)
+	$(eval BUNDLE=$(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle-testing:$(VERSION))
+	$(eval INDEX=$(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-index-testing:$(VERSION))
 	make deploy-olm
 
 	sed -i 's/keda-test/keda/' bundle/metadata/annotations.yaml
