@@ -20,7 +20,8 @@ import (
 	"context"
 	goerrors "errors"
 	"fmt"
-	"path/filepath"
+
+	"github.com/kedacore/keda-olm-operator/resources"
 
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
@@ -78,12 +79,11 @@ type KedaControllerReconciler struct {
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
-	fullResourcesPath, err := filepath.Abs("../" + resourcesPath)
+	resourcesManifest, err := resources.GetResourcesManifest()
 	if err != nil {
 		return err
 	}
-
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(fullResourcesPath, r.Client)
+	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(resourcesManifest, r.Client)
 	if err != nil {
 		return err
 	}
@@ -193,12 +193,7 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	return ctrl.Result{}, nil
 }
 
-func parseManifestsFromFile(pathname string, c client.Client) (manifestGeneral, manifestController, manifestMetrics mf.Manifest, err error) {
-	manifest, err := mf.NewManifest(pathname)
-	if err != nil {
-		return
-	}
-
+func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGeneral, manifestController, manifestMetrics mf.Manifest, err error) {
 	var generalResources, controllerResources, metricsResources []unstructured.Unstructured
 
 	for _, r := range manifest.Resources() {
