@@ -2,7 +2,7 @@
 # Variables                                      #
 ##################################################
 VERSION        ?= master
-IMAGE_REGISTRY ?= docker.io
+IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
@@ -31,9 +31,17 @@ all: build
 ##################################################
 # PUBLISH                                        #
 ##################################################
+.PHONY: publish
 publish: docker-build docker-push
 
+# Mirror images on Docker Hub
+.PHONY: publish-dockerhub
+publish-dockerhub:
+	docker tag $(IMAGE_CONTROLLER) docker.io/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
+	docker push docker.io/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
+
 # Push the docker image
+.PHONY: docker-push
 docker-push:
 	docker push ${IMAGE_CONTROLLER}
 
@@ -57,7 +65,7 @@ uninstall: manifests kustomize
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
 	cd config/manager && \
-	$(KUSTOMIZE) edit set image docker.io/kedacore/keda-olm-operator=${IMAGE_CONTROLLER}
+	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-olm-operator=${IMAGE_CONTROLLER}
 	cd config/default && \
     $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
