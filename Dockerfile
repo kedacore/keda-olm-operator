@@ -33,7 +33,7 @@ RUN VERSION=${BUILD_VERSION} make manager
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /workspace/resources/ resources/
+COPY --from=builder /workspace/resources/ /workspace/resources/
 COPY --from=builder /workspace/bin/manager .
 USER nonroot:nonroot
 
