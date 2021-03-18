@@ -106,7 +106,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Cloud Provider
     certified: "false"
-    containerImage: docker.io/kedacore/keda-olm-operator:2.0.0
+    containerImage: ghcr.io/kedacore/keda-olm-operator:2.2.0
     createdAt: 2021-27-01T00:00:00.000Z
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
@@ -486,7 +486,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: docker.io/kedacore/keda-olm-operator:2.0.0
+                image: ghcr.io/kedacore/keda-olm-operator:2.2.0
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
