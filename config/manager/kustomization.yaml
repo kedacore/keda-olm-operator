@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: ghcr.io/kedacore/keda-olm-operator
   newName: ghcr.io/kedacore/keda-olm-operator
-  newTag: master
+  newTag: 2.5.0
