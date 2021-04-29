@@ -50,7 +50,7 @@ There could be only one KEDA Controller in the cluster.
 
 ### `KedaController` Spec
 ```
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.sh/v1alpha1
 kind: KedaController
 metadata:
   name: keda
