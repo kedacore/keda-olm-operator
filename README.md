@@ -70,10 +70,10 @@ spec:
   # default value: info
   logLevel: info
 
-	## Logging format for KEDA Operator
-	# allowed values are json and console
-	# default value: console
-	logEncoder: console
+  ## Logging format for KEDA Operator
+  # allowed values are json and console
+  # default value: console
+  logEncoder: console
 
   ## Logging level for Metrics Server
   # allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
