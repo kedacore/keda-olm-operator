@@ -3,9 +3,12 @@ layout: go.kubebuilder.io/v2
 projectName: keda
 repo: github.com/kedacore/keda-olm-operator
 resources:
-- group: keda.sh
+- controller: true
+  domain: keda.sh
+  group: keda.sh
   kind: KedaController
+  path: github.com/kedacore/keda-olm-operator/api/v1alpha1
   version: v1alpha1
-version: 3-alpha
+version: "3"
 plugins:
   go.sdk.operatorframework.io/v2-alpha: {}
