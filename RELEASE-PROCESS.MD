@@ -26,7 +26,7 @@ Update all KEDA CRDs in the newly (eg. `2.1.0`) created directory, get the up-to
 Update ClusterServiceVersion file in the newly (eg. `2.1.0`) created directory:
 - rename the file to respect the version.
 ```bash
-mv keda/2.1.0/keda.v2.0.0.clusterserviceversion keda/2.1.0/keda.v2.1.0.clusterserviceversion
+mv keda/2.1.0/manifests/keda.v2.0.0.clusterserviceversion keda/2.1.0/manifests/keda.v2.1.0.clusterserviceversion
 ```
 - add new CRDs (if there are any new introduced in KEDA or KEDA OLM Operator)
 - update the description and fields in the existing CRDs (if needed), make sure to update it on all places
