@@ -44,4 +44,4 @@ resources:
 - ../manager
 commonLabels:
   app.kubernetes.io/part-of: keda-olm-operator
-  app.kubernetes.io/version: 2.5.0
+  app.kubernetes.io/version: main
