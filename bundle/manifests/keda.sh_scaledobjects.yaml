@@ -6,7 +6,7 @@ metadata:
   creationTimestamp: null
   labels:
     app.kubernetes.io/part-of: keda-olm-operator
-    app.kubernetes.io/version: master
+    app.kubernetes.io/version: main
   name: scaledobjects.keda.sh
 spec:
   group: keda.sh
