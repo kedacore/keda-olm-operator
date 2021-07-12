@@ -1,8 +1,8 @@
 package resources
 
 import (
-	"runtime"
 	"path/filepath"
+	"runtime"
 
 	mf "github.com/manifestival/manifestival"
 )

@@ -52,16 +52,14 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Meta.GetName() == configMapName && e.Meta.GetNamespace() == configMapNamespace {
 				return true
-			} else {
-				return false
 			}
+			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.MetaNew.GetName() == configMapName && e.MetaNew.GetNamespace() == configMapNamespace {
 				return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
-			} else {
-				return false
 			}
+			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
@@ -117,17 +115,15 @@ func (r *ConfigMapReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// ConfigMap was just created -> we store it's Data Checksum
 		logger.Info("ConfigMap containing CA Bundle was created for the first time -> do nothing")
 	} else {
-
 		if kedaController.Status.ConfigMapDataSum == newCheckSum {
 			//  ConfigMap.Data were not changed -> no need to anything, return
 			return ctrl.Result{}, nil
-		} else {
-			// ConfigMap.Data were changed -> let's restart KEDA Metrics Server
-			logger.Info("ConfigMap containing CA Bundle was changed -> let's restart KEDA Metrics Server")
-			if err := util.DeleteMetricsServerPod(logger, r.Client); err != nil {
-				r.Log.Error(err, "Unable to restart KEDA Metrics Server")
-				return ctrl.Result{}, err
-			}
+		}
+		// ConfigMap.Data were changed -> let's restart KEDA Metrics Server
+		logger.Info("ConfigMap containing CA Bundle was changed -> let's restart KEDA Metrics Server")
+		if err := util.DeleteMetricsServerPod(logger, r.Client); err != nil {
+			r.Log.Error(err, "Unable to restart KEDA Metrics Server")
+			return ctrl.Result{}, err
 		}
 	}
 

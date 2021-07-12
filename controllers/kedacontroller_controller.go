@@ -21,8 +21,6 @@ import (
 	goerrors "errors"
 	"fmt"
 
-	"github.com/kedacore/keda-olm-operator/resources"
-
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
@@ -42,6 +40,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 	"github.com/kedacore/keda-olm-operator/controllers/transform"
 	"github.com/kedacore/keda-olm-operator/controllers/util"
+	"github.com/kedacore/keda-olm-operator/resources"
 	"github.com/kedacore/keda-olm-operator/version"
 )
 
@@ -52,10 +51,6 @@ const (
 	kedaControllerResourceNamespace = "keda"
 
 	installationNamespace = "keda"
-
-	moduleName = "keda-olm-operator"
-
-	resourcesPath = "resources/keda.yaml"
 
 	metricsServcerServiceName        = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
@@ -78,7 +73,6 @@ type KedaControllerReconciler struct {
 }
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	resourcesManifest, err := resources.GetResourcesManifest()
 	if err != nil {
 		return err
@@ -139,8 +133,7 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		logger.Info(msg)
 		status := instance.Status.DeepCopy()
 		status.MarkIgnored(msg)
-		err = util.UpdateKedaControllerStatus(r.Client, instance, status)
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, util.UpdateKedaControllerStatus(r.Client, instance, status)
 	}
 
 	if instance.GetDeletionTimestamp() != nil {
@@ -148,7 +141,7 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 			// Run finalization logic for kedaControllerFinalizer. If the
 			// finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
-			if err := r.finalizeKedaController(logger, instance); err != nil {
+			if err := r.finalizeKedaController(logger); err != nil {
 				return ctrl.Result{}, err
 			}
 			// Remove kedaControllerFinalizer. Once all finalizers have been
@@ -172,23 +165,34 @@ func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	}
 
 	status := instance.Status.DeepCopy()
-	defer util.UpdateKedaControllerStatus(r.Client, instance, status)
 
 	if err := r.installSA(logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to create ServiceAccount")
+		if statusErr := util.UpdateKedaControllerStatus(r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
 		return ctrl.Result{}, err
 	}
 	if err := r.installController(logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Controller")
+		if statusErr := util.UpdateKedaControllerStatus(r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
 		return ctrl.Result{}, err
 	}
 	if err := r.installMetricsServer(logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Metrics Server")
+		if statusErr := util.UpdateKedaControllerStatus(r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
 		return ctrl.Result{}, err
 	}
 
 	status.Version = version.Version
 	status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, installationNamespace))
+	if err := util.UpdateKedaControllerStatus(r.Client, instance, status); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -234,7 +238,6 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 }
 
 func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured.Unstructured {
-
 	sortedResources := make([]unstructured.Unstructured, 7)
 
 	for _, r := range *resources {

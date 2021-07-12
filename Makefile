@@ -77,7 +77,7 @@ undeploy:
 
 ##################################################
 # Build                                          #
-##################################################	
+##################################################
 .PHONY: build
 build: fmt vet manifests manager
 
@@ -197,7 +197,7 @@ index-push:
 deploy-olm: bundle-build bundle-push index-build index-push
 
 .PHONY: deploy-olm-testing
-deploy-olm-testing: 
+deploy-olm-testing:
 	sed -i 's/keda/keda-test/' bundle/metadata/annotations.yaml
 	sed -i 's/keda.v${VERSION}/keda-test.v${VERSION}/' bundle/manifests/keda.clusterserviceversion.yaml
 
@@ -207,3 +207,8 @@ deploy-olm-testing:
 
 	sed -i 's/keda-test/keda/' bundle/metadata/annotations.yaml
 	sed -i 's/keda-test.v${VERSION}/keda.v${VERSION}/' bundle/manifests/keda.clusterserviceversion.yaml
+
+# Run golangci against code
+.PHONY: golangci
+golangci:
+	golangci-lint run

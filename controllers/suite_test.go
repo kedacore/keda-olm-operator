@@ -20,7 +20,10 @@ import (
 	"context"
 	"errors"
 	"flag"
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
 	. "github.com/onsi/ginkgo"
@@ -31,15 +34,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"strings"
-	"testing"
+
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -53,13 +55,11 @@ const (
 )
 
 var (
-	ctx                      = context.Background()
 	cfg                      *rest.Config
 	k8sClient                client.Client
 	testEnv                  *envtest.Environment
 	k8sManager               ctrl.Manager
 	kedaControllerReconciler *KedaControllerReconciler
-	manifest                 mf.Manifest
 	err                      error
 	testType                 string
 )
@@ -77,7 +77,7 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 
 	By("bootstrapping test environment")
 
@@ -152,10 +152,9 @@ func setupEnv(testEnv *envtest.Environment, scheme *runtime.Scheme) (manager ctr
 	}
 
 	return
-
 }
 
-func getObject(o Obj, namePrefix string, namespace string, c client.Client, ctx context.Context) (u *unstructured.Unstructured, err error) {
+func getObject(ctx context.Context, o Obj, namePrefix string, namespace string, c client.Client) (u *unstructured.Unstructured, err error) {
 	u = &unstructured.Unstructured{}
 	group, kind, version, err := o.getObjectGroupKindVersion()
 	if err != nil {
@@ -195,25 +194,6 @@ func getObject(o Obj, namePrefix string, namespace string, c client.Client, ctx 
 	}
 	if !found {
 		err = errors.New("Object with name prefix: " + namePrefix + " was not found in namespace: " + namespace)
-	}
-	return
-}
-
-func getObjects(o Obj, namespace string, c client.Client, ctx context.Context) (uList *unstructured.UnstructuredList, err error) {
-	group, kind, version, err := o.getListGroupKindVersion()
-	if err != nil {
-		return
-	}
-	uList = &unstructured.UnstructuredList{}
-	uList.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   group,
-		Kind:    kind,
-		Version: version,
-	})
-	lo := &client.ListOptions{Namespace: namespace}
-	err = c.List(ctx, uList, lo)
-	if err != nil {
-		return
 	}
 	return
 }

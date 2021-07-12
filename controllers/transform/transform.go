@@ -24,11 +24,11 @@ type Prefix string
 
 const (
 	LogLevelKedaOperator   Prefix = "--zap-log-level="
-	LogEncoderKedaOperator        = "--zap-encoder="
-	LogLevelMetricsServer         = "--v="
-	ClientCAFile                  = "--client-ca-file="
-	TLSCertFile                   = "--tls-cert-file="
-	TLSPrivateKeyFile             = "--tls-private-key-file="
+	LogEncoderKedaOperator Prefix = "--zap-encoder="
+	LogLevelMetricsServer  Prefix = "--v="
+	ClientCAFile           Prefix = "--client-ca-file="
+	TLSCertFile            Prefix = "--tls-cert-file="
+	TLSPrivateKeyFile      Prefix = "--tls-private-key-file="
 )
 
 func (p Prefix) String() string {
@@ -107,7 +107,6 @@ func EnsureCertInjectionForAPIService(annotation string, annotationValue string,
 			if err := scheme.Convert(apiService, u, nil); err != nil {
 				return err
 			}
-
 		}
 		return nil
 	}
@@ -178,7 +177,6 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 			containers := deploy.Spec.Template.Spec.Containers
 			for i := range containers {
 				if containers[i].Name == containerNameMetricsServer {
-
 					// mount Volumes referencing certs in ConfigMap and Secret
 					cabundleVolumeMount := corev1.VolumeMount{
 						Name:      "cabundle",
@@ -209,14 +207,14 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 					if !certsVolumeMountFound {
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certsVolumeMount)
 					}
+
+					break
 				}
-				break
 			}
 
 			if err := scheme.Convert(deploy, u, nil); err != nil {
 				return err
 			}
-
 		}
 		return nil
 	}
@@ -231,7 +229,6 @@ func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *
 }
 
 func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-
 	found := false
 	for _, level := range logLevelsKedaOperator {
 		if logLevel == level {
@@ -251,12 +248,11 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 		}
 	}
 
-	var prefix Prefix = LogLevelKedaOperator
+	prefix := LogLevelKedaOperator
 	return replaceContainerArg(logLevel, prefix, containerNameKedaOperator, scheme, logger)
 }
 
 func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-
 	found := false
 	for _, format := range logEncodersKedaOperator {
 		if logEncoder == format {
@@ -271,12 +267,11 @@ func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, lo
 		}
 	}
 
-	var prefix Prefix = LogEncoderKedaOperator
+	prefix := LogEncoderKedaOperator
 	return replaceContainerArg(logEncoder, prefix, containerNameKedaOperator, scheme, logger)
 }
 
 func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-
 	found := false
 	if _, err := strconv.ParseUint(logLevel, 10, 64); err == nil {
 		found = true
@@ -289,7 +284,7 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 		}
 	}
 
-	var prefix Prefix = LogLevelMetricsServer
+	prefix := LogLevelMetricsServer
 	return replaceContainerArg(logLevel, prefix, containerNameMetricsServer, scheme, logger)
 }
 
