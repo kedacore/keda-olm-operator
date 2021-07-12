@@ -1,7 +1,9 @@
 # Build the manager binary
 FROM golang:1.15.13 as builder
 
-ARG BUILD_VERSION
+ARG BUILD_VERSION=main
+ARG GIT_COMMIT=HEAD
+ARG GIT_VERSION=main
 
 WORKDIR /workspace
 
@@ -16,24 +18,20 @@ COPY Makefile Makefile
 
 # Copy the go source
 COPY hack/ hack/
-# workaround for https://github.com/moby/moby/issues/37965#issue-366585696
-RUN true
 COPY version/ version/
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 COPY resources/ resources/
 
-COPY .git/ .git/
-
 # Build
-RUN VERSION=${BUILD_VERSION} make manager
+RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} make manager
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /workspace/resources/ /workspace/resources/
+COPY --from=builder /workspace/resources/keda.yaml /workspace/resources/keda.yaml
 COPY --from=builder /workspace/bin/manager .
 USER nonroot:nonroot
 
