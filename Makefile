@@ -11,7 +11,8 @@ ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 
-GIT_COMMIT  = $(shell git rev-list -1 HEAD)
+GIT_VERSION ?= $(shell git describe --always --abbrev=7)
+GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 
@@ -83,7 +84,7 @@ build: fmt vet manifests manager
 
 # Build the docker image
 docker-build:
-	docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION}
+	docker build . -t ${IMAGE_CONTROLLER}  --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
 # Build manager binary
 manager: generate
