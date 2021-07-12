@@ -1,7 +1,7 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION        ?= master
+VERSION        ?= main
 IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 

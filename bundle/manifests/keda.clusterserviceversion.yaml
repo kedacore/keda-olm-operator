@@ -447,14 +447,14 @@ spec:
           selector:
             matchLabels:
               app.kubernetes.io/part-of: keda-olm-operator
-              app.kubernetes.io/version: master
+              app.kubernetes.io/version: main
               name: keda-olm-operator
           strategy: {}
           template:
             metadata:
               labels:
                 app.kubernetes.io/part-of: keda-olm-operator
-                app.kubernetes.io/version: master
+                app.kubernetes.io/version: main
                 name: keda-olm-operator
             spec:
               containers:
@@ -465,7 +465,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: ghcr.io/kedacore/keda-olm-operator:master
+                image: ghcr.io/kedacore/keda-olm-operator:main
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:

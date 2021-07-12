@@ -1,7 +1,7 @@
 # KEDA OLM Operator
 
 <p style="font-size: 25px" align="center">
-<a href="https://github.com/kedacore/keda-olm-operator/actions"><img src="https://github.com/kedacore/keda-olm-operator/workflows/master%20build/badge.svg" alt="master build"></a>
+<a href="https://github.com/kedacore/keda-olm-operator/actions"><img src="https://github.com/kedacore/keda-olm-operator/workflows/main%20build/badge.svg" alt="main build"></a>
 <a href="https://github.com/kedacore/keda-olm-operator/actions"><img src="https://github.com/kedacore/keda-olm-operator/workflows/nightly%20tests/badge.svg" alt="nightly e2e"></a></p>
 
 
