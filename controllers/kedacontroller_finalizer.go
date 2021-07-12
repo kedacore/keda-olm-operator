@@ -14,7 +14,7 @@ const (
 )
 
 // finalizeKedaController is deleting resources for the respective KedaController
-func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger) error {
 	if err := r.resourcesGeneral.Delete(); err != nil {
 		logger.Info("error finalized KedaController general", "error", err)
 		return err

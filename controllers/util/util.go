@@ -16,9 +16,6 @@ import (
 )
 
 const (
-	kedaControllerName      = "keda"
-	kedaControllerNamespace = "keda"
-
 	metricsServerNamespace     = "keda"
 	metricsServerPodLabelKey   = "app"
 	metricsServerPodLabelValue = "keda-metrics-apiserver"
@@ -52,20 +49,17 @@ func DeleteMetricsServerPod(logger logr.Logger, cl client.Client) error {
 	err := cl.List(context.TODO(), podList, opts...)
 	if err != nil {
 		return err
-	} else if len(podList.Items) == 0 {
+	}
+	if len(podList.Items) == 0 {
 		logger.Info("KEDA Metrics Server is not running -> no need to restart it")
 		return nil
 	} else if len(podList.Items) != 1 {
-		return fmt.Errorf("Exactly one Pod object should match label %s", selector)
+		return fmt.Errorf("exactly one Pod object should match label %s", selector)
 	}
 
 	pod := &podList.Items[0]
 	// restart Metrics Server Pod
-	if err := cl.Delete(context.TODO(), pod); err != nil {
-		return err
-	}
-
-	return nil
+	return cl.Delete(context.TODO(), pod)
 }
 
 func UpdateKedaControllerStatus(cl client.Client, kedaController *kedav1alpha1.KedaController, status *kedav1alpha1.KedaControllerStatus) error {

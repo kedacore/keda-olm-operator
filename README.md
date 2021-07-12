@@ -1,3 +1,23 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [KEDA OLM Operator](#keda-olm-operator)
+  - [Installation](#installation)
+    - [Operator Hub Installation](#operator-hub-installation)
+    - [Manual installation](#manual-installation)
+  - [The `KedaController` Custom Resource](#the-kedacontroller-custom-resource)
+    - [`KedaController` Spec](#kedacontroller-spec)
+  - [Uninstallation](#uninstallation)
+    - [How to uninstall KEDA Controller](#how-to-uninstall-keda-controller)
+    - [How to uninstall KEDA OLM Operator](#how-to-uninstall-keda-olm-operator)
+  - [Development](#development)
+    - [Operator Framework](#operator-framework)
+    - [Running locally](#running-locally)
+    - [Building the Operator Image](#building-the-operator-image)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # KEDA OLM Operator
 
 <p style="font-size: 25px" align="center">
@@ -5,16 +25,16 @@
 <a href="https://github.com/kedacore/keda-olm-operator/actions"><img src="https://github.com/kedacore/keda-olm-operator/workflows/nightly%20tests/badge.svg" alt="nightly e2e"></a></p>
 
 
-Operator for deploying KEDA controller on OpenShift or any Kubernetes cluster with 
+Operator for deploying KEDA controller on OpenShift or any Kubernetes cluster with
 [Operator Lifecycle Manager](https://github.com/operator-framework/operator-lifecycle-manager) framework installed.
 
-## Installation 
+## Installation
 
 Please note that you can not run both KEDA v1 and v2 on the same Kubernetes cluster. You need to uninstall KEDA v1 first, in order to install and use KEDA v2.
 Don't forget to uninstall KEDA v1 CRDs as well, to ensure that, please run:
 ```bash
 kubectl delete crd scaledobjects.keda.k8s.io
-kubectl delete crd triggerauthentications.keda.k8s.io 
+kubectl delete crd triggerauthentications.keda.k8s.io
 
 ```
 
@@ -42,11 +62,11 @@ and then it will install KEDA into this namespace.
 ## The `KedaController` Custom Resource
 
 The installation of KEDA is triggered by the creation of
-[a `KedaController` custom resource](config/samples/keda_v1alpha1_kedacontroller.yaml). 
-Only custom resource named `keda` in namespace `keda` will trigger the installation, 
+[a `KedaController` custom resource](config/samples/keda_v1alpha1_kedacontroller.yaml).
+Only custom resource named `keda` in namespace `keda` will trigger the installation,
 reconfiguration, or removal of the KEDA Controller resources.
 
-There could be only one KEDA Controller in the cluster. 
+There could be only one KEDA Controller in the cluster.
 
 ### `KedaController` Spec
 ```
@@ -57,15 +77,15 @@ metadata:
   namespace: keda
 spec:
   ###
-  # THERE SHOULD BE ONLY ONE INSTANCE OF THIS RESOURCE PER CLUSTER 
+  # THERE SHOULD BE ONLY ONE INSTANCE OF THIS RESOURCE PER CLUSTER
   # with Name set to 'keda' created in namespace 'keda'
   ###
 
-  ## Namespace that should be watched by KEDA Controller, 
+  ## Namespace that should be watched by KEDA Controller,
   # omit or set empty to watch all namespaces (default setting)
   watchNamespace: ""
 
-  ## Logging level for KEDA Operator 
+  ## Logging level for KEDA Operator
   # allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
   # default value: info
   logLevel: info
@@ -82,7 +102,7 @@ spec:
 ```
 
 
-## Uninstallation 
+## Uninstallation
 
 ### How to uninstall KEDA Controller
 Locate installed `KEDA` Operator in `keda` namespace and then remove created `KedaController` resoure or simply delete the `KedaController` resource:
@@ -92,7 +112,7 @@ kubectl delete -n keda -f config/samples/keda_v1alpha1_kedacontroller.yaml
 ```
 
 ### How to uninstall KEDA OLM Operator
-To remove KEDA OLM Operator from your cluster, on Operator Hub locate and uninstall `KEDA` operator. 
+To remove KEDA OLM Operator from your cluster, on Operator Hub locate and uninstall `KEDA` operator.
 
 In case of manual installation, run these commands:
 

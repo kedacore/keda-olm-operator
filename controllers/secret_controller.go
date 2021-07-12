@@ -52,16 +52,14 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Meta.GetName() == secretName && e.Meta.GetNamespace() == secretNamespace {
 				return true
-			} else {
-				return false
 			}
+			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.MetaNew.GetName() == secretName && e.MetaNew.GetNamespace() == secretNamespace {
 				return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
-			} else {
-				return false
 			}
+			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
@@ -117,17 +115,15 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// Secret was just created -> we store it's Data Checksum
 		logger.Info("Secret containing Certificates was created for the first time -> do nothing")
 	} else {
-
 		if kedaController.Status.SecretDataSum == newCheckSum {
 			//  Secret.Data were not changed -> no need to anything, return
 			return ctrl.Result{}, nil
-		} else {
-			// Secret.Data were changed -> let's restart KEDA Metrics Server
-			logger.Info("Secret containing Certificates was changed -> let's restart KEDA Metrics Server")
-			if err := util.DeleteMetricsServerPod(logger, r.Client); err != nil {
-				logger.Error(err, "Unable to restart KEDA Metrics Server")
-				return ctrl.Result{}, err
-			}
+		}
+		// Secret.Data were changed -> let's restart KEDA Metrics Server
+		logger.Info("Secret containing Certificates was changed -> let's restart KEDA Metrics Server")
+		if err := util.DeleteMetricsServerPod(logger, r.Client); err != nil {
+			logger.Error(err, "Unable to restart KEDA Metrics Server")
+			return ctrl.Result{}, err
 		}
 	}
 

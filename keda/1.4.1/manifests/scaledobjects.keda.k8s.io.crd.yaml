@@ -1062,7 +1062,7 @@ spec:
                                           properties:
                                             key:
                                               description: >-
-                                                The key of the secret to select from. 
+                                                The key of the secret to select from.
                                                 Must be a valid secret key.
                                               type: string
                                             name:
@@ -2366,7 +2366,7 @@ spec:
                                           properties:
                                             key:
                                               description: >-
-                                                The key of the secret to select from. 
+                                                The key of the secret to select from.
                                                 Must be a valid secret key.
                                               type: string
                                             name:
@@ -3468,8 +3468,8 @@ spec:
                                 A special supplemental group that applies to all
                                 containers in a pod. Some volume types allow the
                                 Kubelet to change the ownership of that volume
-                                to be owned by the pod: 
-                                 1. The owning GID will be the FSGroup 2. The setgid bit is set (new files created in the volume will be owned by FSGroup) 3. The permission bits are OR'd with rw-rw---- 
+                                to be owned by the pod:
+                                 1. The owning GID will be the FSGroup 2. The setgid bit is set (new files created in the volume will be owned by FSGroup) 3. The permission bits are OR'd with rw-rw----
                                  If unset, the Kubelet will not modify the ownership and permissions of any volume.
                               format: int64
                               type: integer
@@ -3756,7 +3756,7 @@ spec:
                                     description: >-
                                       Expected values Shared: multiple blob
                                       disks per storage account  Dedicated:
-                                      single blob disk per storage account 
+                                      single blob disk per storage account
                                       Managed: azure managed data disk (only in
                                       managed availability set). defaults to
                                       shared
@@ -5168,7 +5168,7 @@ spec:
                                   secretRef:
                                     description: >-
                                       SecretRef specifies the secret to use for
-                                      obtaining the StorageOS API credentials. 
+                                      obtaining the StorageOS API credentials.
                                       If not specified, default values will be
                                       attempted.
                                     properties:

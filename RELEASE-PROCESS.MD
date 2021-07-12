@@ -57,7 +57,7 @@ Creating a new release in the releases page (https://github.com/kedacore/keda/re
 
 ## 8. Publish KEDA OLM Operator on OperatorHub.io
 Create 2 pull requests on https://github.com/operator-framework/community-operators:
-- copy the newly created bundle directory from keda-olm-repo (eg. `keda/2.1.0`) to `community-operators/keda` directory in [community operators repo](https://github.com/operator-framework/community-operators), you should see the previous version over there 
+- copy the newly created bundle directory from keda-olm-repo (eg. `keda/2.1.0`) to `community-operators/keda` directory in [community operators repo](https://github.com/operator-framework/community-operators), you should see the previous version over there
 - send a pull request with this change
 - repeat the same but now copy the new bundle to `upstream-community-operators/keda` directory in [community operators repo](https://github.com/operator-framework/community-operators)
 - send this change in **a separate PR**

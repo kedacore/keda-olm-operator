@@ -34,13 +34,13 @@ spec:
     ### How to install KEDA in the cluster
 
     The installation of KEDA is triggered by the creation of `KedaController`
-    resource. 
+    resource.
 
     Only resource named `keda` in namespace `keda` will trigger the
     installation, reconfiguration or removal of the KEDA Controller resource.
 
 
-    There could be only one KEDA Controller in the cluster. 
+    There could be only one KEDA Controller in the cluster.
 
 
 
@@ -305,7 +305,7 @@ spec:
                 - '*'
               verbs:
                 - '*'
-            - apiGroups: 
+            - apiGroups:
                 - route.openshift.io
               resources:
                 - routes

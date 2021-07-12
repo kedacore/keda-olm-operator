@@ -1,3 +1,4 @@
+
 apiVersion: keda.sh/v1alpha1
 kind: KedaController
 metadata:
@@ -13,7 +14,7 @@ spec:
   # omit or set empty to watch all namespaces (default setting)
   watchNamespace: ""
 
-  ## Logging level for KEDA Controller
+  ## Logging level for KEDA Operator
   # allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
   # default value: info
   logLevel: info

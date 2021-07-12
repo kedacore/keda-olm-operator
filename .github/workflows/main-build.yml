@@ -19,8 +19,8 @@ jobs:
       - name: Install Go 1.15
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.6' 
-          
+          go-version: '^1.15.6'
+
       - name: Go modules cache
         uses: actions/cache@v1
         with:
@@ -50,7 +50,7 @@ jobs:
 
       - name: Publish on Docker Hub
         run: make publish-dockerhub
-  
+
   deploy-test:
     needs: Build
     name: Deploy-test
@@ -65,7 +65,7 @@ jobs:
       - name: Install Go 1.15
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.6' 
+          go-version: '^1.15.6'
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -82,7 +82,7 @@ jobs:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
-          
+
       - name: Install operator-sdk
         run: brew install operator-sdk
 
@@ -95,7 +95,7 @@ jobs:
 
       - name: Build and deploy KEDA olm operator index for deployment testing
         run: make deploy-olm-testing
-      
+
       - name: Setup test environment for deployment tests
         run: |
           kind create cluster
@@ -103,7 +103,7 @@ jobs:
 
       - name: Run deployment tests
         run: make test-deployment
-      
+
       - name: Download etcd and kube-apiserver
         run: |
           os=$(go env GOOS)
@@ -116,7 +116,7 @@ jobs:
 
       - name: Run functionality tests
         run: make test-functionality
-  
+
   deploy:
     needs: Deploy-test
     name: Deploy
@@ -131,8 +131,8 @@ jobs:
       - name: Install Go 1.15
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.6' 
-          
+          go-version: '^1.15.6'
+
       - name: Go modules cache
         uses: actions/cache@v1
         with:
@@ -156,14 +156,14 @@ jobs:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
-      
+
       - name: Download opm
         run: |
           version=1.15.0
           curl -L https://github.com/operator-framework/operator-registry/releases/download/v${version}/linux-amd64-opm --output opm
           sudo chmod +x opm
           sudo mv opm /usr/bin
-        
+
       - name: Install operator-sdk
         run: brew install operator-sdk
 

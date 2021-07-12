@@ -1,15 +1,15 @@
-name: pr tests
+name: CI
 on: [pull_request]
 
 jobs:
-  pr-test:
-    name: PR test
+  validate:
+    name: Validate PR
     runs-on: ubuntu-latest
     steps:
       - name: Install Go 1.15
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.6' 
+          go-version: '^1.15.13'
 
       - name: Go modules cache
         uses: actions/cache@v1
@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      
+
       - name: Download etcd and kube-apiserver
         run: |
           os=$(go env GOOS)
@@ -39,3 +39,15 @@ jobs:
 
       - name: Run functionality tests
         run: make test-functionality
+  statics:
+    name: Static Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2.2.2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.15.13
+      - name: Get golangci
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.41.1
+      - uses: pre-commit/action@v2.0.3

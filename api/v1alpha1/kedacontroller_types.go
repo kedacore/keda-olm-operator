@@ -24,9 +24,9 @@ type KedaControllerPhase string
 
 const (
 	PhaseNone             KedaControllerPhase = ""
-	PhaseInstallSucceeded                     = "Installation Succeeded"
-	PhaseIgnored                              = "Installation Ignored"
-	PhaseFailed                               = "Installation Failed"
+	PhaseInstallSucceeded KedaControllerPhase = "Installation Succeeded"
+	PhaseIgnored          KedaControllerPhase = "Installation Ignored"
+	PhaseFailed           KedaControllerPhase = "Installation Failed"
 )
 
 // KedaControllerSpec defines the desired state of KedaController
@@ -56,7 +56,7 @@ type KedaControllerSpec struct {
 // KedaControllerStatus defines the observed state of KedaController
 type KedaControllerStatus struct {
 	// +optional
-	Phase KedaControllerPhase `json:"phase,omitempy"`
+	Phase KedaControllerPhase `json:"phase,omitempty"`
 	// +optional
 	Reason string `json:"reason,omitempty"`
 	// +optional
