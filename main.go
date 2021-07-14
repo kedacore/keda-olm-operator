@@ -1,5 +1,5 @@
 /*
-
+Copyright 2020.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@ import (
 	"os"
 	"runtime"
 
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	routev1 "github.com/openshift/api/route/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -31,9 +35,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
-	"github.com/kedacore/keda-olm-operator/controllers"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
+	kedacontrollers "github.com/kedacore/keda-olm-operator/controllers/keda"
 	"github.com/kedacore/keda-olm-operator/version"
+	//+kubebuilder:scaffold:imports
 )
 
 var (
@@ -47,20 +52,22 @@ func init() {
 	utilruntime.Must(routev1.AddToScheme(scheme))
 	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
 	utilruntime.Must(apiregistrationv1.AddToScheme(scheme))
-	// +kubebuilder:scaffold:scheme
+	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
+	var probeAddr string
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-
-	opts := zap.Options{}
+	opts := zap.Options{
+		Development: true,
+	}
 	opts.BindFlags(flag.CommandLine)
-
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
@@ -68,39 +75,24 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
-		HealthProbeBindAddress: ":8081",
 		Port:                   9443,
+		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "olm-operator.keda.sh",
+		LeaderElectionID:       "b670c7de.keda.sh",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	// Add readiness probe
-	err = mgr.AddReadyzCheck("ready-ping", healthz.Ping)
-	if err != nil {
-		setupLog.Error(err, "Unable to add a readiness check")
-		os.Exit(1)
-	}
-
-	// Add liveness probe
-	err = mgr.AddHealthzCheck("health-ping", healthz.Ping)
-	if err != nil {
-		setupLog.Error(err, "Unable to add a health check")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.KedaControllerReconciler{
+	if err = (&kedacontrollers.KedaControllerReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("KedaController"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KedaController")
 		os.Exit(1)
 	}
-	if err = (&controllers.ConfigMapReconciler{
+	if err = (&kedacontrollers.ConfigMapReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("ConfigMap"),
 		Scheme: mgr.GetScheme(),
@@ -108,7 +100,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ConfigMap")
 		os.Exit(1)
 	}
-	if err = (&controllers.SecretReconciler{
+	if err = (&kedacontrollers.SecretReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Secret"),
 		Scheme: mgr.GetScheme(),
@@ -116,7 +108,16 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
-	// +kubebuilder:scaffold:builder
+	//+kubebuilder:scaffold:builder
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
 	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))

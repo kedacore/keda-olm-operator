@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package keda
 
 import (
 	"context"
@@ -28,10 +28,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
-	"github.com/kedacore/keda-olm-operator/controllers/util"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
+	"github.com/kedacore/keda-olm-operator/controllers/keda/util"
 )
 
 const (
@@ -50,14 +51,14 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// we are interested only in one particular Secret and only to it's creation/updates
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == secretName && e.Meta.GetNamespace() == secretNamespace {
+			if e.Object.GetName() == secretName && e.Object.GetNamespace() == secretNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == secretName && e.MetaNew.GetNamespace() == secretNamespace {
-				return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
+			if e.ObjectNew.GetName() == secretName && e.ObjectNew.GetNamespace() == secretNamespace {
+				return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 			}
 			return false
 		},
@@ -79,9 +80,8 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs="*"
 
-func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	logger := r.Log.WithValues("secret", req.NamespacedName)
+func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx).WithValues("secret", req.NamespacedName)
 
 	logger.Info("Reconciling Secret containing Certificates")
 

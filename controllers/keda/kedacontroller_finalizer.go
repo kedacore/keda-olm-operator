@@ -1,4 +1,4 @@
-package controllers
+package keda
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
 )
 
 const (

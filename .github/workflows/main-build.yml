@@ -16,10 +16,10 @@ jobs:
           fetch-depth: 1
           lfs: true
 
-      - name: Install Go 1.15
+      - name: Install Go 1.16
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.13'
+          go-version: '^1.16.5'
 
       - name: Go modules cache
         uses: actions/cache@v1
@@ -62,10 +62,10 @@ jobs:
           fetch-depth: 1
           lfs: true
 
-      - name: Install Go 1.15
+      - name: Install Go 1.16
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.13'
+          go-version: '^1.16.5'
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -104,16 +104,6 @@ jobs:
       - name: Run deployment tests
         run: make test-deployment
 
-      - name: Download etcd and kube-apiserver
-        run: |
-          os=$(go env GOOS)
-          arch=$(go env GOARCH)
-          version=2.3.1
-          curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_${version}_${os}_${arch}.tar.gz | tar -xz -C /tmp/
-          sudo mkdir -p /usr/local/kubebuilder/bin
-          cd /tmp/kubebuilder_${version}_${os}_${arch}/bin
-          sudo mv etcd kube-apiserver /usr/local/kubebuilder/bin
-
       - name: Run functionality tests
         run: make test-functionality
 
@@ -128,10 +118,10 @@ jobs:
           fetch-depth: 1
           lfs: true
 
-      - name: Install Go 1.15
+      - name: Install Go 1.16
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.13'
+          go-version: '^1.16.5'
 
       - name: Go modules cache
         uses: actions/cache@v1

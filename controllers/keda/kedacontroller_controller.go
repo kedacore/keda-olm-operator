@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package keda
 
 import (
 	"context"
@@ -35,11 +35,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
-	"github.com/kedacore/keda-olm-operator/controllers/transform"
-	"github.com/kedacore/keda-olm-operator/controllers/util"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
+	"github.com/kedacore/keda-olm-operator/controllers/keda/transform"
+	"github.com/kedacore/keda-olm-operator/controllers/keda/util"
 	"github.com/kedacore/keda-olm-operator/resources"
 	"github.com/kedacore/keda-olm-operator/version"
 )
@@ -108,9 +109,8 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *KedaControllerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	logger := r.Log.WithValues("KedaController", req.NamespacedName)
+func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx).WithValues("KedaController", req.NamespacedName)
 
 	logger.Info("Reconciling KedaController")
 
