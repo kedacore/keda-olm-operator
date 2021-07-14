@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package keda
 
 import (
 	"context"
@@ -28,10 +28,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/v1alpha1"
-	"github.com/kedacore/keda-olm-operator/controllers/util"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
+	"github.com/kedacore/keda-olm-operator/controllers/keda/util"
 )
 
 const (
@@ -50,14 +51,14 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// we are interested only in one particular ConfigMap and only to it's creation/updates
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == configMapName && e.Meta.GetNamespace() == configMapNamespace {
+			if e.Object.GetName() == configMapName && e.Object.GetNamespace() == configMapNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == configMapName && e.MetaNew.GetNamespace() == configMapNamespace {
-				return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
+			if e.ObjectNew.GetName() == configMapName && e.ObjectNew.GetNamespace() == configMapNamespace {
+				return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 			}
 			return false
 		},
@@ -79,9 +80,8 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs="*"
 
-func (r *ConfigMapReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	logger := r.Log.WithValues("configmap", req.NamespacedName)
+func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx).WithValues("configmap", req.NamespacedName)
 
 	logger.Info("Reconciling ConfigMap containing CA Bundle")
 

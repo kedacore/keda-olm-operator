@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.15.13 as builder
+FROM golang:1.16.5 as builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -20,12 +20,12 @@ COPY Makefile Makefile
 COPY hack/ hack/
 COPY version/ version/
 COPY main.go main.go
-COPY api/ api/
+COPY apis/ apis/
 COPY controllers/ controllers/
 COPY resources/ resources/
 
 # Build
-RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} make manager
+RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} make build
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
