@@ -329,7 +329,7 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 	}
 }
 
-func ReplaceNodeSelector(nodeSelector map[string]string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func ReplaceNodeSelector(nodeSelector map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -344,7 +344,7 @@ func ReplaceNodeSelector(nodeSelector map[string]string, scheme *runtime.Scheme,
 	}
 }
 
-func ReplaceTolerations(tolerations []corev1.Toleration, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func ReplaceTolerations(tolerations []corev1.Toleration, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -359,7 +359,7 @@ func ReplaceTolerations(tolerations []corev1.Toleration, scheme *runtime.Scheme,
 	}
 }
 
-func ReplaceAffinity(affinity *corev1.Affinity, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func ReplaceAffinity(affinity *corev1.Affinity, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -374,7 +374,7 @@ func ReplaceAffinity(affinity *corev1.Affinity, scheme *runtime.Scheme, logger l
 	}
 }
 
-func ReplacePriorityClassName(priorityClassName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func ReplacePriorityClassName(priorityClassName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -383,6 +383,35 @@ func ReplacePriorityClassName(priorityClassName string, scheme *runtime.Scheme, 
 			}
 
 			deploy.Spec.Template.Spec.PriorityClassName = priorityClassName
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func ReplaceKedaOperatorResources(resources corev1.ResourceRequirements, scheme *runtime.Scheme) mf.Transformer {
+	return replaceResources(resources, containerNameKedaOperator, scheme)
+}
+
+func ReplaceMetricsServerResources(resources corev1.ResourceRequirements, scheme *runtime.Scheme) mf.Transformer {
+	return replaceResources(resources, containerNameMetricsServer, scheme)
+}
+
+func replaceResources(resources corev1.ResourceRequirements, containerName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerName {
+					containers[i].Resources = resources
+					break
+				}
+			}
 			return scheme.Convert(deploy, u, nil)
 		}
 		return nil

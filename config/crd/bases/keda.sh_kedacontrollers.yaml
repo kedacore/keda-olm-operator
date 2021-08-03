@@ -37,7 +37,8 @@ spec:
             description: KedaControllerSpec defines the desired state of KedaController
             properties:
               affinity:
-                description: Affinity is a group of affinity scheduling rules.
+                description: Affinity for pod scheduling - both KEDA Operator and
+                  Metrics Server https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
                 properties:
                   nodeAffinity:
                     description: Describes node affinity scheduling rules for the
@@ -878,10 +879,68 @@ spec:
               nodeSelector:
                 additionalProperties:
                   type: string
+                description: Node selector for pod scheduling - both KEDA Operator
+                  and Metrics Server https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
                 type: object
               priorityClassName:
+                description: Pod priority for KEDA Operator and Metrics Adapter https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
                 type: string
+              resourcesKedaOperator:
+                description: Manage resource requests & limits for KEDA Operator https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                properties:
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Limits describes the maximum amount of compute resources
+                      allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Requests describes the minimum amount of compute
+                      resources required. If Requests is omitted for a container,
+                      it defaults to Limits if that is explicitly specified, otherwise
+                      to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                type: object
+              resourcesMetricsServer:
+                description: Manage resource requests & limits for KEDA Metrics Server
+                  https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                properties:
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Limits describes the maximum amount of compute resources
+                      allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Requests describes the minimum amount of compute
+                      resources required. If Requests is omitted for a container,
+                      it defaults to Limits if that is explicitly specified, otherwise
+                      to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                type: object
               tolerations:
+                description: Tolerations for pod scheduling - both KEDA Operator and
+                  Metrics Server https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
                 items:
                   description: The pod this Toleration is attached to tolerates any
                     taint that matches the triple <key,value,effect> using the matching
