@@ -293,19 +293,23 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 	}
 
 	if len(instance.Spec.NodeSelector) > 0 {
-		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme))
 	}
 
 	if len(instance.Spec.Tolerations) > 0 {
-		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme))
 	}
 
 	if instance.Spec.Affinity != nil {
-		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme))
 	}
 
 	if len(instance.Spec.PriorityClassName) > 0 {
-		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme))
+	}
+
+	if instance.Spec.ResourcesKedaOperator.Limits != nil || instance.Spec.ResourcesKedaOperator.Requests != nil {
+		transforms = append(transforms, transform.ReplaceKedaOperatorResources(instance.Spec.ResourcesKedaOperator, r.Scheme))
 	}
 
 	manifest, err := r.resourcesController.Transform(transforms...)
@@ -355,19 +359,23 @@ func (r *KedaControllerReconciler) installMetricsServer(logger logr.Logger, inst
 	}
 
 	if len(instance.Spec.NodeSelector) > 0 {
-		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme))
 	}
 
 	if len(instance.Spec.Tolerations) > 0 {
-		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme))
 	}
 
 	if instance.Spec.Affinity != nil {
-		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme))
 	}
 
 	if len(instance.Spec.PriorityClassName) > 0 {
-		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme, logger))
+		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme))
+	}
+
+	if instance.Spec.ResourcesMetricsServer.Limits != nil || instance.Spec.ResourcesMetricsServer.Requests != nil {
+		transforms = append(transforms, transform.ReplaceMetricsServerResources(instance.Spec.ResourcesMetricsServer, r.Scheme))
 	}
 
 	// replace namespace in RoleBinding from keda to kube-system

@@ -62,3 +62,23 @@ spec:
   ## Pod priority for KEDA Operator and Metrics Adapter
   # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
   # priorityClassName: high-priority
+
+  ## Manage resource requests & limits for KEDA Operator
+  # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  # resourcesKedaOperator:
+  #   limits:
+  #     cpu: 100m
+  #     memory: 100Mi
+  #   requests:
+  #     cpu: 1000m
+  #     memory: 1000Mi
+
+  ## Manage resource requests & limits for KEDA Metrics Server
+  # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  # resourcesMetricsServer:
+  #   limits:
+  #     cpu: 100m
+  #     memory: 100Mi
+  #   requests:
+  #     cpu: 1000m
+  #     memory: 1000Mi

@@ -38,30 +38,51 @@ type KedaControllerSpec struct {
 	// default value: info
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
+
 	// Logging format for KEDA Controller
 	// allowed values are json and console
 	// default value: console
 	// +optional
 	LogEncoder string `json:"logEncoder,omitempty"`
+
 	// Logging level for Metrics Server
 	// allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
 	// default value: "0"
 	// +optional
 	LogLevelMetrics string `json:"logLevelMetrics,omitempty"`
+
 	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
 
+	// Node selector for pod scheduling - both KEDA Operator and Metrics Server
+	// https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
+	// Tolerations for pod scheduling - both KEDA Operator and Metrics Server
+	// https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
+	// Affinity for pod scheduling - both KEDA Operator and Metrics Server
+	// https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
+	// Pod priority for KEDA Operator and Metrics Adapter
+	// https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// Manage resource requests & limits for KEDA Operator
+	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +optional
+	ResourcesKedaOperator corev1.ResourceRequirements `json:"resourcesKedaOperator,omitempty"`
+
+	// Manage resource requests & limits for KEDA Metrics Server
+	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +optional
+	ResourcesMetricsServer corev1.ResourceRequirements `json:"resourcesMetricsServer,omitempty"`
 
 	// Important: Run "make" to regenerate code after modifying this file
 }
