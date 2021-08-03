@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -49,6 +50,15 @@ type KedaControllerSpec struct {
 	LogLevelMetrics string `json:"logLevelMetrics,omitempty"`
 	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
+
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// Important: Run "make" to regenerate code after modifying this file
 }
