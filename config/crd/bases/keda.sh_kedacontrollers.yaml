@@ -879,6 +879,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              priorityClassName:
+                type: string
               tolerations:
                 items:
                   description: The pod this Toleration is attached to tolerates any
