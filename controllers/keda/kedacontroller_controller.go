@@ -30,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,8 +85,6 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.resourcesGeneral = manifestGeneral
 	r.resourcesController = manifestController
 	r.resourcesMetrics = manifestMetrics
-
-	createKedaInstallationNamespace(r.Log, mgr.GetClient())
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.KedaController{}).
@@ -295,6 +292,18 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(instance.Spec.LogEncoder, r.Scheme, logger))
 	}
 
+	if len(instance.Spec.NodeSelector) > 0 {
+		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.Tolerations) > 0 {
+		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme, logger))
+	}
+
+	if instance.Spec.Affinity != nil {
+		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme, logger))
+	}
+
 	manifest, err := r.resourcesController.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform KEDA Controller manifest")
@@ -339,6 +348,18 @@ func (r *KedaControllerReconciler) installMetricsServer(logger logr.Logger, inst
 
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.NodeSelector) > 0 {
+		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.Tolerations) > 0 {
+		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme, logger))
+	}
+
+	if instance.Spec.Affinity != nil {
+		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme, logger))
 	}
 
 	// replace namespace in RoleBinding from keda to kube-system
@@ -420,27 +441,4 @@ func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(logger logr.Logg
 // single, named resource: keda in the specified namespace
 func isInteresting(request reconcile.Request) bool {
 	return request.Name == kedaControllerResourceName && request.Namespace == kedaControllerResourceNamespace
-}
-
-// createKedaInstallationNamespace creates namespace specified in `installationNamespace`
-// during the startup of the controller. Creation is skipped if the namespace already exists.
-func createKedaInstallationNamespace(logger logr.Logger, cl client.Client) {
-	namespace := installationNamespace
-	gvk := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}
-	unstr := &unstructured.Unstructured{}
-	unstr.Object = map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name": namespace,
-		},
-	}
-	unstr.SetGroupVersionKind(gvk)
-
-	if err := cl.Get(context.TODO(), client.ObjectKey{Name: namespace}, unstr); err != nil {
-		if errors.IsNotFound(err) {
-			if err = cl.Create(context.TODO(), unstr); err != nil {
-				logger.Info("Wasn't able to create KEDA installation namespace", "namespace", namespace, "error", err)
-			}
-			logger.Info("Creating KEDA installation namespace", "namespace", namespace)
-		}
-	}
 }

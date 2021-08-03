@@ -28,3 +28,34 @@ spec:
   # allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
   # default value: "0"
   logLevelMetrics: "0"
+
+  ## Node selector for pod scheduling - both KEDA Operator and Metrics Server
+  # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+  # nodeSelector:
+  #  beta.kubernetes.io/os: linux
+
+  ## Tolerations for pod scheduling - both KEDA Operator and Metrics Server
+  # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+  # tolerations:
+  # - key: "key1"
+  #   operator: "Equal"
+  #   value: "value1"
+  #   effect: "NoSchedule"
+  # - key: "key1"
+  #   operator: "Equal"
+  #   value: "value1"
+  #   effect: "NoExecute"
+
+  ## Affinity for pod scheduling - both KEDA Operator and Metrics Server
+  # https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
+  # affinity:
+  #  podAntiAffinity:
+  #    requiredDuringSchedulingIgnoredDuringExecution:
+  #     - labelSelector:
+  #         matchExpressions:
+  #         - key: app
+  #           operator: In
+  #           values:
+  #           - keda-operator
+  #           - keda-operator-metrics-apiserver
+  #       topologyKey: "kubernetes.io/hostname"

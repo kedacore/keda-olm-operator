@@ -328,3 +328,48 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 		return nil
 	}
 }
+
+func ReplaceNodeSelector(nodeSelector map[string]string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Spec.Template.Spec.NodeSelector = nodeSelector
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func ReplaceTolerations(tolerations []corev1.Toleration, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Spec.Template.Spec.Tolerations = tolerations
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func ReplaceAffinity(affinity *corev1.Affinity, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Spec.Template.Spec.Affinity = affinity
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
