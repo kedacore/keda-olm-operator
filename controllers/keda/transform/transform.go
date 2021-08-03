@@ -373,3 +373,18 @@ func ReplaceAffinity(affinity *corev1.Affinity, scheme *runtime.Scheme, logger l
 		return nil
 	}
 }
+
+func ReplacePriorityClassName(priorityClassName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Spec.Template.Spec.PriorityClassName = priorityClassName
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}

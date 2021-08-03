@@ -60,6 +60,9 @@ type KedaControllerSpec struct {
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+
 	// Important: Run "make" to regenerate code after modifying this file
 }
 

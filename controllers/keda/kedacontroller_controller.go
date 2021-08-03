@@ -304,6 +304,10 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme, logger))
 	}
 
+	if len(instance.Spec.PriorityClassName) > 0 {
+		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme, logger))
+	}
+
 	manifest, err := r.resourcesController.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform KEDA Controller manifest")
@@ -360,6 +364,10 @@ func (r *KedaControllerReconciler) installMetricsServer(logger logr.Logger, inst
 
 	if instance.Spec.Affinity != nil {
 		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.PriorityClassName) > 0 {
+		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme, logger))
 	}
 
 	// replace namespace in RoleBinding from keda to kube-system

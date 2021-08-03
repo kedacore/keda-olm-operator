@@ -130,6 +130,10 @@ spec:
   #           - keda-operator
   #           - keda-operator-metrics-apiserver
   #       topologyKey: "kubernetes.io/hostname"
+
+  ## Pod priority for KEDA Operator and Metrics Adapter
+  # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  # priorityClassName: high-priority
 ```
 
 
