@@ -15,17 +15,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Go modules cache
-        uses: actions/cache@v2.1.3
-        with:
-          path: /go/pkg
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Go modules sync
-        run: go mod tidy
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
