@@ -78,7 +78,7 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "b670c7de.keda.sh",
+		LeaderElectionID:       "olm-operator.keda.sh",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
