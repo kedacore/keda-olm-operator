@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -140,6 +141,8 @@ var _ = Describe("Testing functionality", func() {
 			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
 			Expect(err).To(BeNil())
 			Expect(manifest.Apply()).Should(Succeed())
+
+			Expect(manifest.Apply()).Should(Succeed())
 		})
 
 		Context("When changing \"--zap-log-level\"", func() {
@@ -170,10 +173,13 @@ var _ = Describe("Testing functionality", func() {
 			}
 
 			for _, variant := range variants {
-				It("Should change it", func() {
+				It(fmt.Sprintf("Should change it, initialLoglevel='%s', actualLoglevel='%s'",
+					variant.initialLogLevel, variant.actualLogLevel), func() {
+
 					manifest, err = changeAttribute(manifest, "logLevel", variant.initialLogLevel, scheme)
 					Expect(err).To(BeNil())
 					Expect(manifest.Apply()).Should(Succeed())
+
 					Eventually(func() error {
 						_, err = getObject(ctx, "Deployment", deploymentName, namespace, k8sClient)
 						return err

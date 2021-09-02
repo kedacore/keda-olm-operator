@@ -61,6 +61,9 @@ var (
 	kedaControllerReconciler *KedaControllerReconciler
 	err                      error
 	testType                 string
+
+	ctx    context.Context
+	cancel context.CancelFunc
 )
 
 func init() {
@@ -111,8 +114,10 @@ var _ = BeforeSuite(func() {
 		Expect(deployManifest(subscriptionManifest, k8sClient)).Should(Succeed())
 	}
 
+	ctx, cancel = context.WithCancel(context.Background())
+
 	go func() {
-		err = k8sManager.Start(ctrl.SetupSignalHandler())
+		err = k8sManager.Start(ctx)
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
@@ -120,6 +125,10 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+
+	// stop k8sManager
+	cancel()
+
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })
