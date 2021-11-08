@@ -138,20 +138,20 @@ spec:
   ## Manage resource requests & limits for KEDA Operator
   # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
   # resourcesKedaOperator:
-  #   limits:
+  #   requests:
   #     cpu: 100m
   #     memory: 100Mi
-  #   requests:
+  #   limits:
   #     cpu: 1000m
   #     memory: 1000Mi
 
   ## Manage resource requests & limits for KEDA Metrics Server
   # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
   # resourcesMetricsServer:
-  #   limits:
+  #   requests:
   #     cpu: 100m
   #     memory: 100Mi
-  #   requests:
+  #   limits:
   #     cpu: 1000m
   #     memory: 1000Mi
 ```
