@@ -37,7 +37,7 @@ func CalculateSecretedDataCheckSum(m map[string][]byte) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(data)))
 }
 
-func DeleteMetricsServerPod(logger logr.Logger, cl client.Client) error {
+func DeleteMetricsServerPod(ctx context.Context, logger logr.Logger, cl client.Client) error {
 	selector := make(map[string]string)
 	selector[metricsServerPodLabelKey] = metricsServerPodLabelValue
 
@@ -46,7 +46,7 @@ func DeleteMetricsServerPod(logger logr.Logger, cl client.Client) error {
 		client.InNamespace(metricsServerNamespace),
 		client.MatchingLabels(selector),
 	}
-	err := cl.List(context.TODO(), podList, opts...)
+	err := cl.List(ctx, podList, opts...)
 	if err != nil {
 		return err
 	}
@@ -59,20 +59,20 @@ func DeleteMetricsServerPod(logger logr.Logger, cl client.Client) error {
 
 	pod := &podList.Items[0]
 	// restart Metrics Server Pod
-	return cl.Delete(context.TODO(), pod)
+	return cl.Delete(ctx, pod)
 }
 
-func UpdateKedaControllerStatus(cl client.Client, kedaController *kedav1alpha1.KedaController, status *kedav1alpha1.KedaControllerStatus) error {
+func UpdateKedaControllerStatus(ctx context.Context, cl client.Client, kedaController *kedav1alpha1.KedaController, status *kedav1alpha1.KedaControllerStatus) error {
 	patch := client.MergeFrom(kedaController.DeepCopy())
 	kedaController.Status = *status
-	return cl.Status().Patch(context.TODO(), kedaController, patch)
+	return cl.Status().Patch(ctx, kedaController, patch)
 }
 
-func RunningOnOpenshift(logger logr.Logger, cl client.Client) bool {
+func RunningOnOpenshift(ctx context.Context, logger logr.Logger, cl client.Client) bool {
 	gvk := schema.GroupVersionKind{Group: "route.openshift.io", Version: "v1", Kind: "route"}
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(gvk)
-	if err := cl.List(context.TODO(), list, &client.ListOptions{}); err != nil {
+	if err := cl.List(ctx, list, &client.ListOptions{}); err != nil {
 		if !meta.IsNoMatchError(err) {
 			logger.Error(err, "Unable to query for OpenShift Route")
 		}
