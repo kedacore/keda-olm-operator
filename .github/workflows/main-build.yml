@@ -16,10 +16,10 @@ jobs:
           fetch-depth: 1
           lfs: true
 
-      - name: Install Go 1.16
+      - name: Install Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.16'
+          go-version: '^1.17'
 
       - name: Go modules cache
         uses: actions/cache@v1
@@ -62,10 +62,10 @@ jobs:
           fetch-depth: 1
           lfs: true
 
-      - name: Install Go 1.16
+      - name: Install Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.16'
+          go-version: '^1.17'
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -118,10 +118,10 @@ jobs:
           fetch-depth: 1
           lfs: true
 
-      - name: Install Go 1.16
+      - name: Install Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.16'
+          go-version: '^1.17'
 
       - name: Go modules cache
         uses: actions/cache@v1
