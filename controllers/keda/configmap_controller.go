@@ -70,7 +70,7 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	if util.RunningOnOpenshift(r.Log, mgr.GetClient()) {
+	if util.RunningOnOpenshift(context.Background(), r.Log, mgr.GetClient()) {
 		return ctrl.NewControllerManagedBy(mgr).
 			For(&corev1.ConfigMap{}, builder.WithPredicates(pred)).
 			Complete(r)
@@ -121,7 +121,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		// ConfigMap.Data were changed -> let's restart KEDA Metrics Server
 		logger.Info("ConfigMap containing CA Bundle was changed -> let's restart KEDA Metrics Server")
-		if err := util.DeleteMetricsServerPod(logger, r.Client); err != nil {
+		if err := util.DeleteMetricsServerPod(ctx, logger, r.Client); err != nil {
 			r.Log.Error(err, "Unable to restart KEDA Metrics Server")
 			return ctrl.Result{}, err
 		}
@@ -129,5 +129,5 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	status := kedaController.Status.DeepCopy()
 	status.ConfigMapDataSum = newCheckSum
-	return ctrl.Result{}, util.UpdateKedaControllerStatus(r.Client, kedaController, status)
+	return ctrl.Result{}, util.UpdateKedaControllerStatus(ctx, r.Client, kedaController, status)
 }

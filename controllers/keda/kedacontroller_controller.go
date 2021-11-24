@@ -130,7 +130,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		logger.Info(msg)
 		status := instance.Status.DeepCopy()
 		status.MarkIgnored(msg)
-		return ctrl.Result{}, util.UpdateKedaControllerStatus(r.Client, instance, status)
+		return ctrl.Result{}, util.UpdateKedaControllerStatus(ctx, r.Client, instance, status)
 	}
 
 	if instance.GetDeletionTimestamp() != nil {
@@ -155,7 +155,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Add finalizer for this CR
 	if !contains(instance.GetFinalizers(), kedaControllerFinalizer) {
-		if err := r.addFinalizer(logger, instance); err != nil {
+		if err := r.addFinalizer(ctx, logger, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil
@@ -165,21 +165,21 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err := r.installSA(logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to create ServiceAccount")
-		if statusErr := util.UpdateKedaControllerStatus(r.Client, instance, status); statusErr != nil {
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
 		}
 		return ctrl.Result{}, err
 	}
 	if err := r.installController(logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Controller")
-		if statusErr := util.UpdateKedaControllerStatus(r.Client, instance, status); statusErr != nil {
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
 		}
 		return ctrl.Result{}, err
 	}
-	if err := r.installMetricsServer(logger, instance); err != nil {
+	if err := r.installMetricsServer(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Metrics Server")
-		if statusErr := util.UpdateKedaControllerStatus(r.Client, instance, status); statusErr != nil {
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
 		}
 		return ctrl.Result{}, err
@@ -187,7 +187,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	status.Version = version.Version
 	status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, installationNamespace))
-	if err := util.UpdateKedaControllerStatus(r.Client, instance, status); err != nil {
+	if err := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -327,7 +327,7 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 	return nil
 }
 
-func (r *KedaControllerReconciler) installMetricsServer(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling Metrics Server Deployment")
 
 	transforms := []mf.Transformer{
@@ -335,8 +335,8 @@ func (r *KedaControllerReconciler) installMetricsServer(logger logr.Logger, inst
 	}
 
 	// certificates rotation works only on Openshift due to openshift/service-ca-operator
-	if util.RunningOnOpenshift(logger, r.Client) {
-		if err := r.ensureMetricsServerConfigMap(logger, instance); err != nil {
+	if util.RunningOnOpenshift(ctx, logger, r.Client) {
+		if err := r.ensureMetricsServerConfigMap(ctx, logger, instance); err != nil {
 			logger.Error(err, "Unable to check Metrics Server ConfigMap is present")
 			return err
 		}
@@ -396,11 +396,11 @@ func (r *KedaControllerReconciler) installMetricsServer(logger logr.Logger, inst
 	return nil
 }
 
-func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Ensure ConfigMap for Metrics Server CA bundle exists")
 
 	configMap := &corev1.ConfigMap{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: metricsServerConfigMapName, Namespace: instance.Namespace}, configMap)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: metricsServerConfigMapName, Namespace: instance.Namespace}, configMap)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			configMap.Name = metricsServerConfigMapName
@@ -412,7 +412,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(logger logr.Logg
 				return err
 			}
 
-			err = r.Client.Create(context.TODO(), configMap)
+			err = r.Client.Create(ctx, configMap)
 			if err != nil {
 				logger.Error(err, "Failed to create new ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", metricsServerConfigMapName)
 				return err
@@ -443,7 +443,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(logger logr.Logg
 	}
 
 	if configMapUpdate {
-		err = r.Client.Update(context.TODO(), configMap)
+		err = r.Client.Update(ctx, configMap)
 		if err != nil {
 			logger.Error(err, "Failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", metricsServerConfigMapName)
 			return err

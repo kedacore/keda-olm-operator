@@ -39,13 +39,13 @@ func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger) er
 }
 
 // addFinalizer adds finalizer to the KedaController
-func (r *KedaControllerReconciler) addFinalizer(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) addFinalizer(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Adding Finalizer for the KedaController")
 
 	// Update CR
 	patch := client.MergeFrom(instance.DeepCopy())
 	instance.SetFinalizers(append(instance.GetFinalizers(), kedaControllerFinalizer))
-	err := r.Client.Patch(context.TODO(), instance, patch)
+	err := r.Client.Patch(ctx, instance, patch)
 	if err != nil {
 		logger.Error(err, "Failed to update KedaController with finalizer")
 		return err

@@ -70,7 +70,7 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	if util.RunningOnOpenshift(r.Log, mgr.GetClient()) {
+	if util.RunningOnOpenshift(context.Background(), r.Log, mgr.GetClient()) {
 		return ctrl.NewControllerManagedBy(mgr).
 			For(&corev1.Secret{}, builder.WithPredicates(pred)).
 			Complete(r)
@@ -121,7 +121,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		// Secret.Data were changed -> let's restart KEDA Metrics Server
 		logger.Info("Secret containing Certificates was changed -> let's restart KEDA Metrics Server")
-		if err := util.DeleteMetricsServerPod(logger, r.Client); err != nil {
+		if err := util.DeleteMetricsServerPod(ctx, logger, r.Client); err != nil {
 			logger.Error(err, "Unable to restart KEDA Metrics Server")
 			return ctrl.Result{}, err
 		}
@@ -129,5 +129,5 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	status := kedaController.Status.DeepCopy()
 	status.SecretDataSum = newCheckSum
-	return ctrl.Result{}, util.UpdateKedaControllerStatus(r.Client, kedaController, status)
+	return ctrl.Result{}, util.UpdateKedaControllerStatus(ctx, r.Client, kedaController, status)
 }
