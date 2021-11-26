@@ -32,6 +32,7 @@ mv keda/2.6.0/manifests/keda.v2.5.0.clusterserviceversion.yaml keda/2.6.0/manife
 - update the description and fields in the existing CRDs (if needed), make sure to update it on all places
 - update the version reference (eg. locate all occurencies of previous version)
 - update the `replaces` field to point to the previous version (eg. `2.5.0`)
+- update `createdAt` field with a new date
 - update other necessary fields
 
 ## 5. Validate and test the bundle
