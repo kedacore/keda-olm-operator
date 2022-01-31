@@ -81,7 +81,6 @@ publish: docker-build docker-push ## Build & push docker image with the manager.
 
 sign-images: ## Sign KEDA images published on GitHub Container Registry
 	COSIGN_EXPERIMENTAL=1 cosign sign ${COSIGN_FLAGS} $(IMAGE_CONTROLLER)
-	COSIGN_EXPERIMENTAL=1 cosign sign ${COSIGN_FLAGS} $(IMAGE_ADAPTER)
 
 ##@ Deployment
 
