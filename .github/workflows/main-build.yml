@@ -8,6 +8,11 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
+
     container: kedacore/build-tools:main
     steps:
       - name: Check out code
@@ -39,17 +44,21 @@ jobs:
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
-      - name: Login to Docker Hub
-        env:
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
-
       - name: Publish on GitHub Container Registry
         run: make publish
 
-      - name: Publish on Docker Hub
-        run: make publish-dockerhub
+      # https://github.com/sigstore/cosign-installer
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+        with:
+          cosign-release: 'v1.4.1'
+      - name: Check Cosign install!
+        run: cosign version
+
+      - name: Sign KEDA images published on GitHub Container Registry
+        # This step uses the identity token to provision an ephemeral certificate
+        # against the sigstore community Fulcio instance.
+        run: make sign-images
 
   deploy-test:
     needs: Build
@@ -76,12 +85,6 @@ jobs:
           password: ${{ secrets.GHCR_AUTH_PAT }}
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
-
-      - name: Login to Docker Hub
-        env:
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
       - name: Install operator-sdk
         run: brew install operator-sdk
@@ -140,12 +143,6 @@ jobs:
           password: ${{ secrets.GHCR_AUTH_PAT }}
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
-
-      - name: Login to Docker Hub
-        env:
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-        run: echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
       - name: Download opm
         run: |
