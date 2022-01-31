@@ -5,7 +5,7 @@ The release process of a new version of KEDA OLM Operator involves the following
 ## 0. Prerequisites
 
 Look at the last released KEDA version in the releases page: https://github.com/kedacore/keda/releases
-For example: currently it is 2.5.0
+For example: currently it is 2.6.0
 
 ## 1. KEDA release yaml file
 
@@ -14,31 +14,31 @@ For example: https://github.com/kedacore/keda/releases/download/v2.5.0/keda-2.5.
 
 ## 2. Create a new Bundle
 
-In `keda` directory copy the directory of lastly released version (eg. `2.5.0`) and create a new one (eg. `2.6.0`)
+In `keda` directory copy the directory of lastly released version (eg. `2.6.0`) and create a new one (eg. `2.7.0`)
 ```bash
-cp -r keda/2.5.0 keda/2.6.0
+cp -r keda/2.6.0 keda/2.7.0
 ```
 
 ## 3. Update KEDA CRDs
-Update all KEDA CRDs in the newly (eg. `2.6.0`) created directory, get the up-to-date version from the release file mentioned in step 1.
+Update all KEDA CRDs in the newly (eg. `2.7.0`) created directory, get the up-to-date version from the release file mentioned in step 1.
 
 ## 4. Update CSV file
-Update ClusterServiceVersion file in the newly (eg. `2.6.0`) created directory:
+Update ClusterServiceVersion file in the newly (eg. `2.7.0`) created directory:
 - rename the file to respect the version.
 ```bash
-mv keda/2.6.0/manifests/keda.v2.5.0.clusterserviceversion.yaml keda/2.6.0/manifests/keda.v2.6.0.clusterserviceversion.yaml
+mv keda/2.7.0/manifests/keda.v2.6.0.clusterserviceversion.yaml keda/2.7.0/manifests/keda.v2.7.0.clusterserviceversion.yaml
 ```
 - add new CRDs (if there are any new introduced in KEDA or KEDA OLM Operator)
 - update the description and fields in the existing CRDs (if needed), make sure to update it on all places
 - update the version reference (eg. locate all occurencies of previous version)
-- update the `replaces` field to point to the previous version (eg. `2.5.0`)
+- update the `replaces` field to point to the previous version (eg. `2.6.0`)
 - update `createdAt` field with a new date
 - update other necessary fields
 
 ## 5. Validate and test the bundle
 - validate the new bundle, eg:
 ```
-operator-sdk bundle validate ./keda/2.6.0
+operator-sdk bundle validate ./keda/2.7.0
 ```
 - test that the bundle is deployable and functional on OpenShift instance.
 
