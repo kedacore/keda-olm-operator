@@ -44,21 +44,21 @@ operator-sdk bundle validate ./keda/2.7.0
 
 ## 6. Commit and push the changed code to GitHub
 ```bash
-git checkout -b release260
-git commit -s -a -m 'prepare release 2.6.0'
-git push origin release260
+git checkout -b release270
+git commit -s -a -m 'prepare release 2.7.0'
+git push origin release270
 ```
 
 ## 7. Create KEDA release on GitHub
 
-Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.6.0).
+Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.7.0).
 
 > Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda-olm-operator/tags
 
 
 ## 8. Publish KEDA OLM Operator on OperatorHub.io
 1. Create pull request on https://github.com/k8s-operatorhub/community-operators:
-    - copy the newly created bundle directory from keda-olm-repo (eg. `keda/2.6.0`) to `operators/keda` directory in [https://github.com/k8s-operatorhub/community-operators](https://github.com/k8s-operatorhub/community-operators), you should see the previous version over there
+    - copy the newly created bundle directory from keda-olm-repo (eg. `keda/2.7.0`) to `operators/keda` directory in [https://github.com/k8s-operatorhub/community-operators](https://github.com/k8s-operatorhub/community-operators), you should see the previous version over there
     - send a pull request with this change
 2.  Create pull request on https://github.com/redhat-openshift-ecosystem/community-operators-prod:
    - repeat the same as in step 1. but now copy the new bundle to `operators/keda` directory in [https://github.com/redhat-openshift-ecosystem/community-operators-prod](https://github.com/redhat-openshift-ecosystem/community-operators-prod)
