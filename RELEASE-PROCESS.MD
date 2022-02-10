@@ -10,7 +10,7 @@ For example: currently it is 2.6.0
 ## 1. KEDA release yaml file
 
 Copy contents of released KEDA yaml file to the `resource/keda.yaml` file in this directory.
-For example: https://github.com/kedacore/keda/releases/download/v2.5.0/keda-2.5.0.yaml
+For example: https://github.com/kedacore/keda/releases/download/v2.7.0/keda-2.7.0.yaml
 
 ## 2. Create a new Bundle
 
