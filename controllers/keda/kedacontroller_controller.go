@@ -285,31 +285,68 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 		mf.InjectOwner(instance),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-operator", r.Scheme, logger),
 	}
+
+	// DEPRECATED fields
 	if len(instance.Spec.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(instance.Spec.LogLevel, r.Scheme, logger))
+		logger.Info("Warning: '.spec.logLevel' is Deprecated, please use '.spec.operator.logLevel' instead")
 	}
 	if len(instance.Spec.LogEncoder) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(instance.Spec.LogEncoder, r.Scheme, logger))
+		logger.Info("Warning: '.spec.logEncoder' is Deprecated, please use '.spec.operator.logEncoder' instead")
 	}
 
 	if len(instance.Spec.NodeSelector) > 0 {
 		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme))
+		logger.Info("Warning: '.spec.nodeSelector' is Deprecated, please use '.spec.operator.nodeSelector' instead")
 	}
 
 	if len(instance.Spec.Tolerations) > 0 {
 		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme))
+		logger.Info("Warning: '.spec.tolerations' is Deprecated, please use '.spec.operator.tolerations' instead")
 	}
 
 	if instance.Spec.Affinity != nil {
 		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme))
+		logger.Info("Warning: '.spec.affinity' is Deprecated, please use '.spec.operator.affinity' instead")
 	}
 
 	if len(instance.Spec.PriorityClassName) > 0 {
 		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme))
+		logger.Info("Warning: '.spec.priorityClassName' is Deprecated, please use '.spec.operator.priorityClassName' instead")
 	}
 
 	if instance.Spec.ResourcesKedaOperator.Limits != nil || instance.Spec.ResourcesKedaOperator.Requests != nil {
 		transforms = append(transforms, transform.ReplaceKedaOperatorResources(instance.Spec.ResourcesKedaOperator, r.Scheme))
+		logger.Info("Warning: '.spec.resourcesKedaOperator' is Deprecated, please use '.spec.operator.resources' instead")
+	}
+	// end of DEPRECATED fields
+
+	if len(instance.Spec.Operator.LogLevel) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(instance.Spec.Operator.LogLevel, r.Scheme, logger))
+	}
+	if len(instance.Spec.Operator.LogEncoder) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(instance.Spec.Operator.LogEncoder, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.Operator.NodeSelector) > 0 {
+		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.Operator.NodeSelector, r.Scheme))
+	}
+
+	if len(instance.Spec.Operator.Tolerations) > 0 {
+		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Operator.Tolerations, r.Scheme))
+	}
+
+	if instance.Spec.Operator.Affinity != nil {
+		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Operator.Affinity, r.Scheme))
+	}
+
+	if len(instance.Spec.Operator.PriorityClassName) > 0 {
+		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.Operator.PriorityClassName, r.Scheme))
+	}
+
+	if instance.Spec.Operator.Resources.Limits != nil || instance.Spec.Operator.Resources.Requests != nil {
+		transforms = append(transforms, transform.ReplaceKedaOperatorResources(instance.Spec.Operator.Resources, r.Scheme))
 	}
 
 	manifest, err := r.resourcesController.Transform(transforms...)
@@ -354,28 +391,60 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		logger.Info("Not running on OpenShift -> using generated self-signed cert for KEDA Metrics Server")
 	}
 
+	// DEPRECATED fields
 	if len(instance.Spec.LogLevelMetrics) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.LogLevelMetrics, r.Scheme, logger))
+		logger.Info("Warning: '.spec.logLevelMetrics' is Deprecated, please use '.spec.metricsServer.logLevel' instead")
 	}
 
 	if len(instance.Spec.NodeSelector) > 0 {
 		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.NodeSelector, r.Scheme))
+		logger.Info("Warning: '.spec.nodeSelector' is Deprecated, please use '.spec.metricsServer.nodeSelector' instead")
 	}
 
 	if len(instance.Spec.Tolerations) > 0 {
 		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Tolerations, r.Scheme))
+		logger.Info("Warning: '.spec.tolerations' is Deprecated, please use '.spec.metricsServer.tolerations' instead")
 	}
 
 	if instance.Spec.Affinity != nil {
 		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Affinity, r.Scheme))
+		logger.Info("Warning: '.spec.affinity' is Deprecated, please use '.spec.metricsServer.affinity' instead")
 	}
 
 	if len(instance.Spec.PriorityClassName) > 0 {
 		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.PriorityClassName, r.Scheme))
+		logger.Info("Warning: '.spec.priorityClassName' is Deprecated, please use '.spec.metricsServer.priorityClassName' instead")
 	}
 
 	if instance.Spec.ResourcesMetricsServer.Limits != nil || instance.Spec.ResourcesMetricsServer.Requests != nil {
 		transforms = append(transforms, transform.ReplaceMetricsServerResources(instance.Spec.ResourcesMetricsServer, r.Scheme))
+		logger.Info("Warning: '.spec.resourcesMetricsServer' is Deprecated, please use '.spec.metricsServer.resources' instead")
+	}
+	// end of DEPRECATED fields
+
+	if len(instance.Spec.MetricsServer.LogLevel) > 0 {
+		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.MetricsServer.LogLevel, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.MetricsServer.NodeSelector) > 0 {
+		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.MetricsServer.NodeSelector, r.Scheme))
+	}
+
+	if len(instance.Spec.MetricsServer.Tolerations) > 0 {
+		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.MetricsServer.Tolerations, r.Scheme))
+	}
+
+	if instance.Spec.MetricsServer.Affinity != nil {
+		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.MetricsServer.Affinity, r.Scheme))
+	}
+
+	if len(instance.Spec.MetricsServer.PriorityClassName) > 0 {
+		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.MetricsServer.PriorityClassName, r.Scheme))
+	}
+
+	if instance.Spec.MetricsServer.Resources.Limits != nil || instance.Spec.MetricsServer.Resources.Requests != nil {
+		transforms = append(transforms, transform.ReplaceMetricsServerResources(instance.Spec.MetricsServer.Resources, r.Scheme))
 	}
 
 	// replace namespace in RoleBinding from keda to kube-system

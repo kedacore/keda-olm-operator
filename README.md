@@ -81,79 +81,119 @@ spec:
   # with Name set to 'keda' created in namespace 'keda'
   ###
 
-  ## Namespace that should be watched by KEDA Controller,
+  ## Namespace that should be watched by KEDA,
   # omit or set empty to watch all namespaces (default setting)
   watchNamespace: ""
 
-  ## Logging level for KEDA Operator
-  # allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
-  # default value: info
-  logLevel: info
+  ## KEDA Operator related config
+  operator:
+    ## Logging level for KEDA Operator
+    # allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+    # default value: info
+    logLevel: info
 
-  ## Logging format for KEDA Operator
-  # allowed values are json and console
-  # default value: console
-  logEncoder: console
+    ## Logging format for KEDA Operator
+    # allowed values are json and console
+    # default value: console
+    logEncoder: console
 
-  ## Logging level for Metrics Server
-  # allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
-  # default value: "0"
-  logLevelMetrics: "0"
+    ## Node selector for pod scheduling for KEDA Operator
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    # nodeSelector:
+    #  beta.kubernetes.io/os: linux
 
-  ## Node selector for pod scheduling - both KEDA Operator and Metrics Server
-  # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-  # nodeSelector:
-  #  beta.kubernetes.io/os: linux
+    ## Tolerations for pod scheduling for KEDA Operator
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    # tolerations:
+    # - key: "key1"
+    #   operator: "Equal"
+    #   value: "value1"
+    #   effect: "NoSchedule"
+    # - key: "key1"
+    #   operator: "Equal"
+    #   value: "value1"
+    #   effect: "NoExecute"
 
-  ## Tolerations for pod scheduling - both KEDA Operator and Metrics Server
-  # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  # tolerations:
-  # - key: "key1"
-  #   operator: "Equal"
-  #   value: "value1"
-  #   effect: "NoSchedule"
-  # - key: "key1"
-  #   operator: "Equal"
-  #   value: "value1"
-  #   effect: "NoExecute"
+    ## Affinity for pod scheduling for KEDA Operator
+    # https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
+    # affinity:
+    #  podAntiAffinity:
+    #    requiredDuringSchedulingIgnoredDuringExecution:
+    #     - labelSelector:
+    #         matchExpressions:
+    #         - key: app
+    #           operator: In
+    #           values:
+    #           - keda-operator
+    #           - keda-operator-metrics-apiserver
+    #       topologyKey: "kubernetes.io/hostname"
 
-  ## Affinity for pod scheduling - both KEDA Operator and Metrics Server
-  # https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
-  # affinity:
-  #  podAntiAffinity:
-  #    requiredDuringSchedulingIgnoredDuringExecution:
-  #     - labelSelector:
-  #         matchExpressions:
-  #         - key: app
-  #           operator: In
-  #           values:
-  #           - keda-operator
-  #           - keda-operator-metrics-apiserver
-  #       topologyKey: "kubernetes.io/hostname"
+    ## Pod priority for KEDA Operator
+    # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+    # priorityClassName: high-priority
 
-  ## Pod priority for KEDA Operator and Metrics Adapter
-  # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
-  # priorityClassName: high-priority
+    ## Manage resource requests & limits for KEDA Operator
+    # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+    # resourcesKedaOperator:
+    #   requests:
+    #     cpu: 100m
+    #     memory: 100Mi
+    #   limits:
+    #     cpu: 1000m
+    #      memory: 1000Mi
 
-  ## Manage resource requests & limits for KEDA Operator
-  # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-  # resourcesKedaOperator:
-  #   requests:
-  #     cpu: 100m
-  #     memory: 100Mi
-  #   limits:
-  #     cpu: 1000m
-  #     memory: 1000Mi
 
-  ## Manage resource requests & limits for KEDA Metrics Server
-  # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-  # resourcesMetricsServer:
-  #   requests:
-  #     cpu: 100m
-  #     memory: 100Mi
-  #   limits:
-  #     cpu: 1000m
-  #     memory: 1000Mi
+  ## KEDA Metrics Server related config
+  metricsServer:
+    ## Logging level for Metrics Server
+    # allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
+    # default value: "0"
+    logLevel: "0"
+
+    ## Node selector for pod scheduling for Metrics Server
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    # nodeSelector:
+    #  beta.kubernetes.io/os: linux
+
+    ## Tolerations for pod scheduling for Metrics Server
+    # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    # tolerations:
+    # - key: "key1"
+    #   operator: "Equal"
+    #   value: "value1"
+    #   effect: "NoSchedule"
+    # - key: "key1"
+    #   operator: "Equal"
+    #   value: "value1"
+    #   effect: "NoExecute"
+
+    ## Affinity for pod scheduling for Metrics Server
+    # https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
+    # affinity:
+    #  podAntiAffinity:
+    #    requiredDuringSchedulingIgnoredDuringExecution:
+    #     - labelSelector:
+    #         matchExpressions:
+    #         - key: app
+    #           operator: In
+    #           values:
+    #           - keda-operator
+    #           - keda-operator-metrics-apiserver
+    #       topologyKey: "kubernetes.io/hostname"
+
+    ## Pod priority for Metrics Server
+    # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+    # priorityClassName: high-priority
+
+    ## Manage resource requests & limits for Metrics Server
+    # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+    # resourcesKedaOperator:
+    #   requests:
+    #     cpu: 100m
+    #     memory: 100Mi
+    #   limits:
+    #     cpu: 1000m
+    #      memory: 1000Mi
 ```
 
 

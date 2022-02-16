@@ -224,7 +224,7 @@ func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *ru
 		case "namespace":
 			kedaControllerInstance.Namespace = value
 		case "logLevel":
-			kedaControllerInstance.Spec.LogLevel = value
+			kedaControllerInstance.Spec.Operator.LogLevel = value
 		default:
 			return errors.New("Not a valid attribute")
 		}
