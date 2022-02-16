@@ -879,8 +879,7 @@ spec:
               metricsServer:
                 properties:
                   affinity:
-                    description: Affinity for pod scheduling - both KEDA Operator
-                      and Metrics Server https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
+                    description: Affinity for pod scheduling https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
                     properties:
                       nodeAffinity:
                         description: Describes node affinity scheduling rules for
@@ -1744,6 +1743,16 @@ spec:
                             type: array
                         type: object
                     type: object
+                  deploymentAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations applied to the Deployment https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+                    type: object
+                  deploymentLabels:
+                    additionalProperties:
+                      type: string
+                    description: Labels applied to the Deployment https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+                    type: object
                   logLevel:
                     description: 'Logging level for Metrics Server allowed values:
                       "0" for info, "4" for debug, or an integer value greater than
@@ -1752,16 +1761,23 @@ spec:
                   nodeSelector:
                     additionalProperties:
                       type: string
-                    description: Node selector for pod scheduling - both KEDA Operator
-                      and Metrics Server https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+                    description: Node selector for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+                    type: object
+                  podAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations applied to the Pod https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+                    type: object
+                  podLabels:
+                    additionalProperties:
+                      type: string
+                    description: Labels applied to the Pod https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
                     type: object
                   priorityClassName:
-                    description: Pod priority for KEDA Operator and Metrics Adapter
-                      https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+                    description: Pod priority https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
                     type: string
                   resources:
-                    description: Manage resource requests & limits for KEDA Operator
-                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    description: Manage resource requests & limits https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     properties:
                       limits:
                         additionalProperties:
@@ -1787,8 +1803,7 @@ spec:
                         type: object
                     type: object
                   tolerations:
-                    description: Tolerations for pod scheduling - both KEDA Operator
-                      and Metrics Server https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+                    description: Tolerations for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
                     items:
                       description: The pod this Toleration is attached to tolerates
                         any taint that matches the triple <key,value,effect> using
@@ -1838,8 +1853,7 @@ spec:
               operator:
                 properties:
                   affinity:
-                    description: Affinity for pod scheduling - both KEDA Operator
-                      and Metrics Server https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
+                    description: Affinity for pod scheduling https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
                     properties:
                       nodeAffinity:
                         description: Describes node affinity scheduling rules for
@@ -2703,6 +2717,16 @@ spec:
                             type: array
                         type: object
                     type: object
+                  deploymentAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations applied to the Deployment https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+                    type: object
+                  deploymentLabels:
+                    additionalProperties:
+                      type: string
+                    description: Labels applied to the Deployment https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+                    type: object
                   logEncoder:
                     description: 'Logging format for KEDA Controller allowed values
                       are json and console default value: console'
@@ -2715,16 +2739,23 @@ spec:
                   nodeSelector:
                     additionalProperties:
                       type: string
-                    description: Node selector for pod scheduling - both KEDA Operator
-                      and Metrics Server https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+                    description: Node selector for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+                    type: object
+                  podAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations applied to the Pod https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+                    type: object
+                  podLabels:
+                    additionalProperties:
+                      type: string
+                    description: Labels applied to the Pod https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
                     type: object
                   priorityClassName:
-                    description: Pod priority for KEDA Operator and Metrics Adapter
-                      https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+                    description: Pod priority https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
                     type: string
                   resources:
-                    description: Manage resource requests & limits for KEDA Operator
-                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    description: Manage resource requests & limits https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     properties:
                       limits:
                         additionalProperties:
@@ -2750,8 +2781,7 @@ spec:
                         type: object
                     type: object
                   tolerations:
-                    description: Tolerations for pod scheduling - both KEDA Operator
-                      and Metrics Server https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+                    description: Tolerations for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
                     items:
                       description: The pod this Toleration is attached to tolerates
                         any taint that matches the triple <key,value,effect> using
@@ -2846,6 +2876,19 @@ spec:
                       resources required. If Requests is omitted for a container,
                       it defaults to Limits if that is explicitly specified, otherwise
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                type: object
+              serviceAccount:
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations applied to the Service Account https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Labels applied to the Service Account https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
                     type: object
                 type: object
               tolerations:

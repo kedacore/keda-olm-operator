@@ -262,8 +262,17 @@ func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured
 }
 
 func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
-	logger.Info("Reconciling Keda ServiceAccount")
+	logger.Info("Reconciling KEDA ServiceAccount")
 	transforms := []mf.Transformer{mf.InjectOwner(instance)}
+
+	if len(instance.Spec.ServiceAccount.Annotations) > 0 {
+		transforms = append(transforms, transform.AddServiceAccountAnnotations(instance.Spec.ServiceAccount.Annotations, r.Scheme))
+	}
+
+	if len(instance.Spec.ServiceAccount.Labels) > 0 {
+		transforms = append(transforms, transform.AddServiceAccountLabels(instance.Spec.ServiceAccount.Labels, r.Scheme))
+	}
+
 	manifest, err := r.resourcesGeneral.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform ServiceAccount manifest")
@@ -329,6 +338,22 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(instance.Spec.Operator.LogEncoder, r.Scheme, logger))
 	}
 
+	if len(instance.Spec.Operator.DeploymentAnnotations) > 0 {
+		transforms = append(transforms, transform.AddDeploymentAnnotations(instance.Spec.Operator.DeploymentAnnotations, r.Scheme))
+	}
+
+	if len(instance.Spec.Operator.DeploymentLabels) > 0 {
+		transforms = append(transforms, transform.AddDeploymentLabels(instance.Spec.Operator.DeploymentLabels, r.Scheme))
+	}
+
+	if len(instance.Spec.Operator.PodAnnotations) > 0 {
+		transforms = append(transforms, transform.AddPodAnnotations(instance.Spec.Operator.PodAnnotations, r.Scheme))
+	}
+
+	if len(instance.Spec.Operator.PodLabels) > 0 {
+		transforms = append(transforms, transform.AddPodLabels(instance.Spec.Operator.PodLabels, r.Scheme))
+	}
+
 	if len(instance.Spec.Operator.NodeSelector) > 0 {
 		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.Operator.NodeSelector, r.Scheme))
 	}
@@ -365,7 +390,7 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 }
 
 func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
-	logger.Info("Reconciling Metrics Server Deployment")
+	logger.Info("Reconciling KEDA Metrics Server Deployment")
 
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
@@ -425,6 +450,22 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	if len(instance.Spec.MetricsServer.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.MetricsServer.LogLevel, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.MetricsServer.DeploymentAnnotations) > 0 {
+		transforms = append(transforms, transform.AddDeploymentAnnotations(instance.Spec.MetricsServer.DeploymentAnnotations, r.Scheme))
+	}
+
+	if len(instance.Spec.MetricsServer.DeploymentLabels) > 0 {
+		transforms = append(transforms, transform.AddDeploymentLabels(instance.Spec.MetricsServer.DeploymentLabels, r.Scheme))
+	}
+
+	if len(instance.Spec.MetricsServer.PodAnnotations) > 0 {
+		transforms = append(transforms, transform.AddPodAnnotations(instance.Spec.MetricsServer.PodAnnotations, r.Scheme))
+	}
+
+	if len(instance.Spec.MetricsServer.PodLabels) > 0 {
+		transforms = append(transforms, transform.AddPodLabels(instance.Spec.MetricsServer.PodLabels, r.Scheme))
 	}
 
 	if len(instance.Spec.MetricsServer.NodeSelector) > 0 {
