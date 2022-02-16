@@ -4,4 +4,5 @@ resources:
 - keda_v1alpha1_scaledobject.yaml
 - keda_v1alpha1_scaledjob.yaml
 - keda_v1alpha1_triggerauthentication.yaml
+- keda_v1alpha1_clustertriggerauthentication.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples
