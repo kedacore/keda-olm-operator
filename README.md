@@ -97,6 +97,26 @@ spec:
     # default value: console
     logEncoder: console
 
+    ## Annotations to be added to the KEDA Operator Deployment
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+    # deploymentAnnotations:
+    #  annotationKey: annotationValue
+
+    ## Labels to be added to the KEDA Operator Deployment
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    # deploymentLabels:
+    #  labelKey: labelValue
+
+    ## Annotations to be added to the KEDA Operator Pod
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+    # podAnnotations:
+    #  annotationKey: annotationValue
+
+    ## Labels to be added to the KEDA Operator Pod
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    # podLabels:
+    #  labelKey: labelValue
+
     ## Node selector for pod scheduling for KEDA Operator
     # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
     # nodeSelector:
@@ -142,7 +162,6 @@ spec:
     #     cpu: 1000m
     #      memory: 1000Mi
 
-
   ## KEDA Metrics Server related config
   metricsServer:
     ## Logging level for Metrics Server
@@ -150,12 +169,32 @@ spec:
     # default value: "0"
     logLevel: "0"
 
+    ## Annotations to be added to the KEDA Metrics Server Deployment
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+    # deploymentAnnotations:
+    #  annotationKey: annotationValue
+
+    ## Labels to be added to the KEDA Metrics Server Deployment
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    # deploymentLabels:
+    #  labelKey: labelValue
+
+    ## Annotations to be added to the KEDA Metrics Server Pod
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+    # podAnnotations:
+    #  annotationKey: annotationValue
+
+    ## Labels to be added to the KEDA Metrics Server Pod
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    # podLabels:
+    #  labelKey: labelValue
+
     ## Node selector for pod scheduling for Metrics Server
     # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
     # nodeSelector:
     #  beta.kubernetes.io/os: linux
 
-    ## Tolerations for pod scheduling for Metrics Server
+    ## Tolerations for pod scheduling for KEDA Metrics Server
     # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
     # tolerations:
     # - key: "key1"
@@ -167,7 +206,7 @@ spec:
     #   value: "value1"
     #   effect: "NoExecute"
 
-    ## Affinity for pod scheduling for Metrics Server
+    ## Affinity for pod scheduling for KEDA Metrics Server
     # https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
     # affinity:
     #  podAntiAffinity:
@@ -181,11 +220,11 @@ spec:
     #           - keda-operator-metrics-apiserver
     #       topologyKey: "kubernetes.io/hostname"
 
-    ## Pod priority for Metrics Server
+    ## Pod priority for KEDA Metrics Server
     # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
     # priorityClassName: high-priority
 
-    ## Manage resource requests & limits for Metrics Server
+    ## Manage resource requests & limits for KEDA Metrics Server
     # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     # resourcesKedaOperator:
     #   requests:
@@ -194,6 +233,18 @@ spec:
     #   limits:
     #     cpu: 1000m
     #      memory: 1000Mi
+
+  ## KEDA ServiceAccount related config
+  serviceAccount:
+    ## Annotations to be added to the Service Account
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+    # annotations:
+    #  annotationKey: annotationValue
+
+    ## Labels to be added to the ServiceAccount
+    # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    # labels:
+    #  labelKey: labelValue
 ```
 
 

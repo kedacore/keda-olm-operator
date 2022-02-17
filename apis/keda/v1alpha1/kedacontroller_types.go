@@ -43,6 +43,9 @@ type KedaControllerSpec struct {
 	// +optional
 	MetricsServer KedaMetricsServerSpec `json:"metricsServer"`
 
+	// +optional
+	ServiceAccount KedaServiceAccountSpec `json:"serviceAccount"`
+
 	// DEPRECATED fields - use `.spec.operator` or `spec.metricsServer` instead
 	KedaControllerDeprecatedSpec `json:",inline"`
 
@@ -50,6 +53,16 @@ type KedaControllerSpec struct {
 }
 
 type KedaServiceAccountSpec struct {
+
+	// Annotations applied to the Service Account
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Labels applied to the Service Account
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type KedaOperatorSpec struct {
@@ -66,7 +79,7 @@ type KedaOperatorSpec struct {
 	// +optional
 	LogEncoder string `json:"logEncoder,omitempty"`
 
-	GenericDepolymentSpec `json:",inline"`
+	GenericDeploymentSpec `json:",inline"`
 }
 
 type KedaMetricsServerSpec struct {
@@ -77,31 +90,52 @@ type KedaMetricsServerSpec struct {
 	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
 
-	GenericDepolymentSpec `json:",inline"`
+	GenericDeploymentSpec `json:",inline"`
 }
 
-type GenericDepolymentSpec struct {
-	// Node selector for pod scheduling - both KEDA Operator and Metrics Server
+type GenericDeploymentSpec struct {
+
+	// Annotations applied to the Deployment
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+	// +optional
+	DeploymentAnnotations map[string]string `json:"deploymentAnnotations,omitempty"`
+
+	// Labels applied to the Deployment
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+	// +optional
+	DeploymentLabels map[string]string `json:"deploymentLabels,omitempty"`
+
+	// Annotations applied to the Pod
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+	// +optional
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// Labels applied to the Pod
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+	// +optional
+	PodLabels map[string]string `json:"podLabels,omitempty"`
+
+	// Node selector for pod scheduling
 	// https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Tolerations for pod scheduling - both KEDA Operator and Metrics Server
+	// Tolerations for pod scheduling
 	// https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
-	// Affinity for pod scheduling - both KEDA Operator and Metrics Server
+	// Affinity for pod scheduling
 	// https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
-	// Pod priority for KEDA Operator and Metrics Adapter
+	// Pod priority
 	// https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 
-	// Manage resource requests & limits for KEDA Operator
+	// Manage resource requests & limits
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`

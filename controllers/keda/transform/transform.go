@@ -329,6 +329,113 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 	}
 }
 
+func AddServiceAccountAnnotations(annotations map[string]string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "ServiceAccount" {
+			sa := &corev1.ServiceAccount{}
+			if err := scheme.Convert(u, sa, nil); err != nil {
+				return err
+			}
+
+			sa.Annotations = updateMap(sa.Annotations, annotations)
+
+			return scheme.Convert(sa, u, nil)
+		}
+		return nil
+	}
+}
+
+func AddServiceAccountLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "ServiceAccount" {
+			sa := &corev1.ServiceAccount{}
+			if err := scheme.Convert(u, sa, nil); err != nil {
+				return err
+			}
+
+			sa.Labels = updateMap(sa.Labels, labels)
+
+			return scheme.Convert(sa, u, nil)
+		}
+		return nil
+	}
+}
+
+func AddPodAnnotations(annotations map[string]string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Spec.Template.Annotations = updateMap(deploy.Spec.Template.Annotations, annotations)
+
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func AddPodLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Spec.Template.ObjectMeta.Labels = updateMap(deploy.Spec.Template.ObjectMeta.Labels, labels)
+
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func AddDeploymentAnnotations(annotations map[string]string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Annotations = updateMap(deploy.Annotations, annotations)
+
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func AddDeploymentLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Labels = updateMap(deploy.Labels, labels)
+
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func updateMap(mapToUpdate map[string]string, newValues map[string]string) map[string]string {
+	if mapToUpdate != nil {
+		for k, v := range newValues {
+			mapToUpdate[k] = v
+		}
+		return mapToUpdate
+	}
+
+	return newValues
+}
+
 func ReplaceNodeSelector(nodeSelector map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {

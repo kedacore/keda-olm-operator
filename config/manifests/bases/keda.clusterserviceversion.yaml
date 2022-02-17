@@ -19,7 +19,8 @@ metadata:
             },
             "metricsServer: {
               "logLevel": "0",
-            }
+            },
+            "serviceAccount: {}
           }
         },
         {
