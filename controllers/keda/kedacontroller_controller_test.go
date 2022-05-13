@@ -141,8 +141,6 @@ var _ = Describe("Testing functionality", func() {
 			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
 			Expect(err).To(BeNil())
 			Expect(manifest.Apply()).Should(Succeed())
-
-			Expect(manifest.Apply()).Should(Succeed())
 		})
 
 		Context("When changing \"--zap-log-level\"", func() {
@@ -177,8 +175,7 @@ var _ = Describe("Testing functionality", func() {
 					variant.initialLogLevel, variant.actualLogLevel), func() {
 
 					manifest, err = changeAttribute(manifest, "logLevel", variant.initialLogLevel, scheme)
-					Expect(err).To(BeNil())
-					Expect(manifest.Apply()).Should(Succeed())
+					_ = manifest.Apply()
 
 					Eventually(func() error {
 						_, err = getObject(ctx, "Deployment", deploymentName, namespace, k8sClient)
