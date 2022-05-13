@@ -154,5 +154,9 @@ jobs:
       - name: Install operator-sdk
         run: brew install operator-sdk
 
+      - name: Disable 'replaces' field, as the testing bundle doesn't replace anything
+        run: |
+          sed -i 's/replaces: /# replaces: /' bundle/manifests/keda.clusterserviceversion.yaml
+
       - name: Build and deploy KEDA olm operator index
         run: make deploy-olm
