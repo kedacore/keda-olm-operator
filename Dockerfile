@@ -33,6 +33,7 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/resources/keda.yaml /workspace/resources/keda.yaml
 COPY --from=builder /workspace/bin/manager .
-USER nonroot:nonroot
+# 65532 is numeric for nonroot
+USER 65532:65532
 
 ENTRYPOINT ["/manager"]
