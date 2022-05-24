@@ -13,14 +13,14 @@ metadata:
           },
           "spec": {
             "watchNamespace": "",
-            "operator:" {
+            "operator": {
               "logLevel": "info",
-              "logEncoder": "console",
+              "logEncoder": "console"
             },
-            "metricsServer: {
-              "logLevel": "0",
+            "metricsServer": {
+              "logLevel": "0"
             },
-            "serviceAccount: {}
+            "serviceAccount": {}
           }
         },
         {
