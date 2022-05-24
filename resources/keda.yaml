@@ -5355,6 +5355,7 @@ spec:
         - --leader-elect
         - --zap-log-level=info
         - --zap-encoder=console
+        - --zap-time-encoding=rfc3339
         command:
         - /keda
         env:

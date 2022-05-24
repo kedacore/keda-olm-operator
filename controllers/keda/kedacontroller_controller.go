@@ -100,6 +100,7 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs="*"
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
+// +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -336,6 +337,9 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 	}
 	if len(instance.Spec.Operator.LogEncoder) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(instance.Spec.Operator.LogEncoder, r.Scheme, logger))
+	}
+	if len(instance.Spec.Operator.LogTimeEncoding) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeEncoding(instance.Spec.Operator.LogTimeEncoding, r.Scheme, logger))
 	}
 
 	if len(instance.Spec.Operator.DeploymentAnnotations) > 0 {

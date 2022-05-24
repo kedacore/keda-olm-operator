@@ -474,6 +474,12 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - '*'
+        - apiGroups:
           - monitoring.coreos.com
           resources:
           - servicemonitors
@@ -514,6 +520,11 @@ spec:
               containers:
               - command:
                 - /manager
+                args:
+                  - --leader-elect
+                  - --zap-log-level=info
+                  - --zap-encoder=console
+                  - --zap-time-encoding=rfc3339
                 env:
                 - name: WATCH_NAMESPACE
                   valueFrom:
