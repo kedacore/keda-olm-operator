@@ -2729,12 +2729,17 @@ spec:
                     type: object
                   logEncoder:
                     description: 'Logging format for KEDA Controller allowed values
-                      are json and console default value: console'
+                      are ''json'' and ''console'' default value: console'
                     type: string
                   logLevel:
                     description: 'Logging level for KEDA Controller allowed values:
                       ''debug'', ''info'', ''error'', or an integer value greater
                       than 0, specified as string default value: info'
+                    type: string
+                  logTimeEncoding:
+                    description: 'Logging time encoding for KEDA Controller allowed
+                      values are ''epoch'', ''millis'', ''nano'', ''iso8601'', ''rfc3339''
+                      or ''rfc3339nano'' default value: rfc3339'
                     type: string
                   nodeSelector:
                     additionalProperties:

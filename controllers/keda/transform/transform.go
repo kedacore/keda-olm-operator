@@ -16,19 +16,21 @@ import (
 )
 
 var (
-	logLevelsKedaOperator   = []string{"debug", "info", "error"}
-	logEncodersKedaOperator = []string{"json", "console"}
+	logLevelsKedaOperator        = []string{"debug", "info", "error"}
+	logEncodersKedaOperator      = []string{"json", "console"}
+	logTimeEncodingsKedaOperator = []string{"epoch", "millis", "nano", "iso8601", "rfc3339", "rfc3339nano"}
 )
 
 type Prefix string
 
 const (
-	LogLevelKedaOperator   Prefix = "--zap-log-level="
-	LogEncoderKedaOperator Prefix = "--zap-encoder="
-	LogLevelMetricsServer  Prefix = "--v="
-	ClientCAFile           Prefix = "--client-ca-file="
-	TLSCertFile            Prefix = "--tls-cert-file="
-	TLSPrivateKeyFile      Prefix = "--tls-private-key-file="
+	LogLevelKedaOperator        Prefix = "--zap-log-level="
+	LogEncoderKedaOperator      Prefix = "--zap-encoder="
+	LogTimeEncodingKedaOperator Prefix = "--zap-time-encoding="
+	LogLevelMetricsServer       Prefix = "--v="
+	ClientCAFile                Prefix = "--client-ca-file="
+	TLSCertFile                 Prefix = "--tls-cert-file="
+	TLSPrivateKeyFile           Prefix = "--tls-private-key-file="
 )
 
 func (p Prefix) String() string {
@@ -242,7 +244,7 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 	}
 
 	if !found {
-		logger.Info("Ignoring speficied Log level for Keda Operator, it needs to be set to ", strings.Join(logLevelsKedaOperator, ", "), "or an integer value greater than 0")
+		logger.Info("Ignoring speficied Log level for KEDA Operator, it needs to be set to ", strings.Join(logLevelsKedaOperator, ", "), "or an integer value greater than 0")
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
@@ -257,11 +259,12 @@ func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, lo
 	for _, format := range logEncodersKedaOperator {
 		if logEncoder == format {
 			found = true
+			break
 		}
 	}
 
 	if !found {
-		logger.Info("Ignoring speficied Log encoder for Keda Operator, it needs to be set to ", strings.Join(logEncodersKedaOperator, ", "))
+		logger.Info("Ignoring speficied Log encoder for KEDA Operator", "specified", logEncoder, "allowed values", strings.Join(logEncodersKedaOperator, ", "))
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
@@ -278,7 +281,7 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 	}
 
 	if !found {
-		logger.Info("Ignoring speficied Log level for Keda Metrics Server, it needs to be set to an integer value greater than 0")
+		logger.Info("Ignoring speficied Log level for KEDA Metrics Server, it needs to be set to an integer value greater than 0")
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
@@ -286,6 +289,26 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 
 	prefix := LogLevelMetricsServer
 	return replaceContainerArg(logLevel, prefix, containerNameMetricsServer, scheme, logger)
+}
+
+func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	found := false
+	for _, timeEncoding := range logTimeEncodingsKedaOperator {
+		if logTimeEncoding == timeEncoding {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		logger.Info("Ignoring speficied Log time encoding for KEDA Operator", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodingsKedaOperator, ", "))
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+
+	prefix := LogTimeEncodingKedaOperator
+	return replaceContainerArg(logTimeEncoding, prefix, containerNameKedaOperator, scheme, logger)
 }
 
 func replaceContainerArg(value string, prefix Prefix, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
@@ -304,7 +327,7 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 						if strings.HasPrefix(arg, prefix.String()) {
 							argFound = true
 							if trimmedArg := strings.TrimPrefix(arg, prefix.String()); trimmedArg != value {
-								logger.Info("Replacing", "deployment", container.Name, prefix.String(), value, "previous", trimmedArg)
+								logger.Info("Replacing", "deployment", container.Name, "prefix", prefix.String(), "value", value, "previous", trimmedArg)
 								containers[i].Args[j] = prefix.String() + value
 								changed = true
 							}
@@ -312,7 +335,7 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 						}
 					}
 					if !argFound {
-						logger.Info("Adding", "deployment", container.Name, prefix.String(), value)
+						logger.Info("Adding", "deployment", container.Name, "prefix", prefix.String(), "value", value)
 						containers[i].Args = append(containers[i].Args, prefix.String()+value)
 						changed = true
 					}

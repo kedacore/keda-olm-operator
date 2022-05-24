@@ -110,8 +110,6 @@ jobs:
       - name: Run deployment tests
         run: make test-deployment
 
-
-
   deploy:
     needs: Deploy-test
     name: Deploy

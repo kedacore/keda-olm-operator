@@ -97,6 +97,11 @@ spec:
     # default value: console
     logEncoder: console
 
+    ## Logging time encoding for KEDA Controller
+    # allowed values are 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'
+    # default value: rfc3339
+    # logTimeEncoding: rfc3339
+
     ## Annotations to be added to the KEDA Operator Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
     # deploymentAnnotations:

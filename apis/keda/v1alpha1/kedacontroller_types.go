@@ -74,10 +74,16 @@ type KedaOperatorSpec struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	// Logging format for KEDA Controller
-	// allowed values are json and console
+	// allowed values are 'json' and 'console'
 	// default value: console
 	// +optional
 	LogEncoder string `json:"logEncoder,omitempty"`
+
+	// Logging time encoding for KEDA Controller
+	// allowed values are 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'
+	// default value: rfc3339
+	// +optional
+	LogTimeEncoding string `json:"logTimeEncoding,omitempty"`
 
 	GenericDeploymentSpec `json:",inline"`
 }

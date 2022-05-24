@@ -19,6 +19,11 @@ spec:
           image: ghcr.io/kedacore/keda-olm-operator:main
           command:
             - /manager
+          args:
+            - --leader-elect
+            - --zap-log-level=info
+            - --zap-encoder=console
+            - --zap-time-encoding=rfc3339
           imagePullPolicy: Always
           resources:
             requests:
