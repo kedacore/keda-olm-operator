@@ -38,16 +38,16 @@ jobs:
           sudo chmod +x opm
           sudo mv opm /usr/bin
 
-      - name: Build and deploy KEDA olm operator index for deployment testing
-        run: make deploy-olm-testing
+      - name: Run functionality tests
+        run: make test-functionality
 
       - name: Setup test environment for deployment tests
         run: |
           kind create cluster
           operator-sdk olm install
 
+      - name: Build and deploy KEDA olm operator index for deployment testing
+        run: make deploy-olm-testing
+
       - name: Run deployment tests
         run: make test-deployment
-
-      - name: Run functionality tests
-        run: make test-functionality
