@@ -547,3 +547,32 @@ func replaceResources(resources corev1.ResourceRequirements, containerName strin
 		return nil
 	}
 }
+
+func ReplaceMetricsServerImage(image string, scheme *runtime.Scheme) mf.Transformer {
+	return replaceContainerImage(image, containerNameMetricsServer, scheme)
+}
+
+func ReplaceKedaOperatorImage(image string, scheme *runtime.Scheme) mf.Transformer {
+	return replaceContainerImage(image, containerNameKedaOperator, scheme)
+}
+
+func replaceContainerImage(image string, containerName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerName {
+					containers[i].Image = image
+					break
+				}
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}

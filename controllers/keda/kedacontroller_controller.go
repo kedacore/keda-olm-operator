@@ -20,6 +20,7 @@ import (
 	"context"
 	goerrors "errors"
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
@@ -296,6 +297,11 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-operator", r.Scheme, logger),
 	}
 
+	// Use alternate image spec if env var set
+	if controllerImage := os.Getenv("KEDA_OPERATOR_IMAGE"); len(controllerImage) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorImage(controllerImage, r.Scheme))
+	}
+
 	// DEPRECATED fields
 	if len(instance.Spec.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(instance.Spec.LogLevel, r.Scheme, logger))
@@ -398,6 +404,11 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
+	}
+
+	// Use alternate image spec if env var set
+	if controllerImage := os.Getenv("KEDA_METRICS_SERVER_IMAGE"); len(controllerImage) > 0 {
+		transforms = append(transforms, transform.ReplaceMetricsServerImage(controllerImage, r.Scheme))
 	}
 
 	// certificates rotation works only on Openshift due to openshift/service-ca-operator
