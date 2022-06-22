@@ -44,7 +44,7 @@ metadata:
             "triggers": [
               {
                 "metadata": {
-                  "property": "examle-property"
+                  "property": "example-property"
                 },
                 "type": "example-trigger"
               }
@@ -68,7 +68,7 @@ metadata:
             "triggers": [
               {
                 "metadata": {
-                  "property": "examle-property"
+                  "property": "example-property"
                 },
                 "type": "example-trigger"
               }
@@ -115,8 +115,8 @@ metadata:
     createdAt: "2022-05-11T00:00:00.000Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
-    operators.operatorframework.io/builder: operator-sdk-v1.1.0
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+    operators.operatorframework.io/builder: operator-sdk-v1.16.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
   name: keda.v2.7.1
