@@ -11,7 +11,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code
         uses: actions/checkout@v3
@@ -33,7 +33,7 @@ jobs:
 
       - name: Download opm
         run: |
-          version=1.15.0
+          version=1.26.1
           curl -L https://github.com/operator-framework/operator-registry/releases/download/v${version}/linux-amd64-opm --output opm
           sudo chmod +x opm
           sudo mv opm /usr/bin
@@ -47,7 +47,9 @@ jobs:
           operator-sdk olm install
 
       - name: Build and deploy KEDA olm operator index for deployment testing
-        run: make deploy-olm-testing
+        run: |
+          kubectl create namespace keda
+          make deploy-olm-testing
 
       - name: Run deployment tests
         run: make test-deployment
