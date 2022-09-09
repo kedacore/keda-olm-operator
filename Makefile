@@ -175,7 +175,7 @@ index-push:
 
 .PHONY: deploy-olm	## Deploy bundle.
 deploy-olm: bundle-build bundle-push index-build index-push
-	operator-sdk run bundle ${BUNDLE} --namespace name
+	operator-sdk run bundle ${BUNDLE} --namespace keda
 
 .PHONY: deploy-olm-testing
 deploy-olm-testing:
