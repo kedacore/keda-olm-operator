@@ -168,4 +168,3 @@ jobs:
         run: |
           kubectl create namespace keda
           make deploy-olm
-          
