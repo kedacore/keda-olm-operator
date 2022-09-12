@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
 	. "github.com/onsi/ginkgo"
@@ -39,8 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
