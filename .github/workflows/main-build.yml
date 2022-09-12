@@ -13,7 +13,7 @@ jobs:
       packages: write
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
-    container: ghcr.io/kedacore/build-tools:main
+    container: ghcr.io/kedacore/build-tools:1.18.6
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -27,7 +27,7 @@ jobs:
           go-version: 1.18
 
       - name: Go modules cache
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -35,7 +35,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -76,7 +76,7 @@ jobs:
           go-version: 1.18
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -128,7 +128,7 @@ jobs:
           go-version: 1.18
 
       - name: Go modules cache
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -136,7 +136,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
