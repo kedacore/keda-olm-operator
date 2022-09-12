@@ -88,3 +88,7 @@ linters-settings:
   funlen:
     lines: 80
     statements: 40
+  gci:
+    sections:
+      - standard
+      - default
