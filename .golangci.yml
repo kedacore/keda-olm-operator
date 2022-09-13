@@ -4,7 +4,7 @@ run:
   concurrency: 4
 
   # timeout for analysis, e.g. 30s, 5m, default is 1m
-  timeout: 5m
+  timeout: 10m
 linters:
   # please, do not use `enable-all`: it's deprecated and will be removed soon.
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
@@ -15,7 +15,7 @@ linters:
     - goprintffuncname
     - govet
     - nolintlint
-    - rowserrcheck
+    #- rowserrcheck
     - gofmt
     - revive
     - goimports
@@ -25,19 +25,17 @@ linters:
     - ineffassign
     - staticcheck
     - exportloopref
-    - structcheck
-    - deadcode
     - depguard
     - dogsled
     - errcheck
     #- funlen
+    - gci
     - goconst
     - gocritic
     - gocyclo
     - gosimple
     - stylecheck
     - unused
-    - varcheck
     - unparam
     - unconvert
     - whitespace
@@ -78,6 +76,9 @@ issues:
     - path: resources/resources_handler.go
       linters:
         - dogsled
+    - path: main.go
+      linters:
+        - gci
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
@@ -90,3 +91,8 @@ linters-settings:
   funlen:
     lines: 80
     statements: 40
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/kedacore/keda)
