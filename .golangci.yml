@@ -76,6 +76,9 @@ issues:
     - path: resources/resources_handler.go
       linters:
         - dogsled
+    - path: main.go
+      linters:
+        - gci
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
         - gocritic
