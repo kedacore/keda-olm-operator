@@ -1,7 +1,7 @@
 name: version-diff
-on: 
+on:
   pull_request:
-    paths: 
+    paths:
       - 'keda/**'
 jobs:
   diff:
@@ -13,8 +13,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: cd to keda dir
-        continue-on-error: true
-        run: | 
+        run: |
           cd keda/
           if diff_text="$(diff --color -br --unified=0 $(ls|tail -2))" && [ $? -ne 1 ]; then
             echo "exit code of diff not 1"
