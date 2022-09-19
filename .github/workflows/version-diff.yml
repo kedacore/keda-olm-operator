@@ -7,7 +7,7 @@ jobs:
   diff:
     name: Show diff
     runs-on: ubuntu-latest
-  
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
