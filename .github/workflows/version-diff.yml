@@ -1,0 +1,15 @@
+name: version-diff
+on: 
+  pull_request:
+    paths: 
+      - 'keda/**'
+jobs:
+  diff:
+    name: Show diff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: cd to keda dir
+        run: cd keda/
+      - name: show diff
+        run: diff -bur $(ls | tail -2)
