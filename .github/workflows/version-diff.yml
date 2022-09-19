@@ -7,9 +7,12 @@ jobs:
   diff:
     name: Show diff
     runs-on: ubuntu-latest
-
+  
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
       - name: cd to keda dir
-        run: cd keda/
-      - name: show diff
-        run: diff -bur $(ls | tail -2)
+        run: | 
+          cd keda/
+          diff --colors -br --unified=0 $(ls | tail -2)
