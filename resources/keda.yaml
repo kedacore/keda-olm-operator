@@ -8966,4 +8966,3 @@ spec:
     namespace: keda
   version: v1beta1
   versionPriority: 100
-  
