@@ -1,8 +1,8 @@
 name: git diff dynamic jobs
-on: 
+on:
   pull_request:
     paths:
-      - 'keda/**' 
+      - 'keda/**'
 
 jobs:
   setup:
