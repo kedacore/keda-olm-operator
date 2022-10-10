@@ -90,7 +90,7 @@ jobs:
       - name: Setup Homebrew
         uses: Homebrew/actions/setup-homebrew@master
       - name: Setup Env
-        run: sudo apt-get install gcc-11 g++ binutils libc6 
+        run: sudo apt-get install gcc-11 g++ binutils libc6
 
       - name: Install operator-sdk
         run: brew install operator-sdk
