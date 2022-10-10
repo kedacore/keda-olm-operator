@@ -85,13 +85,12 @@ jobs:
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
-      - name: Install homebrew
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-          test -d ~/.linuxbrew && eval $(~/.linuxbrew/bin/brew shellenv)
-          test -d /home/linuxbrew/.linuxbrew && eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)
-          echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.profile
-          echo "::add-path::/home/linuxbrew/.linuxbrew/bin"
+      # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
+      # https://github.com/actions/runner-images/issues/6283
+      - name: Setup Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Setup Env
+        run: sudo apt-get install gcc-11 g++ binutils libc6 
 
       - name: Install operator-sdk
         run: brew install operator-sdk
@@ -160,6 +159,13 @@ jobs:
           sudo chmod +x opm
           sudo mv opm /usr/bin
 
+      # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
+      # https://github.com/actions/runner-images/issues/6283
+      - name: Setup Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Setup Env
+        run: sudo apt-get install gcc-11 g++ binutils libc6
+        
       - name: Install operator-sdk
         run: brew install operator-sdk
 
