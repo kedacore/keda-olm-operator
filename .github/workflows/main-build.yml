@@ -85,6 +85,13 @@ jobs:
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
+      # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
+      # https://github.com/actions/runner-images/issues/6283
+      - name: Setup Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Setup Env
+        run: sudo apt-get install gcc-11 g++ binutils libc6
+
       - name: Install operator-sdk
         run: brew install operator-sdk
 
@@ -151,6 +158,13 @@ jobs:
           curl -L https://github.com/operator-framework/operator-registry/releases/download/v${version}/linux-amd64-opm --output opm
           sudo chmod +x opm
           sudo mv opm /usr/bin
+
+      # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
+      # https://github.com/actions/runner-images/issues/6283
+      - name: Setup Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Setup Env
+        run: sudo apt-get install gcc-11 g++ binutils libc6
 
       - name: Install operator-sdk
         run: brew install operator-sdk
