@@ -1,8 +1,5 @@
-name: git diff dynamic jobs
-on:
-  pull_request:
-    paths:
-      - 'keda/**'
+name: total super cool stuff
+on: pull_request_target
 
 jobs:
   setup:
@@ -12,7 +9,18 @@ jobs:
       old_files: ${{ steps.setup-id.outputs.old_files }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+
+        uses: actions/checkout@v3
+
+      - name: Register workspace path
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: checkout
+        run: |
+          gh pr checkout ${{ github.event.number }}
 
       - name: Setup dirs for diff
         id: setup-id
@@ -23,7 +31,6 @@ jobs:
           dir_old_list=$(find ${dirs[0]} -print)
           dir_new_list=$(find ${dirs[1]} -print)
           root=$(pwd)
-
           for file in $dir_old_list
           do
             f=$root"/"$file
@@ -31,7 +38,6 @@ jobs:
               old_files="$old_files $file"
             fi
           done
-
           new_files+="{\"new\":["
           for file in $dir_new_list
           do
@@ -45,13 +51,10 @@ jobs:
             fi
           done
           new_files+="]}"
-
           echo $old_files
           echo $new_files
-
           echo "::set-output name=new_files::$new_files"
           echo "::set-output name=old_files::$old_files"
-
   diff:
     name: Diff files
     needs: setup
@@ -80,7 +83,6 @@ jobs:
               break
             fi
           done
-
           diff_text=""
           if [ -n "$old_file" ]; then
             if diff_text="$(diff --color -br --unified=0 ${{matrix.new}} $old_file)" && [ $? -ne 1 ]; then
@@ -104,12 +106,11 @@ jobs:
           fi
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
-
       - name: Create comment
-        if: ${{ steps.diff-id.outputs.body != '' }}
+        if: ${{ steps.diff-id.outputs.body != '' && startsWith(github.event.comment.body,'Diff `${{matrix.new}}`') }}
         uses: peter-evans/create-or-update-comment@v2
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ github.event.comment.id }}
           # max character length is 65536 (2022/10/06)
           body: |
             Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
