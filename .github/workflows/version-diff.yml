@@ -139,16 +139,16 @@ jobs:
         if: steps.find-comment.outputs.comment-id != ''
         run: |
           #gh api --method DELETE -H "Accept: application/vnd.github+json" \
-          echo "/repos/${{github.repository_owner}}/${{github.event.repository.name}}/issues/comments/${{steps.find-comment.outputs.comment-id}}"
+          /repos/${{github.repository_owner}}/${{github.event.repository.name}}/issues/comments/${{steps.find-comment.outputs.comment-id}}
 
-      # # this "updates" a comment (technically creates a new one)
-      # - name: Update comment
-      #   if: steps.find-comment.outputs.comment-id != ''
-      #   uses: peter-evans/create-or-update-comment@v2
-      #   with:
-      #     issue-number: ${{ github.event.pull_request.number }}
-      #     # max character length is 65536 (2022/10/06)
-      #     body: |
-      #       Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
-      #       ${{steps.diff-id.outputs.body}}
-      #     reactions: eyes
+      # this "updates" a comment (technically creates a new one)
+      - name: Update comment
+        if: steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          # max character length is 65536 (2022/10/06)
+          body: |
+            Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
+            ${{steps.diff-id.outputs.body}}
+          reactions: eyes
