@@ -75,6 +75,8 @@ jobs:
 
       - name: make diff ${{matrix.new}}
         working-directory: keda/
+        env:
+          new_file: ${{matrix.new}}
         id: diff-id
         run: |
           regex=$(echo ${{matrix.new}} | awk 'match($0, /[^\.\/]*\.yaml/) {print substr($0, RSTART, RLENGTH)}')
@@ -96,13 +98,13 @@ jobs:
             else
               PREFIX=$'<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
-              diff_text="${PREFIX}${diff_text}${POSTFIX}"
-              echo "$diff_text"
+              first_line="Diff `$new_file` & `$old_file`"
+              diff_text="${first_line}${PREFIX}${diff_text}${POSTFIX}"
               diff_text="${diff_text//'%'/'%25'}"
               diff_text="${diff_text//$'\n'/'%0A'}"
               diff_text="${diff_text//$'\r'/'%0D'}"
-              if [ ${#diff_text} -ge 65436 ]; then
-                diff_text="Diff output of `${{matrix.new}}` is too large - character limit 65436 exceeded for github comment"
+              if [ ${#diff_text} -ge 65536 ]; then
+                diff_text="Diff output of `${{matrix.new}}` is too large - character limit 65536 exceeded for github comment"
               fi
             fi
           else
@@ -129,7 +131,6 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
           body: |
-            Diff `${{matrix.new}}` & `$old_file`
             ${{steps.diff-id.outputs.body}}
           reactions: rocket
 
@@ -153,6 +154,5 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
           body: |
-            Diff `${{matrix.new}}` & `$old_file`
             ${{steps.diff-id.outputs.body}}
           reactions: eyes
