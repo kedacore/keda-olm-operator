@@ -140,7 +140,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{github.event.pull_request.number}}
-          body: Diff output of \`$new_file\` is too large - character limit 65536 exceeded for github comment
+          body: Diff output of `${{$new_file}}` is too large - character limit 65536 exceeded for github comment
           reactions: confused
 
       # delete a comment in order to create a new one in "Update comment" so it stays
@@ -171,5 +171,5 @@ jobs:
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{github.event.pull_request.number}}
-          body: Diff output of \`$new_file\` is too large - character limit 65536 exceeded for github comment
+          body: Diff output of `${{$new_file}}` is too large - character limit 65536 exceeded for github comment
           reactions: confused
