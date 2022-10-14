@@ -123,7 +123,7 @@ jobs:
         if: ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' }}
         uses: peter-evans/create-or-update-comment@v2
         with:
-          comment-id: ${{ github.event.comment.id }}
+          issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
           body: |
             Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
