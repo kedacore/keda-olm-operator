@@ -120,7 +120,7 @@ jobs:
           direction: last
 
       - name: Create comment
-        if: ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' }}
+        if: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != ''
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -131,7 +131,7 @@ jobs:
           reactions: rocket
 
       - name: Update comment
-        if: ${{ steps.find-comment.outputs.comment-id != '' }}
+        if: steps.find-comment.outputs.comment-id != ''
         uses: peter-evans/create-or-update-comment@v2
         with:
           comment-id: ${{ steps.find-comment.outputs.comment-id }}
