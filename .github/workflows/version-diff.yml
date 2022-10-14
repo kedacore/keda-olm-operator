@@ -94,6 +94,7 @@ jobs:
                 exit 1;
               fi
             else
+              echo "diff prev: $diff_text"
               PREFIX=$'<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
               first_line="Diff `${{matrix.new}}` & `$old_file`"
