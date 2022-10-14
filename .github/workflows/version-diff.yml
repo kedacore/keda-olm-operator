@@ -107,6 +107,7 @@ jobs:
           else
             diff_text="File `${{matrix.new}}` is new and wasn't found in previous version"
           fi
+          echo "$diff_text"
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
 
@@ -116,7 +117,7 @@ jobs:
         with:
           comment-author: "github-actions[bot]"
           issue-number: ${{github.event.pull_request.number}}
-          body-includes: Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
+          body-includes: "`${{matrix.new}}`"
           direction: last
 
       # Create a brand new comment (usually when PR is created) which can be updated
