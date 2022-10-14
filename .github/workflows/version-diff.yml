@@ -110,15 +110,17 @@ jobs:
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
 
-      - name: Find comment if exists
+      - name: Find comment
         uses: peter-evans/find-comment@v2
         id: find-comment
         with:
-          comment-author: 'github-actions[bot]'
+          comment-author: "github-actions[bot]"
           issue-number: ${{github.event.pull_request.number}}
           body-includes: Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
           direction: last
 
+      # Create a brand new comment (usually when PR is created) which can be updated
+      # later with future commits
       - name: Create comment
         if: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != ''
         uses: peter-evans/create-or-update-comment@v2
@@ -130,14 +132,23 @@ jobs:
             ${{steps.diff-id.outputs.body}}
           reactions: rocket
 
-      - name: Update comment
+      # delete a comment in order to create a new one in "Update comment" so it stays
+      # at the bottom of the PR discussion
+      - name: Delete comment
+        id: del-comment
         if: steps.find-comment.outputs.comment-id != ''
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          edit-mode: replace
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
-          # max character length is 65536 (2022/10/06)
-          body: |
-            Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
-            ${{steps.diff-id.outputs.body}}
-          reactions: eyes
+        run: |
+          #gh api --method DELETE -H "Accept: application/vnd.github+json" \
+          echo "/repos/${{github.repository_owner}}/${{github.event.repository.name}}/issues/comments/${steps.find-comment.outputs.comment-id}"
+
+      # # this "updates" a comment (technically creates a new one)
+      # - name: Update comment
+      #   if: steps.find-comment.outputs.comment-id != ''
+      #   uses: peter-evans/create-or-update-comment@v2
+      #   with:
+      #     issue-number: ${{ github.event.pull_request.number }}
+      #     # max character length is 65536 (2022/10/06)
+      #     body: |
+      #       Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
+      #       ${{steps.diff-id.outputs.body}}
+      #     reactions: eyes
