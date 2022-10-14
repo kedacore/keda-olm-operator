@@ -90,25 +90,25 @@ jobs:
           done
           diff_text=""
           if [ -n "$old_file" ]; then
-            if diff_text="$(diff --color -br --unified=0 $old_file ${{matrix.new}})" && [ $? -ne 1 ]; then
+            if diff_text="$(diff --color -br --unified=0 $old_file $new_file)" && [ $? -ne 1 ]; then
               if [ $? -eq 2 ]; then
                 echo "exit code of diff is 2 which means trouble"
                 exit 1;
               fi
             else
-              PREFIX=$'<details>\n\n```diff\n\n'
+              PREFIX=$'\n\n<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
-              first_line="Diff \`$new_file\` & \`$old_file\`"
+              first_line="Diff \`$new_file\` \& \`$old_file\`"
               diff_text="${first_line}${PREFIX}${diff_text}${POSTFIX}"
               diff_text="${diff_text//'%'/'%25'}"
               diff_text="${diff_text//$'\n'/'%0A'}"
               diff_text="${diff_text//$'\r'/'%0D'}"
               if [ ${#diff_text} -ge 65536 ]; then
-                diff_text="Diff output of `${{matrix.new}}` is too large - character limit 65536 exceeded for github comment"
+                diff_text="Diff output of \`$new_file\` is too large - character limit 65536 exceeded for github comment"
               fi
             fi
           else
-            diff_text="File `${{matrix.new}}` wasn't found in previous version"
+            diff_text="File \`$new_file\` wasn't found in previous version"
           fi
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
