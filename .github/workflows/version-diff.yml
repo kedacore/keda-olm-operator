@@ -134,6 +134,7 @@ jobs:
         if: steps.find-comment.outputs.comment-id != ''
         uses: peter-evans/create-or-update-comment@v2
         with:
+          edit-mode: replace
           comment-id: ${{ steps.find-comment.outputs.comment-id }}
           # max character length is 65536 (2022/10/06)
           body: |
