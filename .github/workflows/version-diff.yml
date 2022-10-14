@@ -9,11 +9,7 @@ jobs:
       old_files: ${{ steps.setup-id.outputs.old_files }}
     steps:
       - name: Checkout
-
         uses: actions/checkout@v3
-
-      - name: Register workspace path
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Checkout Pull Request
         env:
@@ -68,7 +64,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Checkout Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: checkout
+        run: |
+          gh pr checkout ${{ github.event.number }}
 
       - name: make diff ${{matrix.new}}
         working-directory: keda/
@@ -106,8 +109,24 @@ jobs:
           fi
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
+
+      - name: Find comment if exists
+        uses: peter-evans/find-comment@v2
+        id: find-comment
+        with:
+          comment-author: 'github-actions[bot]'
+          issue-number: ${{github.event.pull_request.number}}
+          body-includes: Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
+          direction: last
+        run: |
+          if [ ${{steps.find-comment.outputs.comment-id}} == 0 ];then
+            echo "File diff comment of `${{matrix.new}}` has comment-id: ${{steps.find-comment.outputs.comment-id}}"
+          else
+            echo "File diff comment of `${{matrix.new}}` doesn't have a comment yet"
+          fi
+
       - name: Create comment
-        if: ${{ steps.diff-id.outputs.body != '' && startsWith(github.event.comment.body,'Diff `${{matrix.new}}`') }}
+        if: ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' }}
         uses: peter-evans/create-or-update-comment@v2
         with:
           comment-id: ${{ github.event.comment.id }}
@@ -116,3 +135,14 @@ jobs:
             Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
             ${{steps.diff-id.outputs.body}}
           reactions: rocket
+
+      - name: Update comment
+        if: ${{ steps.find-comment.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          # max character length is 65536 (2022/10/06)
+          body: |
+            Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
+            ${{steps.diff-id.outputs.body}}
+          reactions: eyes
