@@ -77,7 +77,7 @@ jobs:
         working-directory: keda/
         id: diff-id
         run: |
-          regex=$(echo ${{matrix.new}} | awk 'match($0, /\.[^\.]*\.yaml/) {print substr($0, RSTART, RLENGTH)}')
+          regex=$(echo ${{matrix.new}} | awk 'match($0, /[^\.\/]*\.yaml/) {print substr($0, RSTART, RLENGTH)}')
           old_file=""
           for old in $of
           do
@@ -103,8 +103,8 @@ jobs:
               diff_text="${diff_text//'%'/'%25'}"
               diff_text="${diff_text//$'\n'/'%0A'}"
               diff_text="${diff_text//$'\r'/'%0D'}"
-              if [ ${#diff_text} -ge 65536 ]; then
-                diff_text="Diff output of `${{matrix.new}}` is too large - character limit 65536 exceeded for github comment"
+              if [ ${#diff_text} -ge 65436 ]; then
+                diff_text="Diff output of `${{matrix.new}}` is too large - character limit 65436 exceeded for github comment"
               fi
             fi
           else
