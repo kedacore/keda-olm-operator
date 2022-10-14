@@ -118,12 +118,6 @@ jobs:
           issue-number: ${{github.event.pull_request.number}}
           body-includes: Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
           direction: last
-        run: |
-          if [ ${{steps.find-comment.outputs.comment-id}} == 0 ];then
-            echo "File diff comment of `${{matrix.new}}` has comment-id: ${{steps.find-comment.outputs.comment-id}}"
-          else
-            echo "File diff comment of `${{matrix.new}}` doesn't have a comment yet"
-          fi
 
       - name: Create comment
         if: ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' }}
