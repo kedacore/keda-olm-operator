@@ -96,8 +96,8 @@ jobs:
             else
               PREFIX=$'\n\n<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
-              diff_text="Diff `${{matrix.new}}` & `$old_file`"
-              diff_text+="${PREFIX}${diff_text}${POSTFIX}"
+              first_line="Diff `${{matrix.new}}` & `$old_file`"
+              diff_text="${first_line}${PREFIX}${diff_text}${POSTFIX}"
               diff_text="${diff_text//'%'/'%25'}"
               diff_text="${diff_text//$'\n'/'%0A'}"
               diff_text="${diff_text//$'\r'/'%0D'}"
