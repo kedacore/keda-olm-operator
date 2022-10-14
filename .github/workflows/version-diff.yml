@@ -139,7 +139,7 @@ jobs:
         if: steps.find-comment.outputs.comment-id != ''
         run: |
           #gh api --method DELETE -H "Accept: application/vnd.github+json" \
-          echo "/repos/${{github.repository_owner}}/${{github.event.repository.name}}/issues/comments/${steps.find-comment.outputs.comment-id}"
+          echo "/repos/${{github.repository_owner}}/${{github.event.repository.name}}/issues/comments/${{steps.find-comment.outputs.comment-id}}"
 
       # # this "updates" a comment (technically creates a new one)
       # - name: Update comment
