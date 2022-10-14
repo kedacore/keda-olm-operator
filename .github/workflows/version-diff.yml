@@ -94,7 +94,7 @@ jobs:
                 exit 1;
               fi
             else
-              PREFIX=$'Diff `${{matrix.new}}` & `$old_file`\n\n<details>\n\n```diff\n\n'
+              PREFIX=$'Diff `${{matrix.new}}` & `"$old_file"`\n\n<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
               diff_text="${PREFIX}${diff_text}${POSTFIX}"
               diff_text="${diff_text//'%'/'%25'}"
@@ -105,7 +105,7 @@ jobs:
               fi
             fi
           else
-            diff_text="File ${{matrix.new}} is new and wasn't found in previous version"
+            diff_text="File `${{matrix.new}}` is new and wasn't found in previous version"
           fi
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
