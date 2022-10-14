@@ -79,7 +79,7 @@ jobs:
           new_file: ${{matrix.new}}
         id: diff-id
         run: |
-          regex=$(echo ${{matrix.new}} | awk 'match($0, /[^\.\/]*\.yaml/) {print substr($0, RSTART, RLENGTH)}')
+          regex=$(echo ${{matrix.new}} | awk 'match($0, /[^\.\/]*\.y[a]{0,1}ml/) {print substr($0, RSTART, RLENGTH)}')
           old_file=""
           for old in $of
           do
@@ -104,11 +104,12 @@ jobs:
               diff_text="${diff_text//$'\n'/'%0A'}"
               diff_text="${diff_text//$'\r'/'%0D'}"
               if [ ${#diff_text} -ge 65536 ]; then
-                diff_text="Diff output of \`$new_file\` is too large - character limit 65536 exceeded for github comment"
+                echo "$diff_text"
+                diff_text="limit exceeded"
               fi
             fi
           else
-            diff_text="File \`$new_file\` wasn't found in previous version"
+            diff_text="File \`$new_file\` wasn't found in previous version, its brand new!"
           fi
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
@@ -125,7 +126,7 @@ jobs:
       # Create a brand new comment (usually when PR is created) which can be updated
       # later with future commits
       - name: Create comment
-        if: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != ''
+        if: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != "limit exceeded"
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -133,6 +134,14 @@ jobs:
           body: |
             ${{steps.diff-id.outputs.body}}
           reactions: rocket
+
+      - name: Create comment if comment too large
+        if: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body == "limit exceeded"
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{github.event.pull_request.number}}
+          body: Diff output of \`$new_file\` is too large - character limit 65536 exceeded for github comment
+          reactions: confused
 
       # delete a comment in order to create a new one in "Update comment" so it stays
       # at the bottom of the PR discussion
@@ -146,9 +155,9 @@ jobs:
           /repos/${{github.repository_owner}}/${{github.event.repository.name}}\
           /issues/comments/${{steps.find-comment.outputs.comment-id}}
 
-      # this "updates" a comment (technically creates a new one)
+      # this "updates" a comment (creates a new one as an update)
       - name: Update comment
-        if: steps.find-comment.outputs.comment-id != ''
+        if: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body != "limit exceeded"
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -156,3 +165,11 @@ jobs:
           body: |
             ${{steps.diff-id.outputs.body}}
           reactions: eyes
+
+      - name: Update comment if comment too large
+        if: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body == "limit exceeded"
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{github.event.pull_request.number}}
+          body: Diff output of \`$new_file\` is too large - character limit 65536 exceeded for github comment
+          reactions: confused
