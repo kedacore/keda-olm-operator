@@ -94,12 +94,9 @@ jobs:
                 exit 1;
               fi
             else
-              echo "diff prev: $diff_text"
               PREFIX=$'<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
-              first_line="Diff `${{matrix.new}}` & `$old_file`"
-              echo "first_line: $first_line"
-              diff_text="${first_line}${PREFIX}${diff_text}${POSTFIX}"
+              diff_text="${PREFIX}${diff_text}${POSTFIX}"
               echo "$diff_text"
               diff_text="${diff_text//'%'/'%25'}"
               diff_text="${diff_text//$'\n'/'%0A'}"
@@ -132,6 +129,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
           body: |
+            Diff `${{matrix.new}}` & `$old_file`
             ${{steps.diff-id.outputs.body}}
           reactions: rocket
 
@@ -155,5 +153,6 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
           body: |
+            Diff `${{matrix.new}}` & `$old_file`
             ${{steps.diff-id.outputs.body}}
           reactions: eyes
