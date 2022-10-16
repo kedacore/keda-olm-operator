@@ -90,7 +90,7 @@ jobs:
           done
           diff_text=""
           if [ -n "$old_file" ]; then
-            if diff_text="$(diff --color -br --unified=0 $old_file $new_file)" && [ $? -ne 1 ]; then
+            if diff_text="$(diff --color -br --suppress-common-lines $old_file $new_file)" && [ $? -ne 1 ]; then
               if [ $? -eq 2 ]; then
                 echo "exit code of diff is 2 which means trouble"
                 exit 1;
