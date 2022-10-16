@@ -126,8 +126,11 @@ jobs:
       - name: print
         env:
           find_output: ${{steps.find-comment.outputs.comment-body}}
+          new: ${{steps.diff-id.outputs.body}}
         run: |
-          echo "find comm body: $find_output"
+          echo "old: $find_output"
+          echo "now: $new"
+
       # Create a brand new comment (usually when PR is created)
       - name: Create comment
         if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body
