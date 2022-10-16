@@ -123,6 +123,11 @@ jobs:
           body-includes: "`${{matrix.new}}`"
           direction: last
 
+      - name: print
+        env:
+          find_output: ${{steps.find-comment.outputs.body}}
+        run: |
+          echo "find comm body: $find_output"
       # Create a brand new comment (usually when PR is created)
       - name: Create comment
         if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body == steps.find-comment.outputs.body
@@ -156,7 +161,7 @@ jobs:
 
       # this "updates" a comment (creates a new one as an update)
       - name: Update comment
-        if: steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body != steps.find-comment.outputs.body
+        if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body != steps.find-comment.outputs.body
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
