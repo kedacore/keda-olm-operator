@@ -98,7 +98,7 @@ jobs:
             else
               ## remove time of diff for later comparison (of diff files)
               edit=$(echo $diff_text | head -2 | awk '{ printf "%s %s\n",$1,$2 }')
-              diff_text=$(sed -n -i '3,$ p' $diff_text)
+              diff_text=$(sed -n -i '3,$ p' "$diff_text")
               diff_text=${edit}{$diff_text}
               ## add prefix & postfix
               PREFIX=$'\n\n<details>\n\n```diff\n\n'
