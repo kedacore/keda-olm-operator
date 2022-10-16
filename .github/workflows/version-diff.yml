@@ -61,10 +61,10 @@ jobs:
 
     env:
       of: ${{ needs.setup.outputs.old_files }}
-      create_new:   ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' }}
-      create_limit: ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body == 'limit exceeded' }}
-      update_new:   ${{ steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body != 'limit exceeded' }}
-      update_limit: ${{ steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body == 'limit exceeded' }}
+      create_new: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded'
+      create_limit: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body == 'limit exceeded'
+      update_new: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body != 'limit exceeded'
+      update_limit: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body == 'limit exceeded'
 
     steps:
       - name: Checkout
@@ -127,9 +127,15 @@ jobs:
           body-includes: "`${{matrix.new}}`"
           direction: last
 
+      - name: print this
+        run: |
+          echo "create limit: $create_limit"
+          echo "create new: $create_new"
+          echo "update limit: $update_limit"
+          echo "update new: $update_new"
       # Create a brand new comment (usually when PR is created)
       - name: Create comment
-        if: env.create_new && steps.diff-id.outputs.body == steps.find-comment.outputs.body
+        if: $create_new && steps.diff-id.outputs.body == steps.find-comment.outputs.body
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -139,7 +145,7 @@ jobs:
           reactions: rocket
 
       - name: Create comment over limit
-        if: env.create_limit
+        if: $create_limit
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{github.event.pull_request.number}}
@@ -160,7 +166,7 @@ jobs:
 
       # this "updates" a comment (creates a new one as an update)
       - name: Update comment
-        if: env.update_new && steps.diff-id.outputs.body != steps.find-comment.outputs.body
+        if: $update_new && steps.diff-id.outputs.body != steps.find-comment.outputs.body
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -170,7 +176,7 @@ jobs:
           reactions: eyes
 
       - name: Update comment over limit
-        if: env.update_limit
+        if: $update_limit
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{github.event.pull_request.number}}
