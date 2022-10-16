@@ -97,7 +97,7 @@ jobs:
               fi
             else
               ## add prefix & postfix
-              PREFIX=$'\n<details>\n```diff\n'
+              PREFIX=$'\n\n<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
               first_line="Diff \`$new_file\` \& \`$old_file\`"
               diff_text="${first_line}${PREFIX}${diff_text}${POSTFIX}"
