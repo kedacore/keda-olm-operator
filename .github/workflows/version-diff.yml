@@ -61,10 +61,10 @@ jobs:
 
     env:
       of: ${{ needs.setup.outputs.old_files }}
-      create_new: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded'
-      create_limit: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body == 'limit exceeded'
-      update_new: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body != 'limit exceeded'
-      update_limit: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body == 'limit exceeded'
+      create_new:   ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' }}
+      create_limit: ${{ steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body == 'limit exceeded' }}
+      update_new:   ${{ steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body != 'limit exceeded' }}
+      update_limit: ${{ steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body == 'limit exceeded' }}
 
     steps:
       - name: Checkout
