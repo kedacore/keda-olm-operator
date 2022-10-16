@@ -150,7 +150,7 @@ jobs:
           reactions: rocket
 
       - name: Create comment over limit
-        if: steps.diff-id.outputs.body == 'limit exceeded' && steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body
+        if: steps.diff-id.outputs.body == 'limit exceeded'
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{github.event.pull_request.number}}
@@ -179,11 +179,3 @@ jobs:
           body: |
             ${{steps.diff-id.outputs.body}}
           reactions: eyes
-
-      - name: Update comment over limit
-        if: steps.diff-id.outputs.body == 'limit exceeded' && steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          issue-number: ${{github.event.pull_request.number}}
-          body: Diff output of `${{matrix.new}}` is too large - character limit 65536 exceeded for github comment
-          reactions: confused
