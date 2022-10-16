@@ -100,6 +100,7 @@ jobs:
               edit=$(echo $diff_text | head -2 | awk '{ printf "%s %s\n",$1,$2 }')
               diff_text=$(echo "$diff_text" | tail -n +3)
               diff_text=${edit}{$diff_text}
+              echo $diff_text
               ## add prefix & postfix
               PREFIX=$'\n\n<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
@@ -111,8 +112,7 @@ jobs:
               diff_text="${diff_text//$'\r'/'%0D'}"
               if [ ${#diff_text} -ge 65536 ]; then
                 echo "$diff_text"
-                number_diff=${#diff_text}-65536
-                diff_text="limit exceeded by $number_diff character"
+                diff_text="limit exceeded"
               fi
             fi
           else
