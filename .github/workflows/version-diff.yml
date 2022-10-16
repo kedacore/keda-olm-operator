@@ -61,6 +61,10 @@ jobs:
 
     env:
       of: ${{ needs.setup.outputs.old_files }}
+      create_new: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded'
+      create_limit: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body == 'limit exceeded'
+      update_new: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body != 'limit exceeded'
+      update_limit: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body == 'limit exceeded'
 
     steps:
       - name: Checkout
@@ -123,10 +127,9 @@ jobs:
           body-includes: "`${{matrix.new}}`"
           direction: last
 
-      # Create a brand new comment (usually when PR is created) which can be updated
-      # later with future commits
+      # Create a brand new comment (usually when PR is created)
       - name: Create comment
-        if: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded'
+        if: env.create_new && steps.diff-id.outputs.body == steps.find-comment.outputs.body
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -135,8 +138,8 @@ jobs:
             ${{steps.diff-id.outputs.body}}
           reactions: rocket
 
-      - name: Create comment if comment too large
-        if: steps.find-comment.outputs.comment-id == '' && steps.diff-id.outputs.body == 'limit exceeded'
+      - name: Create comment over limit
+        if: env.create_limit
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{github.event.pull_request.number}}
@@ -157,7 +160,7 @@ jobs:
 
       # this "updates" a comment (creates a new one as an update)
       - name: Update comment
-        if: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body != 'limit exceeded'
+        if: env.update_new && steps.diff-id.outputs.body != steps.find-comment.outputs.body
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -166,8 +169,8 @@ jobs:
             ${{steps.diff-id.outputs.body}}
           reactions: eyes
 
-      - name: Update comment if comment too large
-        if: steps.find-comment.outputs.comment-id != '' && steps.diff-id.outputs.body == 'limit exceeded'
+      - name: Update comment over limit
+        if: env.update_limit
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{github.event.pull_request.number}}
