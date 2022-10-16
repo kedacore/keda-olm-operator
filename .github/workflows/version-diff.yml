@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "old: $find_output"
           echo "now: $new"
-          if [ $find_output" == $new ];then
+          if [ "$find_output" == "$new" ];then
             echo "same"
           else
             echo "diff"
