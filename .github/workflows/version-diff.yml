@@ -1,5 +1,8 @@
-name: total super cool stuff
-on: pull_request_target
+name: Git Diff of last keda versions
+on:
+  pull_request_target:
+    paths:
+      - 'keda/**'
 
 jobs:
   setup:
@@ -47,8 +50,6 @@ jobs:
             fi
           done
           new_files+="]}"
-          echo $old_files
-          echo $new_files
           echo "::set-output name=new_files::$new_files"
           echo "::set-output name=old_files::$old_files"
   diff:
