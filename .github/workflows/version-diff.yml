@@ -126,9 +126,21 @@ jobs:
           body-includes: "`${{matrix.new}}`"
           direction: last
 
+      # delete a comment in order to create a new one in "Update comment" so it stays
+      # at the bottom of the PR discussion
+      - name: Delete comment
+        id: del-comment
+        if: steps.find-comment.outputs.comment-id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method DELETE -H "Accept: application/vnd.github+json" \
+          /repos/${{github.repository_owner}}/${{github.event.repository.name}}\
+          /issues/comments/${{steps.find-comment.outputs.comment-id}}
+
       # Create a brand new comment (usually when PR is created)
       - name: Create comment
-        if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body
+        if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && (steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body || steps.find-comment.outputs.comment-id == '')
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -145,21 +157,9 @@ jobs:
           body: Diff output of `${{matrix.new}}` is too large - character limit 65536 exceeded for github comment
           reactions: confused
 
-      # delete a comment in order to create a new one in "Update comment" so it stays
-      # at the bottom of the PR discussion
-      - name: Delete comment
-        id: del-comment
-        if: steps.find-comment.outputs.comment-id != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api --method DELETE -H "Accept: application/vnd.github+json" \
-          /repos/${{github.repository_owner}}/${{github.event.repository.name}}\
-          /issues/comments/${{steps.find-comment.outputs.comment-id}}
-
       # this "updates" a comment (creates a new one as an update)
       - name: Update comment
-        if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body != steps.find-comment.outputs.comment-body
+        if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body != steps.find-comment.outputs.comment-body && steps.find-comment.outputs.comment-body != ''
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
