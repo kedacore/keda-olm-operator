@@ -126,19 +126,6 @@ jobs:
           body-includes: "`${{matrix.new}}`"
           direction: last
 
-      - name: print
-        env:
-          find_output: ${{steps.find-comment.outputs.comment-body}}
-          new: ${{steps.diff-id.outputs.body}}
-        run: |
-          echo "old: $find_output"
-          echo "now: $new"
-          if [ "$find_output" == "$new" ];then
-            echo "same"
-          else
-            echo "diff"
-          fi
-
       # Create a brand new comment (usually when PR is created)
       - name: Create comment
         if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body
