@@ -1,6 +1,6 @@
-name: git diff dynamic jobs
+name: Git Diff of last keda versions
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - 'keda/**'
 
@@ -12,7 +12,14 @@ jobs:
       old_files: ${{ steps.setup-id.outputs.old_files }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Checkout Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: checkout
+        run: |
+          gh pr checkout ${{ github.event.number }}
 
       - name: Setup dirs for diff
         id: setup-id
@@ -23,7 +30,6 @@ jobs:
           dir_old_list=$(find ${dirs[0]} -print)
           dir_new_list=$(find ${dirs[1]} -print)
           root=$(pwd)
-
           for file in $dir_old_list
           do
             f=$root"/"$file
@@ -31,7 +37,6 @@ jobs:
               old_files="$old_files $file"
             fi
           done
-
           new_files+="{\"new\":["
           for file in $dir_new_list
           do
@@ -45,13 +50,8 @@ jobs:
             fi
           done
           new_files+="]}"
-
-          echo $old_files
-          echo $new_files
-
           echo "::set-output name=new_files::$new_files"
           echo "::set-output name=old_files::$old_files"
-
   diff:
     name: Diff files
     needs: setup
@@ -65,13 +65,22 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Checkout Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: checkout
+        run: |
+          gh pr checkout ${{ github.event.number }}
 
       - name: make diff ${{matrix.new}}
         working-directory: keda/
+        env:
+          new_file: ${{matrix.new}}
         id: diff-id
         run: |
-          regex=$(echo ${{matrix.new}} | awk 'match($0, /\.[^\.]*\.yaml/) {print substr($0, RSTART, RLENGTH)}')
+          regex=$(echo ${{matrix.new}} | awk 'match($0, /[^\.\/]*\.y[a]{0,1}ml/) {print substr($0, RSTART, RLENGTH)}')
           old_file=""
           for old in $of
           do
@@ -80,38 +89,81 @@ jobs:
               break
             fi
           done
-
           diff_text=""
           if [ -n "$old_file" ]; then
-            if diff_text="$(diff --color -br --unified=0 ${{matrix.new}} $old_file)" && [ $? -ne 1 ]; then
+            if diff_text="$(diff --color -br --suppress-common-lines $old_file $new_file)" && [ $? -ne 1 ]; then
               if [ $? -eq 2 ]; then
                 echo "exit code of diff is 2 which means trouble"
                 exit 1;
               fi
             else
-              PREFIX=$'<details>\n\n```diff\n\n'
+              ## add prefix & postfix
+              PREFIX=$'\n\n<details>\n\n```diff\n\n'
               POSTFIX=$'\n\n```\n\n</details>'
-              diff_text="${PREFIX}${diff_text}${POSTFIX}"
+              first_line="Diff \`$new_file\` \& \`$old_file\`"
+              diff_text="${first_line}${PREFIX}${diff_text}${POSTFIX}"
+              ## set file ready for github comment
               diff_text="${diff_text//'%'/'%25'}"
               diff_text="${diff_text//$'\n'/'%0A'}"
               diff_text="${diff_text//$'\r'/'%0D'}"
-              if [ ${#diff_text} -ge 65436 ]; then
-                diff_text="Diff output is too large - character limit 65436 exceeded for github comment"
+              if [ ${#diff_text} -ge 65536 ]; then
+                echo "$diff_text"
+                diff_text="limit exceeded"
               fi
             fi
           else
-            diff_text="File ${{matrix.new}} is new and wasn't found in previous version"
+            diff_text="File \`$new_file\` wasn't found in previous version, its brand new!"
           fi
           echo "::set-output name=body::$diff_text"
           echo "::set-output name=old_file::$old_file"
 
+      - name: Find comment
+        uses: peter-evans/find-comment@v2
+        id: find-comment
+        with:
+          comment-author: "github-actions[bot]"
+          issue-number: ${{github.event.pull_request.number}}
+          body-includes: "`${{matrix.new}}`"
+          direction: last
+
+      # Create a brand new comment (usually when PR is created)
       - name: Create comment
-        if: ${{ steps.diff-id.outputs.body != '' }}
+        if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body
         uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
           body: |
-            Diff `${{matrix.new}}` & `${{steps.diff-id.outputs.old_file}}`
             ${{steps.diff-id.outputs.body}}
           reactions: rocket
+
+      - name: Create comment over limit
+        if: steps.diff-id.outputs.body == 'limit exceeded'
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{github.event.pull_request.number}}
+          body: Diff output of `${{matrix.new}}` is too large - character limit 65536 exceeded for github comment
+          reactions: confused
+
+      # delete a comment in order to create a new one in "Update comment" so it stays
+      # at the bottom of the PR discussion
+      - name: Delete comment
+        id: del-comment
+        if: steps.find-comment.outputs.comment-id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method DELETE -H "Accept: application/vnd.github+json" \
+          /repos/${{github.repository_owner}}/${{github.event.repository.name}}\
+          /issues/comments/${{steps.find-comment.outputs.comment-id}}
+
+      # this "updates" a comment (creates a new one as an update)
+      - name: Update comment
+        if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body != steps.find-comment.outputs.comment-body
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          # max character length is 65536 (2022/10/06)
+          body: |
+            ${{steps.diff-id.outputs.body}}
+          reactions: eyes
