@@ -102,6 +102,11 @@ spec:
     # default value: rfc3339
     # logTimeEncoding: rfc3339
 
+    ## Arbitrary arguments
+    # Define any argument with possibility to override already existing ones.
+    # Array of strings (format is either with prefix '--key=value' or just 'value')
+    # other: []
+
     ## Annotations to be added to the KEDA Operator Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
     # deploymentAnnotations:
@@ -173,6 +178,11 @@ spec:
     # allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
     # default value: "0"
     logLevel: "0"
+
+    ## Arbitrary arguments
+    # Define any argument with possibility to override already existing ones.
+    # Array of strings (format is either with prefix '--key=value' or just 'value')
+    # other: []
 
     ## Annotations to be added to the KEDA Metrics Server Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/

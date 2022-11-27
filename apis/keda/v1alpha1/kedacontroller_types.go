@@ -83,6 +83,12 @@ type KedaOperatorSpec struct {
 	LogTimeEncoding string `json:"logTimeEncoding,omitempty"`
 
 	GenericDeploymentSpec `json:",inline"`
+
+	// Any user-defined arguments with possibility to override any existing or
+	// previously defined arguments. Allowed formats are '--argument=value',
+	// 'argument=value' or just 'value'. Ex.: '--v=0' or 'ENV_ARGUMENT'
+	// +optional
+	Other []string `json:"other,omitempty"`
 }
 
 type KedaMetricsServerSpec struct {
@@ -94,6 +100,12 @@ type KedaMetricsServerSpec struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	GenericDeploymentSpec `json:",inline"`
+
+	// Any user-defined arguments with possibility to override any existing or
+	// previously defined arguments. Allowed formats are '--argument=value',
+	// 'argument=value' or just 'value'. Ex.: '--v=0' or 'ENV_ARGUMENT'
+	// +optional
+	Other []string `json:"other,omitempty"`
 }
 
 type GenericDeploymentSpec struct {

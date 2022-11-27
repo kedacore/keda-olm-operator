@@ -311,6 +311,40 @@ func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.
 	return replaceContainerArg(logTimeEncoding, prefix, containerNameKedaOperator, scheme, logger)
 }
 
+func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	var prefix Prefix = ""
+	var prefixStr string = ""
+	var argTrue string = ""
+
+	if strings.Contains(argument, "=") {
+		// if argument is in format --arg=value or arg=value
+		stringSplit := strings.SplitAfter(argument, "=")
+		if !strings.HasPrefix(stringSplit[0], "--") {
+			// add "--" at the beginning of argument prefix if not given
+			prefixStr = "--" + stringSplit[0]
+		} else {
+			prefixStr = stringSplit[0]
+		}
+
+		prefix = Prefix(prefixStr)
+		argTrue = stringSplit[1]
+	} else {
+		// if argument is just value like '/usr/local/bin/keda-adapter' (has no prefix)
+		argTrue = argument
+	}
+
+	if resource == "operator" {
+		return replaceContainerArg(argTrue, prefix, containerNameKedaOperator, scheme, logger)
+	} else if resource == "metricserver" {
+		return replaceContainerArg(argTrue, prefix, containerNameMetricsServer, scheme, logger)
+	} else {
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+
+}
+
 func replaceContainerArg(value string, prefix Prefix, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		changed := false

@@ -1,9 +1,10 @@
 ##################################################
 # Variables                                      #
 ##################################################
+VERSION_NUM    ?= 2.8.1
 VERSION        ?= main
-IMAGE_REGISTRY ?= ghcr.io
-IMAGE_REPO     ?= kedacore
+IMAGE_REGISTRY ?= docker.io
+IMAGE_REPO     ?= 4141gauron3268
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
 
@@ -152,7 +153,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 .PHONY: bundle
 bundle: manifests	## Generate bundle manifests and metadata, then validate generated files.
 	operator-sdk generate kustomize manifests -q
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION_NUM) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 # Build the bundle image.
@@ -167,7 +168,7 @@ bundle-push:
 
 .PHONY: index-build
 index-build:
-	opm index add --bundles ${BUNDLE} --tag ${INDEX} -u docker
+	opm index add --bundles ${BUNDLE} --tag ${INDEX} -u docker --permissive
 
 .PHONY: index-push
 index-push:
@@ -175,6 +176,9 @@ index-push:
 
 .PHONY: deploy-olm	## Deploy bundle.
 deploy-olm: bundle-build bundle-push index-build index-push
+ifeq ($(shell kubectl get namespaces | grep keda),)
+	kubectl create namespace keda;
+endif
 	operator-sdk run bundle ${BUNDLE} --namespace keda
 
 .PHONY: deploy-olm-testing
