@@ -3,10 +3,8 @@
 ##################################################
 VERSION_NUM    ?= 2.8.1
 VERSION        ?= main
-# IMAGE_REGISTRY ?= ghcr.io
-IMAGE_REGISTRY ?= docker.io
-# IMAGE_REPO     ?= kedacore
-IMAGE_REPO     ?= 4141gauron3268
+IMAGE_REGISTRY ?= ghcr.io
+IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
 
