@@ -1,7 +1,6 @@
 package transform
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -360,10 +359,9 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 					argFound := false
 					for j, arg := range container.Args {
 						if strings.HasPrefix(arg, prefix.String()) {
-							fmt.Printf("AFTER:prefix:%v,arg:%v, value:%v\n", prefix, arg, value)
 							// If argument has no prefix...
 							if prefix == "" {
-								// and is the same -> dont add it again (change argFound to true)...
+								// and is the same -> dont add it again (change argFound=true)...
 								if arg == value {
 									argFound = true
 									break

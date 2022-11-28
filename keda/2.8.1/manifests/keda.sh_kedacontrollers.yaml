@@ -1761,7 +1761,7 @@ spec:
                       type: string
                     description: Node selector for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
                     type: object
-                  other:
+                  args:
                     description: 'Allow users to define any argument with possibility
                       to override already existing or previously defined arguments.'
                     items:
@@ -2750,7 +2750,7 @@ spec:
                       type: string
                     description: Node selector for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
                     type: object
-                  other:
+                  args:
                     description: 'Allow users to define any argument with possibility
                       to override already existing or previously defined arguments.'
                     items:
