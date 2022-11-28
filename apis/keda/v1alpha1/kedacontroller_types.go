@@ -88,7 +88,7 @@ type KedaOperatorSpec struct {
 	// previously defined arguments. Allowed formats are '--argument=value',
 	// 'argument=value' or just 'value'. Ex.: '--v=0' or 'ENV_ARGUMENT'
 	// +optional
-	Other []string `json:"other,omitempty"`
+	Args []string `json:"args,omitempty"`
 }
 
 type KedaMetricsServerSpec struct {
@@ -105,7 +105,7 @@ type KedaMetricsServerSpec struct {
 	// previously defined arguments. Allowed formats are '--argument=value',
 	// 'argument=value' or just 'value'. Ex.: '--v=0' or 'ENV_ARGUMENT'
 	// +optional
-	Other []string `json:"other,omitempty"`
+	Args []string `json:"args,omitempty"`
 }
 
 type GenericDeploymentSpec struct {

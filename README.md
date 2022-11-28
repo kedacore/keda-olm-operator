@@ -105,7 +105,7 @@ spec:
     ## Arbitrary arguments
     # Define any argument with possibility to override already existing ones.
     # Array of strings (format is either with prefix '--key=value' or just 'value')
-    # other: []
+    # args: []
 
     ## Annotations to be added to the KEDA Operator Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
@@ -182,7 +182,7 @@ spec:
     ## Arbitrary arguments
     # Define any argument with possibility to override already existing ones.
     # Array of strings (format is either with prefix '--key=value' or just 'value')
-    # other: []
+    # args: []
 
     ## Annotations to be added to the KEDA Metrics Server Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/

@@ -185,8 +185,8 @@ func (in *KedaControllerStatus) DeepCopy() *KedaControllerStatus {
 func (in *KedaMetricsServerSpec) DeepCopyInto(out *KedaMetricsServerSpec) {
 	*out = *in
 	in.GenericDeploymentSpec.DeepCopyInto(&out.GenericDeploymentSpec)
-	if in.Other != nil {
-		in, out := &in.Other, &out.Other
+	if in.Args != nil {
+		in, out := &in.Args, &out.Args
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
@@ -206,8 +206,8 @@ func (in *KedaMetricsServerSpec) DeepCopy() *KedaMetricsServerSpec {
 func (in *KedaOperatorSpec) DeepCopyInto(out *KedaOperatorSpec) {
 	*out = *in
 	in.GenericDeploymentSpec.DeepCopyInto(&out.GenericDeploymentSpec)
-	if in.Other != nil {
-		in, out := &in.Other, &out.Other
+	if in.Args != nil {
+		in, out := &in.Args, &out.Args
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
