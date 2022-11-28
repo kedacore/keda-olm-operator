@@ -156,12 +156,16 @@ bundle: manifests	## Generate bundle manifests and metadata, then validate gener
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION_NUM) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
+## docker-build & docker-push bellow are added because in generated dir
+## bundle/manifests csv.yaml file, it refers to docker-pushed image (aka without "bundle")
+## so it needs to be updated as well.
+
 # Build the bundle image.
-.PHONY: bundle-build	## Build the bundle image.
+.PHONY: docker-build bundle-build	## Build the bundle image.
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE) .
 
-.PHONY: bundle-push
+.PHONY: docker-push bundle-push
 bundle-push:
 	docker push ${BUNDLE}
 	operator-sdk bundle validate ${BUNDLE}
@@ -174,8 +178,8 @@ index-build:
 index-push:
 	docker push ${INDEX}
 
-.PHONY: deploy-olm	## Deploy bundle.
-deploy-olm: bundle-build bundle-push index-build index-push
+.PHONY: deploy-olm	## Deploy bundle. -- build & bundle to update if changes were made to code
+deploy-olm: build bundle bundle-build bundle-push index-build index-push
 ifeq ($(shell kubectl get namespaces | grep keda),)
 	kubectl create namespace keda;
 endif
