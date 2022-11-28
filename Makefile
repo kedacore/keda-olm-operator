@@ -3,8 +3,10 @@
 ##################################################
 VERSION_NUM    ?= 2.8.1
 VERSION        ?= main
-IMAGE_REGISTRY ?= ghcr.io
-IMAGE_REPO     ?= kedacore
+# IMAGE_REGISTRY ?= ghcr.io
+IMAGE_REGISTRY ?= docker.io
+# IMAGE_REPO     ?= kedacore
+IMAGE_REPO     ?= 4141gauron3268
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
 
@@ -161,12 +163,12 @@ bundle: manifests	## Generate bundle manifests and metadata, then validate gener
 ## so it needs to be updated as well.
 
 # Build the bundle image.
-.PHONY: docker-build bundle-build	## Build the bundle image.
-bundle-build:
+.PHONY: bundle-build	## Build the bundle image.
+bundle-build: docker-build
 	docker build -f bundle.Dockerfile -t $(BUNDLE) .
 
-.PHONY: docker-push bundle-push
-bundle-push:
+.PHONY: bundle-push
+bundle-push: docker-push
 	docker push ${BUNDLE}
 	operator-sdk bundle validate ${BUNDLE}
 
