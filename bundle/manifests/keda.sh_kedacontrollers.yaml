@@ -896,6 +896,14 @@ spec:
                             type: array
                         type: object
                     type: object
+                  args:
+                    description: 'Any user-defined arguments with possibility to override
+                      any existing or previously defined arguments. Allowed formats
+                      are ''--argument=value'', ''argument=value'' or just ''value''.
+                      Ex.: ''--v=0'' or ''ENV_ARGUMENT'''
+                    items:
+                      type: string
+                    type: array
                   deploymentAnnotations:
                     additionalProperties:
                       type: string
@@ -916,14 +924,6 @@ spec:
                       type: string
                     description: Node selector for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
                     type: object
-                  other:
-                    description: 'Any user-defined arguments with possibility to override
-                      any existing or previously defined arguments. Allowed formats
-                      are ''--argument=value'', ''argument=value'' or just ''value''.
-                      Ex.: ''--v=0'' or ''ENV_ARGUMENT'''
-                    items:
-                      type: string
-                    type: array
                   podAnnotations:
                     additionalProperties:
                       type: string
@@ -1864,6 +1864,14 @@ spec:
                             type: array
                         type: object
                     type: object
+                  args:
+                    description: 'Any user-defined arguments with possibility to override
+                      any existing or previously defined arguments. Allowed formats
+                      are ''--argument=value'', ''argument=value'' or just ''value''.
+                      Ex.: ''--v=0'' or ''ENV_ARGUMENT'''
+                    items:
+                      type: string
+                    type: array
                   deploymentAnnotations:
                     additionalProperties:
                       type: string
@@ -1893,14 +1901,6 @@ spec:
                       type: string
                     description: Node selector for pod scheduling https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
                     type: object
-                  other:
-                    description: 'Any user-defined arguments with possibility to override
-                      any existing or previously defined arguments. Allowed formats
-                      are ''--argument=value'', ''argument=value'' or just ''value''.
-                      Ex.: ''--v=0'' or ''ENV_ARGUMENT'''
-                    items:
-                      type: string
-                    type: array
                   podAnnotations:
                     additionalProperties:
                       type: string

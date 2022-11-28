@@ -44,9 +44,9 @@ operator-sdk bundle validate ./keda/2.9.0
 
 ## 6. Commit and push the changed code to GitHub
 ```bash
-git checkout -b release291
+git checkout -b release290
 git commit -s -a -m 'prepare release 2.9.0'
-git push origin release291
+git push origin release290
 ```
 
 ## 7. Create KEDA release on GitHub
