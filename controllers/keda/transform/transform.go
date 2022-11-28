@@ -312,9 +312,9 @@ func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.
 }
 
 func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-	var prefix Prefix = ""
-	var prefixStr string = ""
-	var argTrue string = ""
+	var prefix Prefix = Prefix("")
+	prefixStr := ""
+	argTrue := ""
 
 	if strings.Contains(argument, "=") {
 		// if argument is in format --arg=value or arg=value
@@ -333,16 +333,16 @@ func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Schem
 		argTrue = argument
 	}
 
-	if resource == "operator" {
+	switch resource {
+	case "operator":
 		return replaceContainerArg(argTrue, prefix, containerNameKedaOperator, scheme, logger)
-	} else if resource == "metricserver" {
+	case "metricserver":
 		return replaceContainerArg(argTrue, prefix, containerNameMetricsServer, scheme, logger)
-	} else {
+	default:
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
 	}
-
 }
 
 func replaceContainerArg(value string, prefix Prefix, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
