@@ -156,7 +156,7 @@ bundle: manifests	## Generate bundle manifests and metadata, then validate gener
 	cd config/manager && \
 		$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-olm-operator=${IMAGE_CONTROLLER}
 	cd config/default && \
-    $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
+  	$(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	operator-sdk generate kustomize manifests -q
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
