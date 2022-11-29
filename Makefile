@@ -1,7 +1,6 @@
 ##################################################
 # Variables                                      #
 ##################################################
-VERSION_NUM    ?= 2.8.1
 VERSION        ?= main
 IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
@@ -152,21 +151,23 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
 bundle: manifests	## Generate bundle manifests and metadata, then validate generated files.
+# edit image in config for current changes made to this Makefile so the deployed image is
+# the one that is being built & pushed (in case its no ghcr.io/kedacore)
+	cd config/manager && \
+		$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-olm-operator=${IMAGE_CONTROLLER}
+	cd config/default && \
+    $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
 	operator-sdk generate kustomize manifests -q
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION_NUM) $(BUNDLE_METADATA_OPTS)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
-
-## docker-build & docker-push bellow are added because in generated dir
-## bundle/manifests csv.yaml file, it refers to docker-pushed image (aka without "bundle")
-## so it needs to be updated as well.
 
 # Build the bundle image.
 .PHONY: bundle-build	## Build the bundle image.
-bundle-build: docker-build
+bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE) .
 
 .PHONY: bundle-push
-bundle-push: docker-push
+bundle-push:
 	docker push ${BUNDLE}
 	operator-sdk bundle validate ${BUNDLE}
 
@@ -178,8 +179,12 @@ index-build:
 index-push:
 	docker push ${INDEX}
 
+## docker-build & docker-push bellow are added because in generated dir
+## bundle/manifests csv.yaml file, it refers to docker-pushed image (aka without "bundle")
+## so it needs to be updated as well.
+
 .PHONY: deploy-olm	## Deploy bundle. -- build & bundle to update if changes were made to code
-deploy-olm: build bundle bundle-build bundle-push index-build index-push
+deploy-olm: build bundle docker-build docker-push bundle-build bundle-push index-build index-push
 ifeq ($(shell kubectl get namespaces | grep keda),)
 	kubectl create namespace keda;
 endif
