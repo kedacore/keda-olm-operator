@@ -348,6 +348,12 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 		transforms = append(transforms, transform.ReplaceKedaOperatorResources(instance.Spec.Operator.Resources, r.Scheme))
 	}
 
+	// add arbitrary args defined by user
+	for i := range instance.Spec.Operator.Args {
+		i := i
+		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.Operator.Args[i], "operator", r.Scheme, logger))
+	}
+
 	manifest, err := r.resourcesController.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform KEDA Controller manifest")
@@ -433,6 +439,12 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	if instance.Spec.MetricsServer.Resources.Limits != nil || instance.Spec.MetricsServer.Resources.Requests != nil {
 		transforms = append(transforms, transform.ReplaceMetricsServerResources(instance.Spec.MetricsServer.Resources, r.Scheme))
+	}
+
+	// add arbitrary args defined by user
+	for i := range instance.Spec.MetricsServer.Args {
+		i := i
+		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.MetricsServer.Args[i], "metricsserver", r.Scheme, logger))
 	}
 
 	// replace namespace in RoleBinding from keda to kube-system

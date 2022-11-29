@@ -311,6 +311,40 @@ func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.
 	return replaceContainerArg(logTimeEncoding, prefix, containerNameKedaOperator, scheme, logger)
 }
 
+func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	prefix := Prefix("")
+	prefixStr := ""
+	argTrue := ""
+
+	if strings.Contains(argument, "=") {
+		// if argument is in format --arg=value or arg=value
+		stringSplit := strings.SplitAfter(argument, "=")
+		if !strings.HasPrefix(stringSplit[0], "--") {
+			// add "--" at the beginning of argument prefix if not given
+			prefixStr = "--" + stringSplit[0]
+		} else {
+			prefixStr = stringSplit[0]
+		}
+
+		prefix = Prefix(prefixStr)
+		argTrue = stringSplit[1]
+	} else {
+		// if argument is just value like '/usr/local/bin/keda-adapter' (has no "=" therefore no prefix)
+		argTrue = argument
+	}
+
+	switch resource {
+	case "operator":
+		return replaceContainerArg(argTrue, prefix, containerNameKedaOperator, scheme, logger)
+	case "metricsserver":
+		return replaceContainerArg(argTrue, prefix, containerNameMetricsServer, scheme, logger)
+	default:
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+}
+
 func replaceContainerArg(value string, prefix Prefix, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		changed := false
@@ -325,6 +359,17 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 					argFound := false
 					for j, arg := range container.Args {
 						if strings.HasPrefix(arg, prefix.String()) {
+							// If argument has no prefix...
+							if prefix == "" {
+								// and is the same -> dont add it again (change argFound=true)...
+								if arg == value {
+									argFound = true
+									break
+								}
+								// otherwise continue
+								continue
+							}
+
 							argFound = true
 							if trimmedArg := strings.TrimPrefix(arg, prefix.String()); trimmedArg != value {
 								logger.Info("Replacing", "deployment", container.Name, "prefix", prefix.String(), "value", value, "previous", trimmedArg)
