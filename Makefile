@@ -150,7 +150,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: manifests	## Generate bundle manifests and metadata, then validate generated files.
+bundle: manifests kustomize	## Generate bundle manifests and metadata, then validate generated files.
 # edit image in config for current changes made to this Makefile so the deployed image is
 # the one that is being built & pushed (in case its no ghcr.io/kedacore)
 	cd config/manager && \
