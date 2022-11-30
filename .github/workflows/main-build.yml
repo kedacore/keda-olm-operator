@@ -113,6 +113,7 @@ jobs:
       - name: Build and deploy KEDA olm operator index for deployment testing
         run: |
           kubectl create namespace keda
+          make kustomize
           make deploy-olm-testing
 
       - name: Run deployment tests
@@ -181,4 +182,5 @@ jobs:
       - name: Build and deploy KEDA olm operator index
         run: |
           kubectl create namespace keda
+          make kustomize
           make deploy-olm
