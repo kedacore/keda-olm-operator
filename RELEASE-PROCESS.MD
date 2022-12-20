@@ -20,7 +20,7 @@ cp -r keda/2.8.0 keda/2.9.0
 ```
 
 ## 3. Update KEDA CRDs
-Update all KEDA CRDs in the newly (eg. `2.9.0`) created directory, get the up-to-date version from the release file mentioned in step 1.
+Update all KEDA CRDs in the newly (eg. `2.9.0`) created directory, get the up-to-date version from the release file mentioned in [step 1](#1-keda-release-yaml-file).
 
 ## 4. Update CSV file
 Update ClusterServiceVersion file in the newly (eg. `2.9.0`) created directory:
@@ -35,28 +35,33 @@ mv keda/2.9.0/manifests/keda.v2.8.0.clusterserviceversion.yaml keda/2.9.0/manife
 - update `createdAt` field with a new date
 - update other necessary fields
 
-## 5. Validate and test the bundle
+## 5. Update dependencies if necessary
+- bump Go version in go.mod and Dockerfile
+- update `go.mod` file versions to match `kedacore/keda` repository versions (subsequently update go.sum)
+- update necessary dependent packages (based on previous bumps)
+
+## 6. Validate and test the bundle
 - validate the new bundle, eg:
 ```
 operator-sdk bundle validate ./keda/2.9.0
 ```
 - test that the bundle is deployable and functional on OpenShift instance.
 
-## 6. Commit and push the changed code to GitHub
+## 7. Commit and push the changed code to GitHub
 ```bash
 git checkout -b release290
 git commit -s -a -m 'prepare release 2.9.0'
 git push origin release290
 ```
 
-## 7. Create KEDA release on GitHub
+## 8. Create KEDA release on GitHub
 
 Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.9.0).
 
 > Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda-olm-operator/tags
 
 
-## 8. Publish KEDA OLM Operator on OperatorHub.io
+## 9. Publish KEDA OLM Operator on OperatorHub.io
 1. Create pull request on https://github.com/k8s-operatorhub/community-operators:
     - copy the newly created bundle directory from keda-olm-repo (eg. `keda/2.9.0`) to `operators/keda` directory in [https://github.com/k8s-operatorhub/community-operators](https://github.com/k8s-operatorhub/community-operators), you should see the previous version over there
     - send a pull request with this change
