@@ -112,6 +112,18 @@ spec:
     # Array of strings (format is either with prefix '--key=value' or just 'value')
     # args: []
 
+    ## Audit Config
+    # Define basic arguments for auditing log files. If needed, more complex flags
+    # can be set via 'Args' field manually.
+    # auditConfig:
+    #   logFormat: "json"
+    #   logPath: ""
+    #   logPolicyFile: ""
+    #   lifetime:
+    #     maxAge: ""
+    #     maxBackput: ""
+    #     maxSize: ""
+
     ## Annotations to be added to the KEDA Metrics Server Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
     # deploymentAnnotations:

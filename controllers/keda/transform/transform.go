@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
 	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -343,6 +344,36 @@ func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Schem
 			return nil
 		}
 	}
+}
+
+func ReplaceAuditConfig(config kedav1alpha1.AuditConfig, selector string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	var value string
+	var prefix string
+	switch selector {
+	case "logformat":
+		prefix += "--audit-log-format="
+		value = config.LogFormat
+	case "logpath":
+		prefix = "--audit-log-path="
+		value = config.LogPath
+	case "logpolicyfile":
+		prefix = "--audit-policy-file="
+		value = config.LogPolicyFile
+	case "maxage":
+		prefix = "--audit-log-maxage="
+		value = config.AuditLifetime.MaxAge
+	case "maxbackup":
+		prefix = "--audit-log-maxbackup="
+		value = config.AuditLifetime.MaxBackup
+	case "maxsize":
+		prefix = "--audit-log-maxsize="
+		value = config.AuditLifetime.MaxSize
+	default:
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+	return replaceContainerArg(value, Prefix(prefix), containerNameMetricsServer, scheme, logger)
 }
 
 func replaceContainerArg(value string, prefix Prefix, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {

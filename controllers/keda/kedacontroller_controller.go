@@ -441,6 +441,11 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		transforms = append(transforms, transform.ReplaceMetricsServerResources(instance.Spec.MetricsServer.Resources, r.Scheme))
 	}
 
+	// if struct is NOT empty
+	if instance.Spec.MetricsServer.AuditConfig != (kedav1alpha1.AuditConfig{}) {
+		transforms = AuditConfigTransformation(transforms, instance.Spec.MetricsServer.AuditConfig, r.Scheme, logger)
+	}
+
 	// add arbitrary args defined by user
 	for i := range instance.Spec.MetricsServer.Args {
 		i := i
@@ -526,4 +531,28 @@ func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(ctx context.Cont
 // single, named resource: keda in the specified namespace
 func isInteresting(request reconcile.Request) bool {
 	return request.Name == kedaControllerResourceName && request.Namespace == kedaControllerResourceNamespace
+}
+
+// AuditConfigTransformation is support function for transforming audit flags.
+// Returns transforms ([]mf.Transformer type) after all flags are appended
+func AuditConfigTransformation(t []mf.Transformer, ac kedav1alpha1.AuditConfig, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
+	if ac.LogFormat != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac, "logformat", scheme, logger))
+	}
+	if ac.LogPath != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac, "logpath", scheme, logger))
+	}
+	if ac.LogPolicyFile != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac, "logpolicyfile", scheme, logger))
+	}
+	if ac.AuditLifetime.MaxAge != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac, "maxage", scheme, logger))
+	}
+	if ac.AuditLifetime.MaxBackup != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac, "maxbackup", scheme, logger))
+	}
+	if ac.AuditLifetime.MaxSize != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac, "maxsize", scheme, logger))
+	}
+	return t
 }
