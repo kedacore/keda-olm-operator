@@ -25,13 +25,12 @@ jobs:
 
       - name: resources/keda.yaml is updated
         run:  |
-          # tester=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | xargs)
           tester=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.workflow_run.head_sha }} ${{ github.sha }} | xargs)
           echo $tester
           if [[ " ${tester[*]} " =~ "resources/keda.yaml" ]]; then
             exit 0
           else
-           echo "Did you forget to update resource/keda.yaml file? https://github.com/kedacore/keda-olm-operator/blob/main/RELEASE-PROCESS.MD#1-keda-release-yaml-file"
+           echo "Did you forget to update resources/keda.yaml file? https://github.com/kedacore/keda-olm-operator/blob/main/RELEASE-PROCESS.MD#1-keda-release-yaml-file"
             exit 1
           fi
 
