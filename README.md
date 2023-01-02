@@ -185,6 +185,7 @@ spec:
     # args: []
 
     ## Audit Config
+    # https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy
     # Define basic arguments for auditing log files. If needed, more complex flags
     # can be set via 'Args' field manually.
     # auditConfig:
