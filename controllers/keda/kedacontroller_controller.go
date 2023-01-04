@@ -443,7 +443,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	// if struct is NOT empty
 	if instance.Spec.MetricsServer.AuditConfig != (kedav1alpha1.AuditConfig{}) {
-		transforms = AuditConfigTransformation(transforms, instance.Spec.MetricsServer.AuditConfig, r.Scheme, logger)
+		transforms = auditConfigTransformation(transforms, instance.Spec.MetricsServer.AuditConfig, r.Scheme, logger)
 	}
 
 	// add arbitrary args defined by user
@@ -533,9 +533,9 @@ func isInteresting(request reconcile.Request) bool {
 	return request.Name == kedaControllerResourceName && request.Namespace == kedaControllerResourceNamespace
 }
 
-// AuditConfigTransformation is support function for transforming audit flags.
+// auditConfigTransformation is support function for transforming audit flags.
 // Returns transforms ([]mf.Transformer type) after all flags are appended
-func AuditConfigTransformation(t []mf.Transformer, ac kedav1alpha1.AuditConfig, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
+func auditConfigTransformation(t []mf.Transformer, ac kedav1alpha1.AuditConfig, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
 	if ac.LogFormat != "" {
 		t = append(t, transform.ReplaceAuditConfig(ac, "logformat", scheme, logger))
 	}

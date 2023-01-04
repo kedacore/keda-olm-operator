@@ -194,7 +194,7 @@ spec:
     #   logPolicyFile: ""
     #   lifetime:
     #     maxAge: ""
-    #     maxBackput: ""
+    #     maxBackup: ""
     #     maxSize: ""
 
     ## Annotations to be added to the KEDA Metrics Server Deployment

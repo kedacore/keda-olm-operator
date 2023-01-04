@@ -103,6 +103,7 @@ type KedaMetricsServerSpec struct {
 
 	// Audit config for auditing log files. If a user wants to config other audit
 	// flags, he can do so manually with Args field.
+	// +optional
 	AuditConfig `json:"auditConfig,omitempty"`
 
 	// Any user-defined arguments with possibility to override any existing or
@@ -229,18 +230,19 @@ type AuditConfig struct {
 	// Logging format of saved audits. Known formats are "legacy" & "json".
 	// default value: json
 	// +optional
-	LogFormat string `json:"logFormat,omitempty" protobuf:"bytes,1,opt,name=LogFormat"`
+	LogFormat string `json:"logFormat,omitempty" protobuf:"bytes,1,opt,name=logFormat"`
 
 	// All requests coming to api server will be logged to this file. '-' means
 	// standard out.
 	// +optional
-	LogPath string `json:"logPath,omitempty" protobuf:"bytes,2,opt,name=LogPath"`
+	LogPath string `json:"logPath,omitempty" protobuf:"bytes,2,opt,name=logPath"`
 
 	// Path to the file that defines the audit policy configuration.
 	// +optional
-	LogPolicyFile string `json:"logPolicyFile,omitempty" protobuf:"bytes,3,opt,name=LogPolicyFile"`
+	LogPolicyFile string `json:"logPolicyFile,omitempty" protobuf:"bytes,3,opt,name=logPolicyFile"`
 
-	AuditLifetime `json:"lifetime,omitempty" protobuf:"bytes,4,opt,name=AuditLifetime"`
+	// +optional
+	AuditLifetime `json:"lifetime,omitempty" protobuf:"bytes,4,opt,name=lifetime"`
 }
 
 // AuditBasicStruct struct is a supporting struct for MetricsServerAuditLogConfig
@@ -248,13 +250,13 @@ type AuditConfig struct {
 type AuditLifetime struct {
 	// The maximum number of days to retain old audit log files based on the timestamp encoded in their filename.
 	// + optional
-	MaxAge string `json:"maxAge,omitempty"  protobuf:"bytes,1,opt,name=MaxAge"`
+	MaxAge string `json:"maxAge,omitempty"  protobuf:"bytes,1,opt,name=maxAge"`
 
 	// The maximum number of old audit log files to retain. Setting a value of 0 will mean there's no restriction.
 	// +optional
-	MaxBackup string `json:"maxBackup,omitempty"  protobuf:"bytes,2,opt,name=MaxBackup"`
+	MaxBackup string `json:"maxBackup,omitempty"  protobuf:"bytes,2,opt,name=maxBackup"`
 
 	// The maximum size in megabytes of the audit log file before it gets rotated.
 	// +optional
-	MaxSize string `json:"maxSize,omitempty"  protobuf:"bytes,3,opt,name=MaxSize"`
+	MaxSize string `json:"maxSize,omitempty"  protobuf:"bytes,3,opt,name=maxSize"`
 }

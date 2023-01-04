@@ -902,6 +902,43 @@ spec:
                     items:
                       type: string
                     type: array
+                  auditConfig:
+                    description: Audit config for auditing log files. If a user wants
+                      to config other audit flags, he can do so manually with Args
+                      field.
+                    properties:
+                      lifetime:
+                        description: AuditBasicStruct struct is a supporting struct
+                          for MetricsServerAuditLogConfig struct.
+                        properties:
+                          maxAge:
+                            description: The maximum number of days to retain old
+                              audit log files based on the timestamp encoded in their
+                              filename.
+                            type: string
+                          maxBackup:
+                            description: The maximum number of old audit log files
+                              to retain. Setting a value of 0 will mean there's no
+                              restriction.
+                            type: string
+                          maxSize:
+                            description: The maximum size in megabytes of the audit
+                              log file before it gets rotated.
+                            type: string
+                        type: object
+                      logFormat:
+                        description: 'Logging format of saved audits. Known formats
+                          are "legacy" & "json". default value: json'
+                        type: string
+                      logPath:
+                        description: All requests coming to api server will be logged
+                          to this file. '-' means standard out.
+                        type: string
+                      logPolicyFile:
+                        description: Path to the file that defines the audit policy
+                          configuration.
+                        type: string
+                    type: object
                   deploymentAnnotations:
                     additionalProperties:
                       type: string

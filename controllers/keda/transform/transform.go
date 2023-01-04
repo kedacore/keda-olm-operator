@@ -352,7 +352,7 @@ func ReplaceAuditConfig(config kedav1alpha1.AuditConfig, selector string, scheme
 	var prefix string
 	switch selector {
 	case "logformat":
-		prefix += "--audit-log-format="
+		prefix = "--audit-log-format="
 		value = config.LogFormat
 	case "logpath":
 		prefix = "--audit-log-path="
