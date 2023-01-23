@@ -701,7 +701,6 @@ func validateAuditLogVolumeWithArgs(name string, ltArgs kedav1alpha1.AuditLifeti
 // checkAuditLogVolumeExists checks whether PersistentVolumeClaim given exists
 // and is bound to a PV or not
 func (r *KedaControllerReconciler) checkAuditLogVolumeExists(name string, ctx context.Context, instance *kedav1alpha1.KedaController) error {
-
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: instance.Namespace}, pvc)
 	if err != nil {
