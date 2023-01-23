@@ -419,9 +419,10 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 	// if policy is not empty, audit logging is ON
 	if !reflect.DeepEqual(policy, kedav1alpha1.AuditPolicy{}) {
 		// --- Policy configMap setup ---
+		logger.Info("Ensure Audit log Policy ConfigMap for Metrics Server exists")
 		err := r.ensureMetricsServerAuditLogPolicyConfigMap(ctx, logger, instance)
 		if err != nil {
-			logger.Error(err, "Unable to check Metrics Server Auditlog Policy ConfigMap is present")
+			logger.Error(err, "Audit: Unable to check Metrics Server Auditlog Policy ConfigMap is present")
 			return err
 		}
 		transforms = append(transforms, transform.EnsureAuditPolicyConfigMapMountsVolume(auditlogPolicyConfigMap, r.Scheme, logger))
@@ -432,7 +433,8 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		// --- Log output setup ---
 		// validation checks around logOutVolumeClaim and lifetime arguments
 		if err := validateAuditLogVolumeWithArgs(logOutVolumeClaim, instance.Spec.MetricsServer.AuditConfig.AuditLifetime); err != nil {
-			logger.Error(err, "Audit: Unable to validate logOutVolumeClaim: '%s' with lifetime args for Audit logging", logOutVolumeClaim)
+			logger.Error(err, "Audit: Unable to validate args for Audit logging")
+			return err
 		}
 
 		var logVolumePath string
@@ -440,9 +442,11 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 			// if volume is empty -> log to STDOUT
 			logVolumePath = "-"
 		} else {
+			logger.Info("Check if audit log output volume exists")
 			err = r.checkAuditLogVolumeExists(logOutVolumeClaim, ctx, logger, instance)
 			if err != nil {
 				logger.Error(err, "Audit: Unable to validate log output persistent volume")
+				return err
 			}
 			logVolumePath = "/var/audit-policy/log-" + time.Now().Format("2006.01.02-15:04")
 			transforms = append(transforms, transform.EnsureAuditLogMount(logOutVolumeClaim, logVolumePath, r.Scheme, logger))
@@ -589,8 +593,6 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	realPolicy.OmitStages = policy.OmitStages
 	realPolicy.OmitManagedFields = policy.OmitManagedFields
 
-	logger.Info("Ensure Audit log Policy ConfigMap for Metrics Server exists")
-
 	configMap := &corev1.ConfigMap{}
 	err := r.Client.Get(ctx, types.NamespacedName{Name: auditlogPolicyConfigMap, Namespace: instance.Namespace}, configMap)
 	if err != nil {
@@ -691,7 +693,7 @@ func validateAuditLogVolumeWithArgs(name string, ltArgs kedav1alpha1.AuditLifeti
 			return fmt.Errorf("bad conversion of string in audit flag maxSize")
 		}
 		if maxage >= 1 || maxbackup >= 1 || maxsize >= 1 {
-			return fmt.Errorf("bad flag combination - lifetime arguments given, but logOutputVolumeClaim is empty")
+			return fmt.Errorf("bad flag combination - don't use lifetime arguments when logging to stdout")
 		}
 	}
 	return nil
@@ -700,14 +702,12 @@ func validateAuditLogVolumeWithArgs(name string, ltArgs kedav1alpha1.AuditLifeti
 // checkAuditLogVolumeExists checks whether PersistentVolumeClaim given exists
 // and is bound to a PV or not
 func (r *KedaControllerReconciler) checkAuditLogVolumeExists(name string, ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
-	logger.Info("Check if audit log output volume exists")
 
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: instance.Namespace}, pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Error(err, "PersistentVolumeClaim", name, "not found in namespace", instance.Namespace)
-			return err
+			return fmt.Errorf("PersistentVolumeClaim '%s not found in namespace %s", name, instance.Namespace)
 		}
 	}
 
