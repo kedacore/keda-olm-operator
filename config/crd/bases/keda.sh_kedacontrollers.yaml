@@ -1076,8 +1076,6 @@ spec:
                               - level
                               type: object
                             type: array
-                        required:
-                        - rules
                         type: object
                     type: object
                   deploymentAnnotations:

@@ -443,7 +443,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 			logVolumePath = "-"
 		} else {
 			logger.Info("Check if audit log output volume exists")
-			err = r.checkAuditLogVolumeExists(logOutVolumeClaim, ctx, logger, instance)
+			err = r.checkAuditLogVolumeExists(logOutVolumeClaim, ctx, instance)
 			if err != nil {
 				logger.Error(err, "Audit: Unable to validate log output persistent volume")
 				return err
@@ -658,7 +658,6 @@ func isInteresting(request reconcile.Request) bool {
 // different complexity. Returns transforms ([]mf.Transformer type) after all
 // flags are appended
 func auditConfigTransformation(t []mf.Transformer, ac kedav1alpha1.AuditConfig, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
-
 	if ac.LogFormat != "" {
 		t = append(t, transform.ReplaceAuditConfig(ac.LogFormat, "logformat", scheme, logger))
 	}
@@ -701,7 +700,7 @@ func validateAuditLogVolumeWithArgs(name string, ltArgs kedav1alpha1.AuditLifeti
 
 // checkAuditLogVolumeExists checks whether PersistentVolumeClaim given exists
 // and is bound to a PV or not
-func (r *KedaControllerReconciler) checkAuditLogVolumeExists(name string, ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) checkAuditLogVolumeExists(name string, ctx context.Context, instance *kedav1alpha1.KedaController) error {
 
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: instance.Namespace}, pvc)
