@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
 )
 
 type KedaControllerPhase string
@@ -226,27 +227,29 @@ func (kcs *KedaControllerStatus) MarkInstallFailed(r string) {
 	kcs.Reason = r
 }
 
+// AuditConfig defines basic audit logging arguments user can define. If more
+// advanced flags are required, use 'Args' field to add them manually.
 type AuditConfig struct {
+	// All requests coming to api server will be logged to this persistent volume
+	// claim. Leaving this empty means logging to stdout. (if Policy is not empty)
+	// +optional
+	LogOutputVolumeClaim string `json:"logOutputVolumeClaim,omitempty" protobuf:"bytes,1,opt,name=logOutputVolumeClaim"`
+
+	// Policy which describes audit configuration. (Required for audit logging)
+	// ex: https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy
+	// +optional
+	Policy AuditPolicy `json:"policy,omitempty" protobuf:"bytes,2,opt,name=policy"`
+
 	// Logging format of saved audits. Known formats are "legacy" & "json".
 	// default value: json
 	// +optional
-	LogFormat string `json:"logFormat,omitempty" protobuf:"bytes,1,opt,name=logFormat"`
-
-	// All requests coming to api server will be logged to this file. '-' means
-	// standard out.
-	// +optional
-	LogPath string `json:"logPath,omitempty" protobuf:"bytes,2,opt,name=logPath"`
-
-	// Path to the file that defines the audit policy configuration.
-	// +optional
-	LogPolicyFile string `json:"logPolicyFile,omitempty" protobuf:"bytes,3,opt,name=logPolicyFile"`
+	LogFormat string `json:"logFormat,omitempty" protobuf:"bytes,3,opt,name=logFormat"`
 
 	// +optional
 	AuditLifetime `json:"lifetime,omitempty" protobuf:"bytes,4,opt,name=lifetime"`
 }
 
-// AuditBasicStruct struct is a supporting struct for MetricsServerAuditLogConfig
-// struct.
+// AuditLifetime defines size and life-span of audit files.
 type AuditLifetime struct {
 	// The maximum number of days to retain old audit log files based on the timestamp encoded in their filename.
 	// + optional
@@ -259,4 +262,29 @@ type AuditLifetime struct {
 	// The maximum size in megabytes of the audit log file before it gets rotated.
 	// +optional
 	MaxSize string `json:"maxSize,omitempty"  protobuf:"bytes,3,opt,name=maxSize"`
+}
+
+// AuditPolicy is a wrapper for auditv1.Policy structure used in AuditConfig
+// as higher level structure exposed to user without metadata which is filled
+// automatically.
+type AuditPolicy struct {
+	// Rules specify the audit Level a request should be recorded at.
+	// A request may match multiple rules, in which case the FIRST matching rule is used.
+	// The default audit level is None, but can be overridden by a catch-all rule at the end of the list.
+	// PolicyRules are strictly ordered.
+	Rules []auditv1.PolicyRule `json:"rules" protobuf:"bytes,2,rep,name=rules"`
+
+	// OmitStages is a list of stages for which no events are created. Note that this can also
+	// be specified per rule in which case the union of both are omitted.
+	// +optional
+	OmitStages []auditv1.Stage `json:"omitStages,omitempty" protobuf:"bytes,3,rep,name=omitStages"`
+
+	// OmitManagedFields indicates whether to omit the managed fields of the request
+	// and response bodies from being written to the API audit log.
+	// This is used as a global default - a value of 'true' will omit the managed fileds,
+	// otherwise the managed fields will be included in the API audit log.
+	// Note that this can also be specified per rule in which case the value specified
+	// in a rule will override the global default.
+	// +optional
+	OmitManagedFields bool `json:"omitManagedFields,omitempty" protobuf:"varint,4,opt,name=omitManagedFields"`
 }

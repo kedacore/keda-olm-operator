@@ -190,8 +190,12 @@ spec:
     # can be set via 'Args' field manually.
     # auditConfig:
     #   logFormat: "json"
-    #   logPath: ""
-    #   logPolicyFile: ""
+    #   LogOutputVolumeClaim: ""
+    #   policy:
+    #     rules:
+    #     - level: Metadata
+    #     omitStages: "RequestReceived"
+    #     omitManagedFields: false
     #   lifetime:
     #     maxAge: ""
     #     maxBackup: ""
