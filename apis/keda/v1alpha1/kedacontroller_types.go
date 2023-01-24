@@ -273,12 +273,12 @@ type AuditPolicy struct {
 	// The default audit level is None, but can be overridden by a catch-all rule at the end of the list.
 	// PolicyRules are strictly ordered.
 	// +optional
-	Rules []auditv1.PolicyRule `json:"rules" protobuf:"bytes,2,rep,name=rules"`
+	Rules []auditv1.PolicyRule `json:"rules" protobuf:"bytes,1,rep,name=rules"`
 
 	// OmitStages is a list of stages for which no events are created. Note that this can also
 	// be specified per rule in which case the union of both are omitted.
 	// +optional
-	OmitStages []auditv1.Stage `json:"omitStages,omitempty" protobuf:"bytes,3,rep,name=omitStages"`
+	OmitStages []auditv1.Stage `json:"omitStages,omitempty" protobuf:"bytes,2,rep,name=omitStages"`
 
 	// OmitManagedFields indicates whether to omit the managed fields of the request
 	// and response bodies from being written to the API audit log.
@@ -287,5 +287,5 @@ type AuditPolicy struct {
 	// Note that this can also be specified per rule in which case the value specified
 	// in a rule will override the global default.
 	// +optional
-	OmitManagedFields bool `json:"omitManagedFields,omitempty" protobuf:"varint,4,opt,name=omitManagedFields"`
+	OmitManagedFields bool `json:"omitManagedFields,omitempty" protobuf:"varint,3,opt,name=omitManagedFields"`
 }

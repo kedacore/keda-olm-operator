@@ -678,18 +678,29 @@ func auditConfigTransformation(t []mf.Transformer, ac kedav1alpha1.AuditConfig, 
 // not given otherwise lt args would be useless for stdout logging.
 func validateAuditLogVolumeWithArgs(name string, ltArgs kedav1alpha1.AuditLifetime) error {
 	if name == "" {
+		var maxage int
+		var maxbackup int
+		var maxsize int
+		var err error
+
 		// check if lifetime args are given -> this would be error
-		maxage, err := strconv.Atoi(ltArgs.MaxAge)
-		if err != nil {
-			return fmt.Errorf("bad conversion of string in audit flag maxAge")
+		if ltArgs.MaxAge != "" {
+			maxage, err = strconv.Atoi(ltArgs.MaxAge)
+			if err != nil {
+				return fmt.Errorf("bad conversion of string in audit flag maxAge")
+			}
 		}
-		maxbackup, err := strconv.Atoi(ltArgs.MaxBackup)
-		if err != nil {
-			return fmt.Errorf("bad conversion of string in audit flag maxBackup")
+		if ltArgs.MaxBackup != "" {
+			maxbackup, err = strconv.Atoi(ltArgs.MaxBackup)
+			if err != nil {
+				return fmt.Errorf("bad conversion of string in audit flag maxBackup")
+			}
 		}
-		maxsize, err := strconv.Atoi(ltArgs.MaxSize)
-		if err != nil {
-			return fmt.Errorf("bad conversion of string in audit flag maxSize")
+		if ltArgs.MaxSize != "" {
+			maxsize, err = strconv.Atoi(ltArgs.MaxSize)
+			if err != nil {
+				return fmt.Errorf("bad conversion of string in audit flag maxSize")
+			}
 		}
 		if maxage >= 1 || maxbackup >= 1 || maxsize >= 1 {
 			return fmt.Errorf("bad flag combination - don't use lifetime arguments when logging to stdout")
