@@ -115,19 +115,21 @@ spec:
     ## Audit Config
     # https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy
     # Define basic arguments for auditing log files. If needed, more complex flags
-    # can be set via 'Args' field manually.
+    # can be set via 'Args' field manually. Non-empty 'policy' field is required
+    # for logging. If 'logOutputVolumeClaim' is empty log to stdout otherwise it
+    # is a name of user defined PersistentVolumeClaim resourse.
     # auditConfig:
     #   logFormat: "json"
-    #   LogOutputVolumeClaim: ""
+    #   logOutputVolumeClaim: "persistentVolumeClaim"
     #   policy:
     #     rules:
     #     - level: Metadata
     #     omitStages: "RequestReceived"
     #     omitManagedFields: false
     #   lifetime:
-    #     maxAge: ""
-    #     maxBackup: ""
-    #     maxSize: ""
+    #     maxAge: "2"
+    #     maxBackup: "1"
+    #     maxSize: "50"
 
     ## Annotations to be added to the KEDA Metrics Server Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/

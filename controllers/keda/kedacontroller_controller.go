@@ -422,7 +422,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		logger.Info("Ensure Audit log Policy ConfigMap for Metrics Server exists")
 		err := r.ensureMetricsServerAuditLogPolicyConfigMap(ctx, logger, instance)
 		if err != nil {
-			logger.Error(err, "Audit: Unable to check Metrics Server Auditlog Policy ConfigMap is present")
+			logger.Error(err, "unable to check Metrics Server Auditlog Policy ConfigMap is present")
 			return err
 		}
 		transforms = append(transforms, transform.EnsureAuditPolicyConfigMapMountsVolume(auditlogPolicyConfigMap, r.Scheme, logger))
@@ -433,7 +433,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		// --- Log output setup ---
 		// validation checks around logOutVolumeClaim and lifetime arguments
 		if err := validateAuditLogVolumeWithArgs(logOutVolumeClaim, instance.Spec.MetricsServer.AuditConfig.AuditLifetime); err != nil {
-			logger.Error(err, "Audit: Unable to validate args for Audit logging")
+			logger.Error(err, "unable to validate args for Audit logging")
 			return err
 		}
 
@@ -445,7 +445,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 			logger.Info("Check if audit log output volume exists")
 			err = r.checkAuditLogVolumeExists(logOutVolumeClaim, ctx, instance)
 			if err != nil {
-				logger.Error(err, "Audit: Unable to validate log output persistent volume")
+				logger.Error(err, "unable to validate log output persistent volume")
 				return err
 			}
 			logVolumePath = "/var/audit-policy/log-" + time.Now().Format("2006.01.02-15:04")
@@ -604,25 +604,25 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 
 			dataBytes, err := yaml.Marshal(realPolicy)
 			if err != nil {
-				logger.Error(err, "Failed to Marshal Auditlog Policy struct")
+				logger.Error(err, "failed to Marshal Auditlog Policy struct")
 				return err
 			}
 			configMap.Data[auditPolicyFile] = string(dataBytes)
 
 			if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
-				logger.Error(err, "Failed to set Controller Reference for Auditlog Policy ConfigMap")
+				logger.Error(err, "failed to set Controller Reference for Auditlog Policy ConfigMap")
 				return err
 			}
 
 			err = r.Client.Create(ctx, configMap)
 			if err != nil {
-				logger.Error(err, "Failed to create new Audit Policy ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
+				logger.Error(err, "failed to create new Audit Policy ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
 				return err
 			}
 			return nil
 		}
 		// Error reading the object
-		logger.Error(err, "Failed to get ConfigMap from cluster")
+		logger.Error(err, "failed to get ConfigMap from cluster")
 		return err
 	}
 
@@ -630,7 +630,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 
 	if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
 		if !goerrors.Is(err, &controllerutil.AlreadyOwnedError{}) {
-			logger.Error(err, "Failed to check Controller Reference for ConfigMap")
+			logger.Error(err, "failed to check Controller Reference for ConfigMap")
 			return err
 		}
 	} else {
@@ -640,7 +640,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	if configMapUpdate {
 		err = r.Client.Update(ctx, configMap)
 		if err != nil {
-			logger.Error(err, "Failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
+			logger.Error(err, "failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
 			return err
 		}
 	}
@@ -716,7 +716,7 @@ func (r *KedaControllerReconciler) checkAuditLogVolumeExists(name string, ctx co
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: instance.Namespace}, pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return fmt.Errorf("PersistentVolumeClaim '%s not found in namespace %s", name, instance.Namespace)
+			return fmt.Errorf("persistentVolumeClaim '%s not found in namespace %s", name, instance.Namespace)
 		}
 	}
 
