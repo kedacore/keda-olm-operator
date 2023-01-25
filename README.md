@@ -190,7 +190,7 @@ spec:
     # can be set via 'Args' field manually.
     # Non-empty 'policy' field is mandatory to enable logging.
     # If 'logOutputVolumeClaim' is empty the audit log is printed to stdout,
-    # otherwise it points to the user defined PerisstentVolumeClaim resource name.
+    # otherwise it points to the user defined PersistentVolumeClaim resource name.
     # auditConfig:
     #   logFormat: "json"
     #   logOutputVolumeClaim: "persistentVolumeClaimName"
