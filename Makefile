@@ -66,6 +66,7 @@ ifeq ($(shell kubectl get namespaces | grep olm),)
 	kubectl create ns olm
 endif
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -v -ginkgo.v -coverprofile cover.out -test.type deployment -ginkgo.focus "Deploying KedaController manifest"
+	kubectl delete namespace olm
 
 ##@ Build
 
