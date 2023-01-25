@@ -18,6 +18,9 @@ jobs:
 
       - name: Run functionality tests
         run: make test-functionality
+
+      - name: Run audit flags tests
+        run: make test-audit
   statics:
     name: Static Checks
     runs-on: ubuntu-latest

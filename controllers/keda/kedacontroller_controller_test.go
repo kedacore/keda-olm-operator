@@ -196,6 +196,83 @@ var _ = Describe("Testing functionality", func() {
 	})
 })
 
+var _ = Describe("Testing audit flags", func() {
+	const (
+		metricsServerName    = "keda-metrics-apiserver"
+		kind                 = "KedaController"
+		name                 = "keda"
+		namespace            = "keda"
+		kedaManifestFilepath = "../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+	)
+
+	var (
+		ctx      = context.Background()
+		timeout  = time.Second * 60
+		interval = time.Millisecond * 250
+		scheme   *runtime.Scheme
+		manifest mf.Manifest
+		err      error
+		dep      = &appsv1.Deployment{}
+	)
+
+	When("Manipulating parameters", func() {
+		BeforeEach(func() {
+			scheme = k8sManager.GetScheme()
+			dep = &appsv1.Deployment{}
+			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
+			Expect(err).To(BeNil())
+		})
+
+		Context("to add audit configuration flags", func() {
+			vars := []struct {
+				argument string
+				prefix   string
+				value    string
+			}{
+				{
+					argument: "auditLogFormat",
+					prefix:   "--audit-log-format=",
+					value:    "json",
+				},
+				{
+					argument: "auditMaxAge=",
+					prefix:   "--audit-log-maxage=",
+					value:    "1",
+				},
+				{
+					argument: "auditMaxBackup",
+					prefix:   "--audit-log-maxbackup=",
+					value:    "2",
+				},
+				{
+					argument: "auditLogMaxSize",
+					prefix:   "--audit-log-maxsize=",
+					value:    "3",
+				},
+			}
+			for _, variant := range vars {
+
+				It(fmt.Sprintf("adds '%s' with value '%s'", variant.argument, variant.value), func() {
+					manifest, err := changeAttribute(manifest, variant.argument, variant.value, scheme)
+					Expect(manifest.Apply()).To(Succeed())
+					Eventually(func() error {
+						_, err = getObject(ctx, "Deployment", metricsServerName, namespace, k8sClient)
+						return err
+					}, timeout, interval).Should(Succeed())
+					u, err := getObject(ctx, "Deployment", metricsServerName, namespace, k8sClient)
+					Expect(err).To(BeNil())
+
+					Expect(scheme.Convert(u, dep, nil)).To(Succeed())
+					arg, err := getDepArg(dep, variant.prefix, metricsServerName)
+					Expect(err).To(BeNil())
+					Expect(arg).To(Equal(variant.value))
+				})
+			}
+
+		})
+	})
+})
+
 func getDepArg(dep *appsv1.Deployment, prefix string, containerName string) (string, error) {
 	for _, container := range dep.Spec.Template.Spec.Containers {
 		if container.Name == containerName {
@@ -222,10 +299,18 @@ func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *ru
 			kedaControllerInstance.Namespace = value
 		case "logLevel":
 			kedaControllerInstance.Spec.Operator.LogLevel = value
+		// metricsServer audit arguments
+		case "auditLogFormat":
+			kedaControllerInstance.Spec.MetricsServer.AuditConfig.LogFormat = value
+		case "auditMaxAge":
+			kedaControllerInstance.Spec.MetricsServer.AuditConfig.AuditLifetime.MaxAge = value
+		case "auditMaxBackup":
+			kedaControllerInstance.Spec.MetricsServer.AuditConfig.AuditLifetime.MaxBackup = value
+		case "auditLogMaxSize":
+			kedaControllerInstance.Spec.MetricsServer.AuditConfig.AuditLifetime.MaxSize = value
 		default:
 			return errors.New("Not a valid attribute")
 		}
-
 		return scheme.Convert(kedaControllerInstance, u, nil)
 	}
 

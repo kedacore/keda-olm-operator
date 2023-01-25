@@ -105,6 +105,9 @@ jobs:
       - name: Run functionality tests
         run: make test-functionality
 
+      - name: Run audit flags tests
+        run: make test-audit
+
       - name: Setup test environment for deployment tests
         run: |
           kind create cluster

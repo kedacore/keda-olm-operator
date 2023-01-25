@@ -21,6 +21,10 @@ import (
 	goerrors "errors"
 	"fmt"
 	"os"
+	"path"
+	"reflect"
+	"strconv"
+	"time"
 
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
@@ -32,11 +36,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
 	"github.com/kedacore/keda-olm-operator/controllers/keda/transform"
@@ -61,6 +67,10 @@ const (
 	injectservingCertAnnotationValue = "keda-metrics-apiserver"
 	roleBindingName                  = "keda-auth-reader"
 	roleBindingNamespace             = "kube-system"
+
+	auditlogPolicyConfigMap = "keda-metrics-server-audit-policy"
+	auditlogPolicyMountPath = "/var/audit-policy"
+	auditPolicyFile         = "policy.yaml"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
@@ -401,6 +411,52 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		logger.Info("Not running on OpenShift -> using generated self-signed cert for KEDA Metrics Server")
 	}
 
+	// Audit logging validation - configMap exists, logOutVolumeClaim validation
+	// policy is a wrapper AuditPolicy for auditv1.Policy for easier user exposure
+	policy := instance.Spec.MetricsServer.AuditConfig.Policy
+	logOutVolumeClaim := instance.Spec.MetricsServer.AuditConfig.LogOutputVolumeClaim
+
+	// if policy is not empty, audit logging is ON
+	if !reflect.DeepEqual(policy, kedav1alpha1.AuditPolicy{}) {
+		// --- Policy configMap setup ---
+		logger.Info("Ensure Audit log Policy ConfigMap for Metrics Server exists")
+		err := r.ensureMetricsServerAuditLogPolicyConfigMap(ctx, logger, instance)
+		if err != nil {
+			logger.Error(err, "unable to check Metrics Server Auditlog Policy ConfigMap is present")
+			return err
+		}
+		transforms = append(transforms, transform.EnsureAuditPolicyConfigMapMountsVolume(auditlogPolicyConfigMap, r.Scheme, logger))
+		// add mounted policy file path to MetricsServer arguments
+		auditFilePath := path.Join(auditlogPolicyMountPath, auditPolicyFile)
+		transforms = append(transforms, transform.ReplaceAuditConfig(auditFilePath, "policyfile", r.Scheme, logger))
+
+		// --- Log output setup ---
+		// validation checks around logOutVolumeClaim and lifetime arguments
+		if err := validateAuditLogVolumeWithArgs(logOutVolumeClaim, instance.Spec.MetricsServer.AuditConfig.AuditLifetime); err != nil {
+			logger.Error(err, "unable to validate args for Audit logging")
+			return err
+		}
+
+		var logVolumePath string
+		if logOutVolumeClaim == "" {
+			// if volume is empty -> log to STDOUT
+			logVolumePath = "-"
+		} else {
+			logger.Info("Check if audit log output volume exists")
+			err = r.checkAuditLogVolumeExists(logOutVolumeClaim, ctx, instance)
+			if err != nil {
+				logger.Error(err, "unable to validate log output persistent volume")
+				return err
+			}
+			logVolumePath = "/var/audit-policy/log-" + time.Now().Format("2006.01.02-15:04")
+			transforms = append(transforms, transform.EnsureAuditLogMount(logOutVolumeClaim, logVolumePath, r.Scheme, logger))
+		}
+
+		// add audit log output volume path to arguments of keda-adapter
+		logFullPath := path.Join(logVolumePath, logOutVolumeClaim)
+		transforms = append(transforms, transform.ReplaceAuditConfig(logFullPath, "logpath", r.Scheme, logger))
+	}
+
 	if len(instance.Spec.MetricsServer.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.MetricsServer.LogLevel, r.Scheme, logger))
 	}
@@ -439,6 +495,10 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	if instance.Spec.MetricsServer.Resources.Limits != nil || instance.Spec.MetricsServer.Resources.Requests != nil {
 		transforms = append(transforms, transform.ReplaceMetricsServerResources(instance.Spec.MetricsServer.Resources, r.Scheme))
+	}
+
+	if !reflect.DeepEqual(instance.Spec.MetricsServer.AuditConfig, kedav1alpha1.AuditConfig{}) {
+		transforms = auditConfigTransformation(transforms, instance.Spec.MetricsServer.AuditConfig, r.Scheme, logger)
 	}
 
 	// add arbitrary args defined by user
@@ -522,8 +582,143 @@ func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(ctx context.Cont
 	return nil
 }
 
+func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+	policy := instance.Spec.MetricsServer.AuditConfig.Policy
+
+	// create real policy struct from higher level wrapper AuditPolicy exposed to user
+	realPolicy := auditv1.Policy{}
+	realPolicy.APIVersion = "audit.k8s.io/v1"
+	realPolicy.Kind = "Policy"
+	realPolicy.Rules = policy.Rules
+	realPolicy.OmitStages = policy.OmitStages
+	realPolicy.OmitManagedFields = policy.OmitManagedFields
+
+	configMap := &corev1.ConfigMap{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: auditlogPolicyConfigMap, Namespace: instance.Namespace}, configMap)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// create ConfigMap if not found
+			configMap.Name = auditlogPolicyConfigMap
+			configMap.Namespace = instance.Namespace
+			configMap.Data = make(map[string]string)
+
+			dataBytes, err := yaml.Marshal(realPolicy)
+			if err != nil {
+				logger.Error(err, "failed to Marshal Auditlog Policy struct")
+				return err
+			}
+			configMap.Data[auditPolicyFile] = string(dataBytes)
+
+			if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
+				logger.Error(err, "failed to set Controller Reference for Auditlog Policy ConfigMap")
+				return err
+			}
+
+			err = r.Client.Create(ctx, configMap)
+			if err != nil {
+				logger.Error(err, "failed to create new Audit Policy ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
+				return err
+			}
+			return nil
+		}
+		// Error reading the object
+		logger.Error(err, "failed to get ConfigMap from cluster")
+		return err
+	}
+
+	configMapUpdate := false
+
+	if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
+		if !goerrors.Is(err, &controllerutil.AlreadyOwnedError{}) {
+			logger.Error(err, "failed to check Controller Reference for ConfigMap")
+			return err
+		}
+	} else {
+		configMapUpdate = true
+	}
+
+	if configMapUpdate {
+		err = r.Client.Update(ctx, configMap)
+		if err != nil {
+			logger.Error(err, "failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
+			return err
+		}
+	}
+	return nil
+}
+
 // Because it's effectively cluster-scoped, we only care about a
 // single, named resource: keda in the specified namespace
 func isInteresting(request reconcile.Request) bool {
 	return request.Name == kedaControllerResourceName && request.Namespace == kedaControllerResourceNamespace
+}
+
+// auditConfigTransformation is support function for transforming basic audit
+// flags. audit-log-path and audit-policy-file are transformed separately because of
+// different complexity. Returns transforms ([]mf.Transformer type) after all
+// flags are appended
+func auditConfigTransformation(t []mf.Transformer, ac kedav1alpha1.AuditConfig, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
+	if ac.LogFormat != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac.LogFormat, "logformat", scheme, logger))
+	}
+	if ac.AuditLifetime.MaxAge != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac.AuditLifetime.MaxAge, "maxage", scheme, logger))
+	}
+	if ac.AuditLifetime.MaxBackup != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac.AuditLifetime.MaxBackup, "maxbackup", scheme, logger))
+	}
+	if ac.AuditLifetime.MaxSize != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac.AuditLifetime.MaxSize, "maxsize", scheme, logger))
+	}
+	return t
+}
+
+// validateAuditLogVolumeWithArgs validates whether Volume can exist with lifetime
+// arguments. If name is empty (no volume given) -> validate lifetime args are
+// not given otherwise lt args would be useless for stdout logging.
+func validateAuditLogVolumeWithArgs(name string, ltArgs kedav1alpha1.AuditLifetime) error {
+	if name == "" {
+		var maxage int
+		var maxbackup int
+		var maxsize int
+		var err error
+
+		// check if lifetime args are given -> this would be error
+		if ltArgs.MaxAge != "" {
+			maxage, err = strconv.Atoi(ltArgs.MaxAge)
+			if err != nil {
+				return fmt.Errorf("bad conversion of string in audit flag maxAge")
+			}
+		}
+		if ltArgs.MaxBackup != "" {
+			maxbackup, err = strconv.Atoi(ltArgs.MaxBackup)
+			if err != nil {
+				return fmt.Errorf("bad conversion of string in audit flag maxBackup")
+			}
+		}
+		if ltArgs.MaxSize != "" {
+			maxsize, err = strconv.Atoi(ltArgs.MaxSize)
+			if err != nil {
+				return fmt.Errorf("bad conversion of string in audit flag maxSize")
+			}
+		}
+		if maxage >= 1 || maxbackup >= 1 || maxsize >= 1 {
+			return fmt.Errorf("bad flag combination - don't use lifetime arguments when logging to stdout")
+		}
+	}
+	return nil
+}
+
+// checkAuditLogVolumeExists checks whether PersistentVolumeClaim given exists
+// and is bound to a PV or not
+func (r *KedaControllerReconciler) checkAuditLogVolumeExists(name string, ctx context.Context, instance *kedav1alpha1.KedaController) error {
+	pvc := &corev1.PersistentVolumeClaim{}
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: instance.Namespace}, pvc)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return fmt.Errorf("persistentVolumeClaim '%s not found in namespace %s", name, instance.Namespace)
+		}
+	}
+
+	return nil
 }
