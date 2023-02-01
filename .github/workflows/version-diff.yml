@@ -5,7 +5,51 @@ on:
       - 'keda/**'
 
 jobs:
+  condition-check:
+    outputs:
+      check: ${{ steps.meet-conditions-id.outputs.check}}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get keda/ files in base branch
+        id: base-branch-id
+        run: |
+          a=`ls keda | xargs`
+          echo "baseFiles=$a" >> $GITHUB_OUTPUT
+
+      - name: Checkout Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: checkout
+        run: |
+          gh pr checkout ${{ github.event.number }}
+
+      - name: meet conditions for new release
+        id: meet-conditions-id
+        run: |
+          #new directory created in keda/
+          bf="${{ steps.base-branch-id.outputs.baseFiles }}"
+          nf=$(ls keda | xargs)
+          echo "new:"$nf
+          echo "old:"$bf
+          # new branch must be different (if new directory was created)
+          if [ "$nf" != "$bf" ]; then
+            echo "DIRS ARE DIFF"
+            check="ok"
+          else
+            echo "DIRS ARE THE SAME"
+            check=
+          fi
+          echo $check
+          echo "check=$check" >> $GITHUB_OUTPUT
+
   setup:
+    needs: condition-check
+    if: always() && needs.condition-check.outputs.check != ''
     runs-on: ubuntu-latest
     outputs:
       new_files: ${{ steps.setup-id.outputs.new_files }}
@@ -23,13 +67,11 @@ jobs:
         run: |
           gh pr checkout ${{ github.event.number }}
 
-      - name: resources/keda.yaml is updated
-        run:  |
+      - name: resources/keda.yaml is updated.
+        run: |
           tester=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.workflow_run.head_sha }} ${{ github.sha }} | xargs)
           echo $tester
-          if [[ " ${tester[*]} " =~ "resources/keda.yaml" ]]; then
-            exit 0
-          else
+          if [[ ! " ${tester[*]} " =~ "resources/keda.yaml" ]]; then
            echo "Did you forget to update resources/keda.yaml file? https://github.com/kedacore/keda-olm-operator/blob/main/RELEASE-PROCESS.MD#1-keda-release-yaml-file"
             exit 1
           fi
@@ -66,6 +108,7 @@ jobs:
           echo "::set-output name=new_files::$new_files"
           echo "::set-output name=old_files::$old_files"
   diff:
+    if: always() && needs.condition-check.outputs.check != ''
     name: Diff files
     needs: setup
     runs-on: ubuntu-latest
