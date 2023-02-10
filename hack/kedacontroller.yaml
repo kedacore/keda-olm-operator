@@ -132,6 +132,42 @@ spec:
     #     maxBackup: "1"
     #     maxSize: "50"
 
+    # --- Audit Config Example 1 ---
+    ## Log request metadata but not request or response body to stdout
+    # auditConfig:
+    #   policy:
+    #     rules:
+    #     - level: Metadata
+
+    # --- Audit Config Example 2 ---
+    ## Log request metadata to PersistentVolumeClaim with max output file size of 50MB
+    # auditConfig:
+    #   logOutputVolumeClaim: "persistentVolumeClaimName"
+    #   policy:
+    #     rules:
+    #     - level: Metadata
+    #   lifetime:
+    #     maxSize: "50"
+
+    # --- Audit Config Example 3 ---
+    ## Omits all requests in RequestReceived stage, first rule logs pod changes
+    ## at RequestResponse level & second rule forbids logging requests to a
+    ## configmap called "controller-leader".
+    # auditConfig:
+    #   policy:
+    #     omitStages:
+    #      - "RequestReceived"
+    #     rules:
+    #     - level: RequestResponse
+    #       resources:
+    #       - group: ""
+    #         resources: ["pods"]
+    #     - level: None
+    #       resources:
+    #       - group: ""
+    #         resources: ["configmaps"]
+    #         resourceNames: ["controller-leader"]
+
     ## Annotations to be added to the KEDA Metrics Server Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
     # deploymentAnnotations:
