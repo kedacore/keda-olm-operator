@@ -402,9 +402,9 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
 
 		transforms = append(transforms,
-			transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.Scheme, logger),
-			transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue, r.Scheme, logger),
-			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.Scheme, logger),
+			transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.Scheme),
+			transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue),
+			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.Scheme),
 		)
 		transforms = append(transforms, transform.EnsurePathsToCertsInDeployment(newArgs, argsPrefixes, r.Scheme, logger)...)
 	} else {
@@ -425,7 +425,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 			logger.Error(err, "unable to check Metrics Server Auditlog Policy ConfigMap is present")
 			return err
 		}
-		transforms = append(transforms, transform.EnsureAuditPolicyConfigMapMountsVolume(auditlogPolicyConfigMap, r.Scheme, logger))
+		transforms = append(transforms, transform.EnsureAuditPolicyConfigMapMountsVolume(auditlogPolicyConfigMap, r.Scheme))
 		// add mounted policy file path to MetricsServer arguments
 		auditFilePath := path.Join(auditlogPolicyMountPath, auditPolicyFile)
 		transforms = append(transforms, transform.ReplaceAuditConfig(auditFilePath, "policyfile", r.Scheme, logger))
@@ -449,7 +449,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 				return err
 			}
 			logVolumePath = "/var/audit-policy/log-" + time.Now().Format("2006.01.02-15:04")
-			transforms = append(transforms, transform.EnsureAuditLogMount(logOutVolumeClaim, logVolumePath, r.Scheme, logger))
+			transforms = append(transforms, transform.EnsureAuditLogMount(logOutVolumeClaim, logVolumePath, r.Scheme))
 		}
 
 		// add audit log output volume path to arguments of keda-adapter

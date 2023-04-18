@@ -96,7 +96,7 @@ func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *
 	}
 }
 
-func EnsureCertInjectionForAPIService(annotation string, annotationValue string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func EnsureCertInjectionForAPIService(annotation string, annotationValue string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "APIService" {
 			apiService := &apiregistrationv1.APIService{}
@@ -114,7 +114,7 @@ func EnsureCertInjectionForAPIService(annotation string, annotationValue string,
 	}
 }
 
-func EnsureCertInjectionForService(serviceName string, annotation string, annotationValue string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func EnsureCertInjectionForService(serviceName string, annotation string, annotationValue string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Service" && u.GetName() == serviceName {
 			annotations := u.GetAnnotations()
@@ -128,7 +128,7 @@ func EnsureCertInjectionForService(serviceName string, annotation string, annota
 	}
 }
 
-func EnsureCertInjectionForDeployment(configMapName string, secretName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func EnsureCertInjectionForDeployment(configMapName string, secretName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -230,7 +230,7 @@ func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *
 	return transforms
 }
 
-func EnsureAuditPolicyConfigMapMountsVolume(configMapName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func EnsureAuditPolicyConfigMapMountsVolume(configMapName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -709,7 +709,7 @@ func replaceContainerImage(image string, containerName string, scheme *runtime.S
 	}
 }
 
-func EnsureAuditLogMount(pvc string, path string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func EnsureAuditLogMount(pvc string, path string, scheme *runtime.Scheme) mf.Transformer {
 	const logOutputVolumeName = "audit-log"
 	return func(u *unstructured.Unstructured) error {
 		// ensure mountVolume exists when volume exists
