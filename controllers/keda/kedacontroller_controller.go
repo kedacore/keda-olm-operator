@@ -81,6 +81,7 @@ type KedaControllerReconciler struct {
 	resourcesGeneral    mf.Manifest
 	resourcesController mf.Manifest
 	resourcesMetrics    mf.Manifest
+	resourcesMonitoring mf.Manifest
 }
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -88,7 +89,7 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
-	manifestGeneral, manifestController, manifestMetrics, err := parseManifestsFromFile(resourcesManifest, r.Client)
+	manifestGeneral, manifestController, manifestMetrics, manifestMonitoring, err := parseManifestsFromFile(resourcesManifest, r.Client)
 	if err != nil {
 		return err
 	}
@@ -96,6 +97,7 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.resourcesGeneral = manifestGeneral
 	r.resourcesController = manifestController
 	r.resourcesMetrics = manifestMetrics
+	r.resourcesMonitoring = manifestMonitoring
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.KedaController{}).
@@ -109,7 +111,7 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=apps,resourceNames=keda-olm-operator,resources=deployments/finalizers,verbs="*"
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings;clusterroles;rolebindings,verbs="*"
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs="*"
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=get;create;list
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 
@@ -196,6 +198,13 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return ctrl.Result{}, err
 	}
+	if err := r.installMonitoring(ctx, logger); err != nil {
+		status.MarkInstallFailed("Not able to install monitoring resources")
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
+		return ctrl.Result{}, err
+	}
 
 	status.Version = version.Version
 	status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, installationNamespace))
@@ -206,8 +215,9 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, nil
 }
 
-func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGeneral, manifestController, manifestMetrics mf.Manifest, err error) {
-	var generalResources, controllerResources, metricsResources []unstructured.Unstructured
+func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGeneral, manifestController,
+	manifestMetrics, manifestMonitoring mf.Manifest, err error) {
+	var generalResources, controllerResources, metricsResources, monitoringResources []unstructured.Unstructured
 
 	for _, r := range manifest.Resources() {
 		switch kind := r.GetKind(); kind {
@@ -221,27 +231,35 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 			}
 		case "Namespace", "ServiceAccount":
 			generalResources = append(generalResources, r)
+		case "PodMonitor", "ServiceMonitor":
+			monitoringResources = append(monitoringResources, r)
 		}
 	}
 
 	manifestClient := mfc.NewClient(c)
 	manifestGeneral, err = mf.ManifestFrom(mf.Slice(generalResources))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestGeneral.Client = manifestClient
 
 	manifestController, err = mf.ManifestFrom(mf.Slice(controllerResources))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestController.Client = manifestClient
 
 	manifestMetrics, err = mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestMetrics.Client = manifestClient
+
+	manifestMonitoring, err = mf.ManifestFrom(mf.Slice(monitoringResources))
+	if err != nil {
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+	}
+	manifestMonitoring.Client = manifestClient
 
 	return
 }
@@ -373,6 +391,28 @@ func (r *KedaControllerReconciler) installController(logger logr.Logger, instanc
 
 	if err := r.resourcesController.Apply(); err != nil {
 		logger.Error(err, "Unable to install KEDA Controller")
+		return err
+	}
+
+	return nil
+}
+
+// installMonitoring install the controller resources for the monitoring stack
+func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger logr.Logger) error {
+	logger.Info("Reconciling monitoring resources")
+
+	// this works only if required CRDs are present
+	if !util.HasServiceMonitorCRD(ctx, logger, r.Client) {
+		logger.V(4).Info("ServiceMonitor CRD not found, skipping monitoring resources")
+		return nil
+	}
+	if !util.HasPodMonitorCRD(ctx, logger, r.Client) {
+		logger.V(4).Info("PodMonitor CRD not found, skipping monitoring resources")
+		return nil
+	}
+
+	if err := r.resourcesMonitoring.Apply(); err != nil {
+		logger.Error(err, "Unable to install monitoring resources")
 		return err
 	}
 

@@ -498,9 +498,11 @@ spec:
           - monitoring.coreos.com
           resources:
           - servicemonitors
+          - podmonitors
           verbs:
           - create
           - get
+          - list
         - apiGroups:
           - rbac.authorization.k8s.io
           resources:
@@ -555,6 +557,10 @@ spec:
                     port: 8081
                   initialDelaySeconds: 25
                 name: keda-olm-operator
+                ports:
+                - containerPort: 8080
+                  name: http
+                  protocol: TCP
                 readinessProbe:
                   httpGet:
                     path: /readyz

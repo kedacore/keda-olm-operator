@@ -60,10 +60,12 @@ rules:
 - apiGroups:
   - monitoring.coreos.com
   resources:
+  - podmonitors
   - servicemonitors
   verbs:
   - create
   - get
+  - list
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:

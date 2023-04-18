@@ -11,6 +11,7 @@
   - [Uninstallation](#uninstallation)
     - [How to uninstall KEDA Controller](#how-to-uninstall-keda-controller)
     - [How to uninstall KEDA OLM Operator](#how-to-uninstall-keda-olm-operator)
+  - [Monitoring](#monitoring)
   - [Development](#development)
     - [Operator Framework](#operator-framework)
     - [Running locally](#running-locally)
@@ -336,6 +337,11 @@ In case of manual installation, run these commands:
 ```bash
 make undeploy
 ```
+
+## Monitoring
+This operator contains monitoring configuration to enable Prometheus metrics
+collection. ServiceMonitor and PodMonitor instances are created if the CRDs from
+the Monitoring API are available in the cluster.
 
 ## Development
 
