@@ -70,11 +70,28 @@ func UpdateKedaControllerStatus(ctx context.Context, cl client.Client, kedaContr
 
 func RunningOnOpenshift(ctx context.Context, logger logr.Logger, cl client.Client) bool {
 	gvk := schema.GroupVersionKind{Group: "route.openshift.io", Version: "v1", Kind: "route"}
+	return isGvkPresent(ctx, logger, cl, gvk)
+}
+
+// HasServiceMonitorCRD returns true if the ServiceMonitor CRD is present in the cluster, false otherwise
+func HasServiceMonitorCRD(ctx context.Context, logger logr.Logger, cl client.Client) bool {
+	gvk := schema.GroupVersionKind{Group: "monitoring.coreos.com", Version: "v1", Kind: "ServiceMonitor"}
+	return isGvkPresent(ctx, logger, cl, gvk)
+}
+
+// HasPodMonitorCRD returns true if the monitoring stack (i.e. Prometheus) is present, false otherwise
+func HasPodMonitorCRD(ctx context.Context, logger logr.Logger, cl client.Client) bool {
+	gvk := schema.GroupVersionKind{Group: "monitoring.coreos.com", Version: "v1", Kind: "PodMonitor"}
+	return isGvkPresent(ctx, logger, cl, gvk)
+}
+
+// isGvkPresent returns whether the given gvk is present or not
+func isGvkPresent(ctx context.Context, logger logr.Logger, cl client.Client, gvk schema.GroupVersionKind) bool {
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(gvk)
 	if err := cl.List(ctx, list, &client.ListOptions{}); err != nil {
 		if !meta.IsNoMatchError(err) {
-			logger.Error(err, "Unable to query for OpenShift Route")
+			logger.Error(err, "Unable to query", "gvk", gvk.String())
 		}
 		return false
 	}
