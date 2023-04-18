@@ -12,6 +12,7 @@
     - [How to uninstall KEDA Controller](#how-to-uninstall-keda-controller)
     - [How to uninstall KEDA OLM Operator](#how-to-uninstall-keda-olm-operator)
   - [Development](#development)
+    - [Pre-requisites](#pre-requisites)
     - [Operator Framework](#operator-framework)
     - [Running locally](#running-locally)
     - [Building the Operator Image](#building-the-operator-image)
@@ -338,6 +339,26 @@ make undeploy
 ```
 
 ## Development
+
+### Pre-requisites
+
+This project uses the following tools for development.
+
+#### golangci-lint
+
+To install `golangci-lint` locally follow the [official documentation](https://golangci-lint.run/usage/install/#local-installation).
+
+#### pre-commit
+
+To install `pre-commit` locally follow the [official documentation](https://pre-commit.com/#install).
+`pre-commit` uses the [.pre-commit-config.yaml](.pre-commit-config.yaml) configuration file located in the root of the
+project.
+
+To set up the `git` hook script execute the following command so that the pre-commit steps runs automatically on
+each commit.
+```bash
+pre-commit install
+```
 
 ### Operator Framework
 
