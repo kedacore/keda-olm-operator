@@ -22,6 +22,13 @@ cp -r keda/2.8.0 keda/2.9.0
 ## 3. Update KEDA CRDs
 Update all KEDA CRDs in the newly (eg. `2.9.0`) created directory, get the up-to-date version from the release file mentioned in [step 1](#1-keda-release-yaml-file).
 
+To update the `keda.sh_kedacontrollers.yaml` CRD, perform the following steps:
+
+```bash
+make manifests
+cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/2.9.0/manifests/
+```
+
 ## 4. Update CSV file
 Update ClusterServiceVersion file in the newly (eg. `2.9.0`) created directory:
 - rename the file to respect the version.
@@ -56,7 +63,7 @@ git push origin release290
 
 ## 8. Create KEDA release on GitHub
 
-Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.9.0).
+Creating a new release in the releases page (https://github.com/kedacore/keda-olm-operator/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.9.0).
 
 > Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda-olm-operator/tags
 

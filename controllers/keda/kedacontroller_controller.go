@@ -234,13 +234,13 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 
 	for _, r := range manifest.Resources() {
 		switch kind := r.GetKind(); kind {
-		case "APIService", "Service", "ValidatingWebhookConfiguration":
+		case "APIService", "ValidatingWebhookConfiguration":
 			if name := r.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
 				webhookResources = append(webhookResources, r)
 			} else {
 				metricsResources = append(metricsResources, r)
 			}
-		case "ClusterRole", "RoleBinding", "Role", "ClusterRoleBinding", "Deployment":
+		case "ClusterRole", "ClusterRoleBinding", "Deployment", "Role", "RoleBinding", "Service":
 			if name := r.GetName(); name == "keda-operator" {
 				controllerResources = append(controllerResources, r)
 			} else if name := r.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
