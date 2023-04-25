@@ -111,7 +111,7 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=apps,resourceNames=keda-olm-operator,resources=deployments/finalizers,verbs="*"
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings;clusterroles;rolebindings,verbs="*"
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs="*"
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=get;create;list
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 
