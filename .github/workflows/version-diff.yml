@@ -80,7 +80,7 @@ jobs:
         id: setup-id
         run: |
           cd keda/
-          DIRS=$(ls|tail -2)
+          DIRS=$(ls | sort --version-sort |tail -2)
           dirs=($DIRS)
           dir_old_list=$(find ${dirs[0]} -print)
           dir_new_list=$(find ${dirs[1]} -print)
