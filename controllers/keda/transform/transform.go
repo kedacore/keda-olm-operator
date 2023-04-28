@@ -31,6 +31,7 @@ const (
 	ClientCAFile                Prefix = "--client-ca-file="
 	TLSCertFile                 Prefix = "--tls-cert-file="
 	TLSPrivateKeyFile           Prefix = "--tls-private-key-file="
+	GRPCCertsDir                Prefix = "--cert-dir="
 )
 
 func (p Prefix) String() string {
@@ -128,7 +129,7 @@ func EnsureCertInjectionForService(serviceName string, annotation string, annota
 	}
 }
 
-func EnsureCertInjectionForDeployment(configMapName string, secretName string, scheme *runtime.Scheme) mf.Transformer {
+func EnsureCertInjectionForDeployment(configMapName, secretName, grpcCertSecretName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -155,10 +156,19 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 					},
 				},
 			}
+			grpcCertsVolume := corev1.Volume{
+				Name: "certificates",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: grpcCertSecretName,
+					},
+				},
+			}
 
 			volumes := deploy.Spec.Template.Spec.Volumes
 			cabundleVolumeFound := false
 			certsVolumeFound := false
+			grpcCertsVolumeFound := false
 			for i := range volumes {
 				if volumes[i].Name == "cabundle" {
 					volumes[i] = cabundleVolume
@@ -168,12 +178,19 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 					volumes[i] = certsVolume
 					certsVolumeFound = true
 				}
+				if volumes[i].Name == "certificates" {
+					volumes[i] = grpcCertsVolume
+					grpcCertsVolumeFound = true
+				}
 			}
 			if !cabundleVolumeFound {
 				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, cabundleVolume)
 			}
 			if !certsVolumeFound {
 				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, certsVolume)
+			}
+			if !grpcCertsVolumeFound {
+				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, grpcCertsVolume)
 			}
 
 			containers := deploy.Spec.Template.Spec.Containers
@@ -190,9 +207,15 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 						MountPath: "/certs",
 					}
 
+					grpcCertsVolumeMount := corev1.VolumeMount{
+						Name:      "certificates",
+						MountPath: "/grpc-certs",
+					}
+
 					volumeMounts := containers[i].VolumeMounts
 					cabundleVolumeMountFound := false
 					certsVolumeMountFound := false
+					grpcCertsVolumeMountFound := false
 					for j := range volumeMounts {
 						if volumeMounts[j].Name == "cabundle" {
 							volumeMounts[j] = cabundleVolumeMount
@@ -202,12 +225,19 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 							volumeMounts[j] = certsVolumeMount
 							certsVolumeMountFound = true
 						}
+						if volumeMounts[j].Name == "certificates" {
+							volumeMounts[j] = grpcCertsVolumeMount
+							grpcCertsVolumeMountFound = true
+						}
 					}
 					if !cabundleVolumeMountFound {
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, cabundleVolumeMount)
 					}
 					if !certsVolumeMountFound {
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certsVolumeMount)
+					}
+					if !grpcCertsVolumeMountFound {
+						containers[i].VolumeMounts = append(containers[i].VolumeMounts, grpcCertsVolumeMount)
 					}
 
 					break

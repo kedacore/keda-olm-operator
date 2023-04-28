@@ -59,7 +59,8 @@ const (
 
 	installationNamespace = "keda"
 
-	metricsServcerServiceName        = "keda-metrics-apiserver"
+	grpcCertSecretName               = "kedaorg-certs"
+	metricsServerServiceName         = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
 	injectCABundleAnnotation         = "service.beta.openshift.io/inject-cabundle"
 	injectCABundleAnnotationValue    = "true"
@@ -438,13 +439,13 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 			return err
 		}
 
-		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
-		newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
+		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile, transform.GRPCCertsDir}
+		newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key", "/grpc-certs"}
 
 		transforms = append(transforms,
 			transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.Scheme),
-			transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue),
-			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.Scheme),
+			transform.EnsureCertInjectionForService(metricsServerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue),
+			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServerServiceName, grpcCertSecretName, r.Scheme),
 		)
 		transforms = append(transforms, transform.EnsurePathsToCertsInDeployment(newArgs, argsPrefixes, r.Scheme, logger)...)
 	} else {
