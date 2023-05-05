@@ -28,6 +28,10 @@ metadata:
             "namespace": "keda"
           },
           "spec": {
+            "admissionWebhooks": {
+              "logEncoder": "console",
+              "logLevel": "info"
+            },
             "metricsServer": {
               "logLevel": "0"
             },
@@ -458,11 +462,28 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - validatingwebhookconfigurations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - apiregistration.k8s.io
           resources:
           - apiservices
           verbs:
-          - '*'
+          - create
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - apps
           resources:
@@ -513,6 +534,7 @@ spec:
           - clusterrolebindings
           - clusterroles
           - rolebindings
+          - roles
           verbs:
           - '*'
         - apiGroups:

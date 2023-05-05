@@ -45,6 +45,9 @@ type KedaControllerSpec struct {
 	MetricsServer KedaMetricsServerSpec `json:"metricsServer"`
 
 	// +optional
+	AdmissionWebhooks KedaAdmissionWebhooksSpec `json:"admissionWebhooks"`
+
+	// +optional
 	ServiceAccount KedaServiceAccountSpec `json:"serviceAccount"`
 
 	// Important: Run "make" to regenerate code after modifying this file
@@ -106,6 +109,35 @@ type KedaMetricsServerSpec struct {
 	// flags, he can do so manually with Args field.
 	// +optional
 	AuditConfig `json:"auditConfig,omitempty"`
+
+	// Any user-defined arguments with possibility to override any existing or
+	// previously defined arguments. Allowed formats are '--argument=value',
+	// 'argument=value' or just 'value'. Ex.: '--v=0' or 'ENV_ARGUMENT'
+	// +optional
+	Args []string `json:"args,omitempty"`
+}
+
+type KedaAdmissionWebhooksSpec struct {
+
+	// Logging level for Admission Webhooks
+	// allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+	// default value: info
+	// +optional
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// Logging format for Admission Webhooks
+	// allowed values are 'json' and 'console'
+	// default value: console
+	// +optional
+	LogEncoder string `json:"logEncoder,omitempty"`
+
+	// Logging time encoding for Admission Webhooks
+	// allowed values are 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'
+	// default value: rfc3339
+	// +optional
+	LogTimeEncoding string `json:"logTimeEncoding,omitempty"`
+
+	GenericDeploymentSpec `json:",inline"`
 
 	// Any user-defined arguments with possibility to override any existing or
 	// previously defined arguments. Allowed formats are '--argument=value',
