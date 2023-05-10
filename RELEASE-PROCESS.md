@@ -69,8 +69,6 @@ Creating a new release in the releases page (https://github.com/kedacore/keda-ol
 
 
 ## 9. Publish KEDA OLM Operator on OperatorHub.io
-1. Create pull request on https://github.com/k8s-operatorhub/community-operators:
-    - copy the newly created bundle directory from keda-olm-repo (eg. `keda/2.9.0`) to `operators/keda` directory in [https://github.com/k8s-operatorhub/community-operators](https://github.com/k8s-operatorhub/community-operators), you should see the previous version over there
-    - send a pull request with this change
-2.  Create pull request on https://github.com/redhat-openshift-ecosystem/community-operators-prod:
-   - repeat the same as in step 1. but now copy the new bundle to `operators/keda` directory in [https://github.com/redhat-openshift-ecosystem/community-operators-prod](https://github.com/redhat-openshift-ecosystem/community-operators-prod)
+Create pull request on https://github.com/k8s-operatorhub/community-operators:
+- copy the newly created bundle directory from keda-olm-repo (eg. `keda/2.9.0`) to `operators/keda` directory in [https://github.com/k8s-operatorhub/community-operators](https://github.com/k8s-operatorhub/community-operators), you should see the previous version over there
+- send a pull request with this change
