@@ -65,7 +65,7 @@ git push origin release290
 
 Creating a new release in the releases page (https://github.com/kedacore/keda-olm-operator/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.9.0).
 
-> Note: The Docker Hub repo with all the different images can be seen here: https://hub.docker.com/r/kedacore/keda-olm-operator/tags
+> Note: The GitHub Container Registry repo with all the different images can be seen here: https://github.com/kedacore/keda-olm-operator/pkgs/container/keda-olm-operator
 
 
 ## 9. Publish KEDA OLM Operator on OperatorHub.io
