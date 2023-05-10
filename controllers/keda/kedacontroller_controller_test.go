@@ -113,11 +113,93 @@ var _ = Describe("Deploying KedaController manifest", func() {
 
 var _ = Describe("Testing functionality", func() {
 
-	var _ = Describe("Changing parameters", func() {
+	var _ = Describe("Changing operator parameters", func() {
 
 		const (
 			deploymentName       = "keda-operator"
 			containerName        = "keda-operator"
+			logLevelPrefix       = "--zap-log-level="
+			kind                 = "KedaController"
+			name                 = "keda"
+			namespace            = "keda"
+			kedaManifestFilepath = "../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+		)
+
+		var (
+			ctx      = context.Background()
+			timeout  = time.Second * 60
+			interval = time.Millisecond * 250
+			scheme   *runtime.Scheme
+			manifest mf.Manifest
+			err      error
+			arg      string
+			dep      = &appsv1.Deployment{}
+		)
+
+		BeforeEach(func() {
+			scheme = k8sManager.GetScheme()
+			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
+			Expect(err).To(BeNil())
+			Expect(manifest.Apply()).Should(Succeed())
+		})
+
+		Context("When changing \"--zap-log-level\"", func() {
+			variants := []struct {
+				initialLogLevel string
+				actualLogLevel  string
+			}{
+				{
+					initialLogLevel: "debug",
+					actualLogLevel:  "debug",
+				},
+				{
+					initialLogLevel: "info",
+					actualLogLevel:  "info",
+				},
+				{
+					initialLogLevel: "error",
+					actualLogLevel:  "error",
+				},
+				{
+					initialLogLevel: "",
+					actualLogLevel:  "info",
+				},
+				{
+					initialLogLevel: "foo",
+					actualLogLevel:  "info",
+				},
+			}
+
+			for _, variant := range variants {
+				It(fmt.Sprintf("Should change it, initialLoglevel='%s', actualLoglevel='%s'",
+					variant.initialLogLevel, variant.actualLogLevel), func() {
+
+					manifest, err = changeAttribute(manifest, "logLevel", variant.initialLogLevel, scheme)
+					_ = manifest.Apply()
+
+					Eventually(func() error {
+						_, err = getObject(ctx, "Deployment", deploymentName, namespace, k8sClient)
+						return err
+					}, timeout, interval).Should(Succeed())
+
+					u, err := getObject(ctx, "Deployment", deploymentName, namespace, k8sClient)
+					Expect(err).To(BeNil())
+					err = scheme.Convert(u, dep, nil)
+					Expect(err).To(BeNil())
+
+					arg, err = getDepArg(dep, logLevelPrefix, containerName)
+					Expect(err).To(BeNil())
+					Expect(arg).To(Equal(variant.actualLogLevel))
+				})
+			}
+		})
+	})
+
+	var _ = Describe("Changing webhook parameters", func() {
+
+		const (
+			deploymentName       = "keda-admission"
+			containerName        = "keda-admission-webhooks"
 			logLevelPrefix       = "--zap-log-level="
 			kind                 = "KedaController"
 			name                 = "keda"

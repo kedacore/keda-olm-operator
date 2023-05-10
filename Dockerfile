@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.18.8 as builder
+FROM ghcr.io/kedacore/build-tools:1.19.7 as builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -32,6 +32,7 @@ RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION}
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/resources/keda.yaml /workspace/resources/keda.yaml
+COPY --from=builder /workspace/resources/keda-olm-operator.yaml /workspace/resources/keda-olm-operator.yaml
 COPY --from=builder /workspace/bin/manager .
 # 65532 is numeric for nonroot
 USER 65532:65532

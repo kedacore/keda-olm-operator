@@ -16,21 +16,22 @@ import (
 )
 
 var (
-	logLevelsKedaOperator        = []string{"debug", "info", "error"}
-	logEncodersKedaOperator      = []string{"json", "console"}
-	logTimeEncodingsKedaOperator = []string{"epoch", "millis", "nano", "iso8601", "rfc3339", "rfc3339nano"}
+	logLevels        = []string{"debug", "info", "error"}
+	logEncoders      = []string{"json", "console"}
+	logTimeEncodings = []string{"epoch", "millis", "nano", "iso8601", "rfc3339", "rfc3339nano"}
 )
 
 type Prefix string
 
 const (
-	LogLevelKedaOperator        Prefix = "--zap-log-level="
-	LogEncoderKedaOperator      Prefix = "--zap-encoder="
-	LogTimeEncodingKedaOperator Prefix = "--zap-time-encoding="
-	LogLevelMetricsServer       Prefix = "--v="
-	ClientCAFile                Prefix = "--client-ca-file="
-	TLSCertFile                 Prefix = "--tls-cert-file="
-	TLSPrivateKeyFile           Prefix = "--tls-private-key-file="
+	LogLevelArg           Prefix = "--zap-log-level="
+	LogEncoderArg         Prefix = "--zap-encoder="
+	LogTimeEncodingArg    Prefix = "--zap-time-encoding="
+	LogLevelMetricsServer Prefix = "--v="
+	ClientCAFile          Prefix = "--client-ca-file="
+	TLSCertFile           Prefix = "--tls-cert-file="
+	TLSPrivateKeyFile     Prefix = "--tls-private-key-file="
+	GRPCCertsDir          Prefix = "--cert-dir="
 )
 
 func (p Prefix) String() string {
@@ -38,8 +39,9 @@ func (p Prefix) String() string {
 }
 
 const (
-	containerNameKedaOperator  = "keda-operator"
-	containerNameMetricsServer = "keda-metrics-apiserver"
+	containerNameKedaOperator      = "keda-operator"
+	containerNameMetricsServer     = "keda-metrics-apiserver"
+	containerNameAdmissionWebhooks = "keda-admission-webhooks"
 )
 
 func ReplaceNamespace(name string, namespace string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
@@ -128,7 +130,7 @@ func EnsureCertInjectionForService(serviceName string, annotation string, annota
 	}
 }
 
-func EnsureCertInjectionForDeployment(configMapName string, secretName string, scheme *runtime.Scheme) mf.Transformer {
+func EnsureCertInjectionForDeployment(configMapName, secretName, grpcCertSecretName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -155,10 +157,19 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 					},
 				},
 			}
+			grpcCertsVolume := corev1.Volume{
+				Name: "certificates",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: grpcCertSecretName,
+					},
+				},
+			}
 
 			volumes := deploy.Spec.Template.Spec.Volumes
 			cabundleVolumeFound := false
 			certsVolumeFound := false
+			grpcCertsVolumeFound := false
 			for i := range volumes {
 				if volumes[i].Name == "cabundle" {
 					volumes[i] = cabundleVolume
@@ -168,12 +179,19 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 					volumes[i] = certsVolume
 					certsVolumeFound = true
 				}
+				if volumes[i].Name == "certificates" {
+					volumes[i] = grpcCertsVolume
+					grpcCertsVolumeFound = true
+				}
 			}
 			if !cabundleVolumeFound {
 				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, cabundleVolume)
 			}
 			if !certsVolumeFound {
 				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, certsVolume)
+			}
+			if !grpcCertsVolumeFound {
+				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, grpcCertsVolume)
 			}
 
 			containers := deploy.Spec.Template.Spec.Containers
@@ -190,9 +208,15 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 						MountPath: "/certs",
 					}
 
+					grpcCertsVolumeMount := corev1.VolumeMount{
+						Name:      "certificates",
+						MountPath: "/grpc-certs",
+					}
+
 					volumeMounts := containers[i].VolumeMounts
 					cabundleVolumeMountFound := false
 					certsVolumeMountFound := false
+					grpcCertsVolumeMountFound := false
 					for j := range volumeMounts {
 						if volumeMounts[j].Name == "cabundle" {
 							volumeMounts[j] = cabundleVolumeMount
@@ -202,12 +226,19 @@ func EnsureCertInjectionForDeployment(configMapName string, secretName string, s
 							volumeMounts[j] = certsVolumeMount
 							certsVolumeMountFound = true
 						}
+						if volumeMounts[j].Name == "certificates" {
+							volumeMounts[j] = grpcCertsVolumeMount
+							grpcCertsVolumeMountFound = true
+						}
 					}
 					if !cabundleVolumeMountFound {
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, cabundleVolumeMount)
 					}
 					if !certsVolumeMountFound {
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certsVolumeMount)
+					}
+					if !grpcCertsVolumeMountFound {
+						containers[i].VolumeMounts = append(containers[i].VolumeMounts, grpcCertsVolumeMount)
 					}
 
 					break
@@ -296,7 +327,7 @@ func EnsureAuditPolicyConfigMapMountsVolume(configMapName string, scheme *runtim
 
 func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
-	for _, level := range logLevelsKedaOperator {
+	for _, level := range logLevels {
 		if logLevel == level {
 			found = true
 		}
@@ -308,19 +339,19 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 	}
 
 	if !found {
-		logger.Info("Ignoring speficied Log level for KEDA Operator, it needs to be set to ", strings.Join(logLevelsKedaOperator, ", "), "or an integer value greater than 0")
+		logger.Info("Ignoring speficied Log level for KEDA Operator, it needs to be set to ", strings.Join(logLevels, ", "), "or an integer value greater than 0")
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
 	}
 
-	prefix := LogLevelKedaOperator
+	prefix := LogLevelArg
 	return replaceContainerArg(logLevel, prefix, containerNameKedaOperator, scheme, logger)
 }
 
 func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
-	for _, format := range logEncodersKedaOperator {
+	for _, format := range logEncoders {
 		if logEncoder == format {
 			found = true
 			break
@@ -328,13 +359,13 @@ func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, lo
 	}
 
 	if !found {
-		logger.Info("Ignoring speficied Log encoder for KEDA Operator", "specified", logEncoder, "allowed values", strings.Join(logEncodersKedaOperator, ", "))
+		logger.Info("Ignoring speficied Log encoder for KEDA Operator", "specified", logEncoder, "allowed values", strings.Join(logEncoders, ", "))
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
 	}
 
-	prefix := LogEncoderKedaOperator
+	prefix := LogEncoderArg
 	return replaceContainerArg(logEncoder, prefix, containerNameKedaOperator, scheme, logger)
 }
 
@@ -357,7 +388,7 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 
 func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
-	for _, timeEncoding := range logTimeEncodingsKedaOperator {
+	for _, timeEncoding := range logTimeEncodings {
 		if logTimeEncoding == timeEncoding {
 			found = true
 			break
@@ -365,14 +396,78 @@ func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.
 	}
 
 	if !found {
-		logger.Info("Ignoring speficied Log time encoding for KEDA Operator", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodingsKedaOperator, ", "))
+		logger.Info("Ignoring speficied Log time encoding for KEDA Operator", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodings, ", "))
 		return func(u *unstructured.Unstructured) error {
 			return nil
 		}
 	}
 
-	prefix := LogTimeEncodingKedaOperator
+	prefix := LogTimeEncodingArg
 	return replaceContainerArg(logTimeEncoding, prefix, containerNameKedaOperator, scheme, logger)
+}
+
+func ReplaceAdmissionWebhooksLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	found := false
+	for _, level := range logLevels {
+		if logLevel == level {
+			found = true
+		}
+	}
+	if !found {
+		if _, err := strconv.ParseUint(logLevel, 10, 64); err == nil {
+			found = true
+		}
+	}
+
+	if !found {
+		logger.Info("Ignoring speficied Log level for KEDA Admission Webhooks, it needs to be set to ", strings.Join(logLevels, ", "), "or an integer value greater than 0")
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+
+	prefix := LogLevelArg
+	return replaceContainerArg(logLevel, prefix, containerNameAdmissionWebhooks, scheme, logger)
+}
+
+func ReplaceAdmissionWebhooksLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	found := false
+	for _, format := range logEncoders {
+		if logEncoder == format {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		logger.Info("Ignoring speficied Log encoder for KEDA Admission Webhooks", "specified", logEncoder, "allowed values", strings.Join(logEncoders, ", "))
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+
+	prefix := LogEncoderArg
+	return replaceContainerArg(logEncoder, prefix, containerNameAdmissionWebhooks, scheme, logger)
+}
+
+func ReplaceAdmissionWebhooksLogTimeEncoding(logTimeEncoding string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	found := false
+	for _, timeEncoding := range logTimeEncodings {
+		if logTimeEncoding == timeEncoding {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		logger.Info("Ignoring speficied Log time encoding for KEDA Admission Webhooks", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodings, ", "))
+		return func(u *unstructured.Unstructured) error {
+			return nil
+		}
+	}
+
+	prefix := LogTimeEncodingArg
+	return replaceContainerArg(logTimeEncoding, prefix, containerNameAdmissionWebhooks, scheme, logger)
 }
 
 func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
@@ -402,6 +497,8 @@ func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Schem
 		return replaceContainerArg(argTrue, prefix, containerNameKedaOperator, scheme, logger)
 	case "metricsserver":
 		return replaceContainerArg(argTrue, prefix, containerNameMetricsServer, scheme, logger)
+	case "admissionwebhooks":
+		return replaceContainerArg(argTrue, prefix, containerNameAdmissionWebhooks, scheme, logger)
 	default:
 		return func(u *unstructured.Unstructured) error {
 			return nil
@@ -659,6 +756,10 @@ func ReplaceMetricsServerResources(resources corev1.ResourceRequirements, scheme
 	return replaceResources(resources, containerNameMetricsServer, scheme)
 }
 
+func ReplaceAdmissionWebhooksResources(resources corev1.ResourceRequirements, scheme *runtime.Scheme) mf.Transformer {
+	return replaceResources(resources, containerNameAdmissionWebhooks, scheme)
+}
+
 func replaceResources(resources corev1.ResourceRequirements, containerName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -686,6 +787,10 @@ func ReplaceMetricsServerImage(image string, scheme *runtime.Scheme) mf.Transfor
 
 func ReplaceKedaOperatorImage(image string, scheme *runtime.Scheme) mf.Transformer {
 	return replaceContainerImage(image, containerNameKedaOperator, scheme)
+}
+
+func ReplaceAdmissionWebhooksImage(image string, scheme *runtime.Scheme) mf.Transformer {
+	return replaceContainerImage(image, containerNameAdmissionWebhooks, scheme)
 }
 
 func replaceContainerImage(image string, containerName string, scheme *runtime.Scheme) mf.Transformer {

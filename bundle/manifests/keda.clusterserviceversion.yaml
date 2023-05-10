@@ -28,6 +28,10 @@ metadata:
             "namespace": "keda"
           },
           "spec": {
+            "admissionWebhooks": {
+              "logEncoder": "console",
+              "logLevel": "info"
+            },
             "metricsServer": {
               "logLevel": "0"
             },
@@ -111,15 +115,15 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Cloud Provider
     certified: "false"
-    containerImage: ghcr.io/kedacore/keda-olm-operator:2.8.1
-    createdAt: "2022-05-11T00:00:00.000Z"
+    containerImage: ghcr.io/kedacore/keda-olm-operator:2.10.1
+    createdAt: "2023-05-05T20:03:18Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
-    operators.operatorframework.io/builder: operator-sdk-v1.23.0
+    operators.operatorframework.io/builder: operator-sdk-v1.28.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
-  name: keda.v2.8.1
+  name: keda.v2.10.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -178,18 +182,30 @@ spec:
       - description: 'Log Level for KEDA Operator, allowed values: ''debug'', ''info'',
           ''error'', or an integer value greater than 0, specified as string'
         displayName: Log Level
-        path: logLevel
+        path: operator.logLevel
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Log format for KEDA Operator, allowed values are 'json' and 'console'
         displayName: Log Format
-        path: logEncoder
+        path: operator.logEncoder
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Log Level for KEDA Metrics Server, allowed values: "0" for info,
           "4" for debug, or an integer value greater than 0, specified as string'
         displayName: Log Level Metrics
-        path: logLevelMetrics
+        path: metricsServer.logLevel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Log Level for KEDA Admission Webhooks, allowed values: ''debug'',
+          ''info'', ''error'', or an integer value greater than 0, specified as string'
+        displayName: Log Level
+        path: admissionWebhooks.logLevel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Log format for KEDA Admission Webhooks, allowed values are 'json'
+          and 'console'
+        displayName: Log Format
+        path: admissionWebhooks.logEncoder
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Namespace that should the created KEDA controller watch, blank
@@ -376,6 +392,11 @@ spec:
         path: originalReplicaCount
         x-descriptors:
         - urn:alm:descriptor:text
+      - description: Paused Replica Count
+        displayName: Paused Replica Count
+        path: pausedReplicaCount
+        x-descriptors:
+        - urn:alm:descriptor:text
       - description: Conditions
         displayName: Conditions
         path: conditions
@@ -458,11 +479,28 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - validatingwebhookconfigurations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - apiregistration.k8s.io
           resources:
           - apiservices
           verbs:
-          - '*'
+          - create
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - apps
           resources:
@@ -501,14 +539,19 @@ spec:
           - servicemonitors
           verbs:
           - create
+          - delete
           - get
           - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - rbac.authorization.k8s.io
           resources:
           - clusterrolebindings
           - clusterroles
           - rolebindings
+          - roles
           verbs:
           - '*'
         - apiGroups:
@@ -605,9 +648,9 @@ spec:
   - email: cncf-keda-maintainers@lists.cncf.io
     name: KEDA Community
   maturity: alpha
-  minKubeVersion: 1.17.0
+  minKubeVersion: 1.23.0
   provider:
     name: KEDA Community
-  replaces: keda.v2.7.1
+  replaces: keda.v2.9.3
   selector: {}
-  version: 2.8.1
+  version: 2.10.1

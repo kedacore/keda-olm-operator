@@ -59,7 +59,8 @@ const (
 
 	installationNamespace = "keda"
 
-	metricsServcerServiceName        = "keda-metrics-apiserver"
+	grpcCertSecretName               = "kedaorg-certs"
+	metricsServerServiceName         = "keda-metrics-apiserver"
 	metricsServerConfigMapName       = "keda-metrics-apiserver"
 	injectCABundleAnnotation         = "service.beta.openshift.io/inject-cabundle"
 	injectCABundleAnnotationValue    = "true"
@@ -81,6 +82,7 @@ type KedaControllerReconciler struct {
 	resourcesGeneral    mf.Manifest
 	resourcesController mf.Manifest
 	resourcesMetrics    mf.Manifest
+	resourcesWebhooks   mf.Manifest
 	resourcesMonitoring mf.Manifest
 }
 
@@ -89,7 +91,7 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
-	manifestGeneral, manifestController, manifestMetrics, manifestMonitoring, err := parseManifestsFromFile(resourcesManifest, r.Client)
+	manifestGeneral, manifestController, manifestMetrics, manifestWebhooks, manifestMonitoring, err := parseManifestsFromFile(resourcesManifest, r.Client)
 	if err != nil {
 		return err
 	}
@@ -97,6 +99,7 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.resourcesGeneral = manifestGeneral
 	r.resourcesController = manifestController
 	r.resourcesMetrics = manifestMetrics
+	r.resourcesWebhooks = manifestWebhooks
 	r.resourcesMonitoring = manifestMonitoring
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -109,9 +112,10 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets,verbs="*"
 // +kubebuilder:rbac:groups=apps,resources=deployments;daemonsets;replicasets;statefulsets,verbs="*"
 // +kubebuilder:rbac:groups=apps,resourceNames=keda-olm-operator,resources=deployments/finalizers,verbs="*"
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings;clusterroles;rolebindings,verbs="*"
-// +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs="*"
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=get;create;list
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings;clusterroles;rolebindings;roles,verbs="*"
+// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=create;delete;get;list;patch;update;watch
+// +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=create;get;list;patch;update;watch
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 
@@ -198,6 +202,15 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return ctrl.Result{}, err
 	}
+
+	if err := r.installAdmissionWebhooks(logger, instance); err != nil {
+		status.MarkInstallFailed("Not able to install KEDA Admission Webhooks")
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
+		return ctrl.Result{}, err
+	}
+
 	if err := r.installMonitoring(ctx, logger); err != nil {
 		status.MarkInstallFailed("Not able to install monitoring resources")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
@@ -216,16 +229,22 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGeneral, manifestController,
-	manifestMetrics, manifestMonitoring mf.Manifest, err error) {
-	var generalResources, controllerResources, metricsResources, monitoringResources []unstructured.Unstructured
+	manifestMetrics, manifestWebhook, manifestMonitoring mf.Manifest, err error) {
+	var generalResources, controllerResources, metricsResources, webhookResources, monitoringResources []unstructured.Unstructured
 
 	for _, r := range manifest.Resources() {
 		switch kind := r.GetKind(); kind {
-		case "APIService", "RoleBinding", "Service":
-			metricsResources = append(metricsResources, r)
-		case "ClusterRole", "ClusterRoleBinding", "Deployment":
+		case "APIService", "ValidatingWebhookConfiguration":
+			if name := r.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
+				webhookResources = append(webhookResources, r)
+			} else {
+				metricsResources = append(metricsResources, r)
+			}
+		case "ClusterRole", "ClusterRoleBinding", "Deployment", "Role", "RoleBinding", "Service":
 			if name := r.GetName(); name == "keda-operator" {
 				controllerResources = append(controllerResources, r)
+			} else if name := r.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
+				webhookResources = append(webhookResources, r)
 			} else {
 				metricsResources = append(metricsResources, r)
 			}
@@ -239,25 +258,31 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 	manifestClient := mfc.NewClient(c)
 	manifestGeneral, err = mf.ManifestFrom(mf.Slice(generalResources))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestGeneral.Client = manifestClient
 
 	manifestController, err = mf.ManifestFrom(mf.Slice(controllerResources))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestController.Client = manifestClient
 
 	manifestMetrics, err = mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestMetrics.Client = manifestClient
 
+	manifestWebhook, err = mf.ManifestFrom(mf.Slice(webhookResources))
+	if err != nil {
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+	}
+	manifestWebhook.Client = manifestClient
+
 	manifestMonitoring, err = mf.ManifestFrom(mf.Slice(monitoringResources))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestMonitoring.Client = manifestClient
 
@@ -438,13 +463,13 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 			return err
 		}
 
-		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
-		newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key"}
+		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile, transform.GRPCCertsDir}
+		newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key", "/grpc-certs"}
 
 		transforms = append(transforms,
 			transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.Scheme),
-			transform.EnsureCertInjectionForService(metricsServcerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue),
-			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServcerServiceName, r.Scheme),
+			transform.EnsureCertInjectionForService(metricsServerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue),
+			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServerServiceName, grpcCertSecretName, r.Scheme),
 		)
 		transforms = append(transforms, transform.EnsurePathsToCertsInDeployment(newArgs, argsPrefixes, r.Scheme, logger)...)
 	} else {
@@ -684,6 +709,85 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 			return err
 		}
 	}
+	return nil
+}
+
+func (r *KedaControllerReconciler) installAdmissionWebhooks(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+	logger.Info("Reconciling KEDA Admission Webhooks deployment")
+	transforms := []mf.Transformer{
+		mf.InjectOwner(instance),
+		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-admission-webhooks", r.Scheme, logger),
+	}
+
+	// Use alternate image spec if env var set
+	if controllerImage := os.Getenv("KEDA_ADMISSION_WEBHOOKS_IMAGE"); len(controllerImage) > 0 {
+		transforms = append(transforms, transform.ReplaceAdmissionWebhooksImage(controllerImage, r.Scheme))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.LogLevel) > 0 {
+		transforms = append(transforms, transform.ReplaceAdmissionWebhooksLogLevel(instance.Spec.AdmissionWebhooks.LogLevel, r.Scheme, logger))
+	}
+	if len(instance.Spec.AdmissionWebhooks.LogEncoder) > 0 {
+		transforms = append(transforms, transform.ReplaceAdmissionWebhooksLogEncoder(instance.Spec.AdmissionWebhooks.LogEncoder, r.Scheme, logger))
+	}
+	if len(instance.Spec.AdmissionWebhooks.LogTimeEncoding) > 0 {
+		transforms = append(transforms, transform.ReplaceAdmissionWebhooksLogTimeEncoding(instance.Spec.AdmissionWebhooks.LogTimeEncoding, r.Scheme, logger))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.DeploymentAnnotations) > 0 {
+		transforms = append(transforms, transform.AddDeploymentAnnotations(instance.Spec.AdmissionWebhooks.DeploymentAnnotations, r.Scheme))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.DeploymentLabels) > 0 {
+		transforms = append(transforms, transform.AddDeploymentLabels(instance.Spec.AdmissionWebhooks.DeploymentLabels, r.Scheme))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.PodAnnotations) > 0 {
+		transforms = append(transforms, transform.AddPodAnnotations(instance.Spec.AdmissionWebhooks.PodAnnotations, r.Scheme))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.PodLabels) > 0 {
+		transforms = append(transforms, transform.AddPodLabels(instance.Spec.AdmissionWebhooks.PodLabels, r.Scheme))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.NodeSelector) > 0 {
+		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.AdmissionWebhooks.NodeSelector, r.Scheme))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.Tolerations) > 0 {
+		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.AdmissionWebhooks.Tolerations, r.Scheme))
+	}
+
+	if instance.Spec.AdmissionWebhooks.Affinity != nil {
+		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.AdmissionWebhooks.Affinity, r.Scheme))
+	}
+
+	if len(instance.Spec.AdmissionWebhooks.PriorityClassName) > 0 {
+		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.AdmissionWebhooks.PriorityClassName, r.Scheme))
+	}
+
+	if instance.Spec.AdmissionWebhooks.Resources.Limits != nil || instance.Spec.AdmissionWebhooks.Resources.Requests != nil {
+		transforms = append(transforms, transform.ReplaceAdmissionWebhooksResources(instance.Spec.AdmissionWebhooks.Resources, r.Scheme))
+	}
+
+	// add arbitrary args defined by user
+	for i := range instance.Spec.AdmissionWebhooks.Args {
+		i := i
+		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.AdmissionWebhooks.Args[i], "admissionwebhooks", r.Scheme, logger))
+	}
+
+	manifest, err := r.resourcesWebhooks.Transform(transforms...)
+	if err != nil {
+		logger.Error(err, "Unable to transform KEDA Admission Webhooks manifest")
+		return err
+	}
+	r.resourcesWebhooks = manifest
+
+	if err := r.resourcesWebhooks.Apply(); err != nil {
+		logger.Error(err, "Unable to install KEDA Admission Webhooks")
+		return err
+	}
+
 	return nil
 }
 

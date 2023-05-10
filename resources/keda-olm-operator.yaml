@@ -1,0 +1,50 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: keda-operator-metrics
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda-operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keda-operator
+  endpoints:
+    - port: metrics
+      interval: 60s
+  namespaceSelector:
+    any: false
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: keda-metrics-apiserver
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda-metrics-apiserver
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keda-metrics-apiserver
+  endpoints:
+    - port: http
+      interval: 60s
+  namespaceSelector:
+    any: false
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: keda-olm-operator
+  namespace: keda
+  labels:
+    name: keda-olm-operator
+spec:
+  selector:
+    matchLabels:
+      name: keda-olm-operator
+  podMetricsEndpoints:
+    - targetPort: 8080
+      path: /metrics
+      interval: 60s
