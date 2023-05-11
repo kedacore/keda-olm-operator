@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: keda-operator-metrics
+  name: keda-operator
   namespace: keda
   labels:
     app.kubernetes.io/name: keda-operator
@@ -32,6 +32,23 @@ spec:
       interval: 60s
   namespaceSelector:
     any: false
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/name: keda-admission-webhooks
+  name: keda-admission-webhooks
+  namespace: openshift-keda
+spec:
+  endpoints:
+  - interval: 60s
+    port: metrics
+  namespaceSelector:
+    any: false
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: admission-webhooks
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
