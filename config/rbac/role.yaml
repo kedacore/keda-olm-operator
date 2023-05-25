@@ -38,6 +38,7 @@ rules:
   - apiservices
   verbs:
   - create
+  - delete
   - get
   - list
   - patch
