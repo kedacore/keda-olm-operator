@@ -188,7 +188,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return ctrl.Result{}, err
 	}
-	if err := r.installController(logger, instance); err != nil {
+	if err := r.installController(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Controller")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -343,11 +343,17 @@ func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav
 	return nil
 }
 
-func (r *KedaControllerReconciler) installController(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installController(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA Controller deployment")
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-operator", r.Scheme, logger),
+	}
+
+	if util.RunningOnOpenshift(ctx, logger, r.Client) {
+		transforms = append(transforms,
+			transform.EnsureCertInjectionForOperatorDeployment(metricsServerConfigMapName, r.Scheme),
+		)
 	}
 
 	// Use alternate image spec if env var set

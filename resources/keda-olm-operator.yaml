@@ -39,7 +39,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-admission-webhooks
   name: keda-admission-webhooks
-  namespace: openshift-keda
+  namespace: keda
 spec:
   endpoints:
   - interval: 60s

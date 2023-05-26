@@ -253,6 +253,71 @@ func EnsureCertInjectionForDeployment(configMapName, secretName, grpcCertSecretN
 	}
 }
 
+//nolint:dupl
+func EnsureCertInjectionForOperatorDeployment(configMapName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			// add Volumes referencing certs in ConfigMap
+			cabundleVolume := corev1.Volume{
+				Name: "cabundle",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: configMapName,
+						},
+					},
+				},
+			}
+
+			volumes := deploy.Spec.Template.Spec.Volumes
+			cabundleVolumeFound := false
+			for i := range volumes {
+				if volumes[i].Name == "cabundle" {
+					volumes[i] = cabundleVolume
+					cabundleVolumeFound = true
+				}
+			}
+			if !cabundleVolumeFound {
+				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, cabundleVolume)
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i := range containers {
+				if containers[i].Name == containerNameKedaOperator {
+					// mount Volumes referencing certs in ConfigMap
+					cabundleVolumeMount := corev1.VolumeMount{
+						Name:      "cabundle",
+						MountPath: "/custom/ca",
+					}
+
+					volumeMounts := containers[i].VolumeMounts
+					cabundleVolumeMountFound := false
+					for j := range volumeMounts {
+						if volumeMounts[j].Name == "cabundle" {
+							volumeMounts[j] = cabundleVolumeMount
+							cabundleVolumeMountFound = true
+						}
+					}
+					if !cabundleVolumeMountFound {
+						containers[i].VolumeMounts = append(containers[i].VolumeMounts, cabundleVolumeMount)
+					}
+
+					break
+				}
+			}
+
+			if err := scheme.Convert(deploy, u, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
 func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
 	transforms := []mf.Transformer{}
 	for i := range values {
@@ -261,6 +326,7 @@ func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *
 	return transforms
 }
 
+//nolint:dupl
 func EnsureAuditPolicyConfigMapMountsVolume(configMapName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
