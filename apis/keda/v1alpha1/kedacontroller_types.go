@@ -203,7 +203,7 @@ type KedaControllerStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 	// +optional
-	ConfigMapDataSum string `json:"configmadatasum,omitempty"`
+	ConfigMapDataSum string `json:"configmapdatasum,omitempty"`
 	// +optional
 	SecretDataSum string `json:"secretdatasum,omitempty"`
 

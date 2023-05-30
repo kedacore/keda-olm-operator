@@ -59,15 +59,12 @@ const (
 
 	installationNamespace = "keda"
 
-	grpcCertSecretName               = "kedaorg-certs"
-	metricsServerServiceName         = "keda-metrics-apiserver"
-	metricsServerConfigMapName       = "keda-metrics-apiserver"
-	injectCABundleAnnotation         = "service.beta.openshift.io/inject-cabundle"
-	injectCABundleAnnotationValue    = "true"
-	injectservingCertAnnotation      = "service.beta.openshift.io/serving-cert-secret-name"
-	injectservingCertAnnotationValue = "keda-metrics-apiserver"
-	roleBindingName                  = "keda-auth-reader"
-	roleBindingNamespace             = "kube-system"
+	caBundleConfigMapName         = "keda-ocp-cabundle"
+	injectCABundleAnnotation      = "service.beta.openshift.io/inject-cabundle"
+	injectCABundleAnnotationValue = "true"
+	servingCertsAnnotation        = "service.beta.openshift.io/serving-cert-secret-name"
+	roleBindingName               = "keda-auth-reader"
+	roleBindingNamespace          = "kube-system"
 
 	auditlogPolicyConfigMap = "keda-metrics-server-audit-policy"
 	auditlogPolicyMountPath = "/var/audit-policy"
@@ -203,7 +200,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if err := r.installAdmissionWebhooks(logger, instance); err != nil {
+	if err := r.installAdmissionWebhooks(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Admission Webhooks")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -352,7 +349,7 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 
 	if util.RunningOnOpenshift(ctx, logger, r.Client) {
 		transforms = append(transforms,
-			transform.EnsureCertInjectionForOperatorDeployment(metricsServerConfigMapName, r.Scheme),
+			transform.EnsureOpenshiftCABundleForOperatorDeployment(caBundleConfigMapName, r.Scheme),
 		)
 	}
 
@@ -464,22 +461,25 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	// certificates rotation works only on Openshift due to openshift/service-ca-operator
 	if util.RunningOnOpenshift(ctx, logger, r.Client) {
-		if err := r.ensureMetricsServerConfigMap(ctx, logger, instance); err != nil {
-			logger.Error(err, "Unable to check Metrics Server ConfigMap is present")
+		if err := r.ensureOpenshiftCABundleConfigMap(ctx, logger, instance); err != nil {
+			logger.Error(err, "Unable to check OpenShift CA Bundle ConfigMap is present")
 			return err
 		}
 
-		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile, transform.GRPCCertsDir}
-		newArgs := []string{"/cabundle/service-ca.crt", "/certs/tls.crt", "/certs/tls.key", "/grpc-certs"}
+		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
+		newArgs := []string{"/certs/ocp-ca.crt", "/certs/ocp-tls.crt", "/certs/ocp-tls.key"}
+
+		serviceName := "keda-metrics-apiserver"
+		certsSecretName := serviceName + "-certs"
 
 		transforms = append(transforms,
-			transform.EnsureCertInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.Scheme),
-			transform.EnsureCertInjectionForService(metricsServerServiceName, injectservingCertAnnotation, injectservingCertAnnotationValue),
-			transform.EnsureCertInjectionForDeployment(metricsServerConfigMapName, metricsServerServiceName, grpcCertSecretName, r.Scheme),
+			transform.EnsureCABundleInjectionForAPIService(injectCABundleAnnotation, injectCABundleAnnotationValue, r.Scheme),
+			transform.EnsureCertInjectionForService(serviceName, servingCertsAnnotation, certsSecretName),
+			transform.MetricsServerEnsureCertificatesVolume(caBundleConfigMapName, certsSecretName, r.Scheme),
 		)
 		transforms = append(transforms, transform.EnsurePathsToCertsInDeployment(newArgs, argsPrefixes, r.Scheme, logger)...)
 	} else {
-		logger.Info("Not running on OpenShift -> using generated self-signed cert for KEDA Metrics Server")
+		logger.Info("Not running on OpenShift -> using only KEDA Operator generated self-signed cert for KEDA Metrics Server")
 	}
 
 	// Audit logging validation - configMap exists, logOutVolumeClaim validation
@@ -596,14 +596,14 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 	return nil
 }
 
-func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
-	logger.Info("Ensure ConfigMap for Metrics Server CA bundle exists")
+func (r *KedaControllerReconciler) ensureOpenshiftCABundleConfigMap(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+	logger.Info("Ensure ConfigMap for OpenShift CA bundle exists")
 
 	configMap := &corev1.ConfigMap{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: metricsServerConfigMapName, Namespace: instance.Namespace}, configMap)
+	err := r.Client.Get(ctx, types.NamespacedName{Name: caBundleConfigMapName, Namespace: instance.Namespace}, configMap)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			configMap.Name = metricsServerConfigMapName
+			configMap.Name = caBundleConfigMapName
 			configMap.Namespace = instance.Namespace
 			metav1.SetMetaDataAnnotation(&configMap.ObjectMeta, injectCABundleAnnotation, injectCABundleAnnotationValue)
 
@@ -614,7 +614,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(ctx context.Cont
 
 			err = r.Client.Create(ctx, configMap)
 			if err != nil {
-				logger.Error(err, "Failed to create new ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", metricsServerConfigMapName)
+				logger.Error(err, "Failed to create new ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", caBundleConfigMapName)
 				return err
 			}
 
@@ -645,7 +645,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerConfigMap(ctx context.Cont
 	if configMapUpdate {
 		err = r.Client.Update(ctx, configMap)
 		if err != nil {
-			logger.Error(err, "Failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", metricsServerConfigMapName)
+			logger.Error(err, "Failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", caBundleConfigMapName)
 			return err
 		}
 	}
@@ -718,11 +718,23 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	return nil
 }
 
-func (r *KedaControllerReconciler) installAdmissionWebhooks(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA Admission Webhooks deployment")
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-admission-webhooks", r.Scheme, logger),
+	}
+
+	// certificates rotation works only on Openshift due to openshift/service-ca-operator
+	if util.RunningOnOpenshift(ctx, logger, r.Client) {
+		serviceName := "keda-admission-webhooks"
+		certsSecretName := serviceName + "-certs"
+
+		transforms = append(
+			transforms, transform.EnsureCABundleInjectionForValidatingWebhookConfiguration(injectCABundleAnnotation, injectCABundleAnnotationValue, r.Scheme),
+			transform.EnsureCertInjectionForService(serviceName, servingCertsAnnotation, certsSecretName),
+			transform.AdmissionWebhooksEnsureCertificatesVolume(caBundleConfigMapName, certsSecretName, r.Scheme),
+		)
 	}
 
 	// Use alternate image spec if env var set
