@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	mf "github.com/manifestival/manifestival"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -31,7 +32,6 @@ const (
 	ClientCAFile          Prefix = "--client-ca-file="
 	TLSCertFile           Prefix = "--tls-cert-file="
 	TLSPrivateKeyFile     Prefix = "--tls-private-key-file="
-	GRPCCertsDir          Prefix = "--cert-dir="
 )
 
 func (p Prefix) String() string {
@@ -98,7 +98,24 @@ func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *
 	}
 }
 
-func EnsureCertInjectionForAPIService(annotation string, annotationValue string, scheme *runtime.Scheme) mf.Transformer {
+func EnsureCABundleInjectionForValidatingWebhookConfiguration(annotation string, annotationValue string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "ValidatingWebhookConfiguration" {
+			vwc := &admissionregistrationv1.ValidatingWebhookConfiguration{}
+			if err := scheme.Convert(u, vwc, nil); err != nil {
+				return err
+			}
+			metav1.SetMetaDataAnnotation(&vwc.ObjectMeta, annotation, annotationValue)
+
+			if err := scheme.Convert(vwc, u, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func EnsureCABundleInjectionForAPIService(annotation string, annotationValue string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "APIService" {
 			apiService := &apiregistrationv1.APIService{}
@@ -130,7 +147,92 @@ func EnsureCertInjectionForService(serviceName string, annotation string, annota
 	}
 }
 
-func EnsureCertInjectionForDeployment(configMapName, secretName, grpcCertSecretName string, scheme *runtime.Scheme) mf.Transformer {
+func MetricsServerEnsureCertificatesVolume(configMapName, secretName string, scheme *runtime.Scheme) mf.Transformer {
+	return ensureCertificatesVolumeForDeployment(containerNameMetricsServer, configMapName, secretName, scheme)
+}
+
+func AdmissionWebhooksEnsureCertificatesVolume(configMapName, secretName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			certificatesVolume := corev1.Volume{
+				Name: "certificates",
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: secretName,
+									},
+								},
+							},
+							{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: configMapName,
+									},
+									Items: []corev1.KeyToPath{{Key: "service-ca.crt", Path: "ca.crt"}},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			volumes := deploy.Spec.Template.Spec.Volumes
+			certificatesVolumeFound := false
+			for i := range volumes {
+				if volumes[i].Name == "certificates" {
+					volumes[i] = certificatesVolume
+					certificatesVolumeFound = true
+				}
+			}
+
+			if !certificatesVolumeFound {
+				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, certificatesVolume)
+			}
+
+			containers := deploy.Spec.Template.Spec.Containers
+			for i := range containers {
+				if containers[i].Name == containerNameAdmissionWebhooks {
+					// mount Volume referencing certs in ConfigMap and Secret
+					certificatesVolumeMount := corev1.VolumeMount{
+						Name:      "certificates",
+						MountPath: "/certs",
+						ReadOnly:  true,
+					}
+
+					volumeMounts := containers[i].VolumeMounts
+					certificatesVolumeMountFound := false
+					for j := range volumeMounts {
+						if volumeMounts[j].Name == "certificates" {
+							volumeMounts[j] = certificatesVolumeMount
+							certificatesVolumeMountFound = true
+						}
+					}
+
+					if !certificatesVolumeMountFound {
+						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certificatesVolumeMount)
+					}
+
+					break
+				}
+			}
+
+			if err := scheme.Convert(deploy, u, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
@@ -139,106 +241,116 @@ func EnsureCertInjectionForDeployment(configMapName, secretName, grpcCertSecretN
 			}
 
 			// add Volumes referencing certs in ConfigMap and Secret
-			cabundleVolume := corev1.Volume{
-				Name: "cabundle",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: configMapName,
+			var cabundleVolume corev1.Volume
+			if containerName == containerNameKedaOperator {
+				cabundleVolume = corev1.Volume{
+					Name: "cabundle",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: configMapName,
+							},
 						},
 					},
-				},
+				}
 			}
-			certsVolume := corev1.Volume{
-				Name: "certs",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: secretName,
-					},
-				},
-			}
-			grpcCertsVolume := corev1.Volume{
+
+			certificatesVolume := corev1.Volume{
 				Name: "certificates",
 				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: grpcCertSecretName,
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "kedaorg-certs",
+									},
+								},
+							},
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: secretName,
+									},
+									Items: []corev1.KeyToPath{{Key: "tls.crt", Path: "ocp-tls.crt"}, {Key: "tls.key", Path: "ocp-tls.key"}},
+								},
+							},
+							{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: configMapName,
+									},
+									Items: []corev1.KeyToPath{{Key: "service-ca.crt", Path: "ocp-ca.crt"}},
+								},
+							},
+						},
 					},
 				},
 			}
 
 			volumes := deploy.Spec.Template.Spec.Volumes
 			cabundleVolumeFound := false
-			certsVolumeFound := false
-			grpcCertsVolumeFound := false
+			certificatesVolumeFound := false
 			for i := range volumes {
-				if volumes[i].Name == "cabundle" {
-					volumes[i] = cabundleVolume
-					cabundleVolumeFound = true
-				}
-				if volumes[i].Name == "certs" {
-					volumes[i] = certsVolume
-					certsVolumeFound = true
+				if containerName == containerNameKedaOperator {
+					if volumes[i].Name == "cabundle" {
+						volumes[i] = cabundleVolume
+						cabundleVolumeFound = true
+					}
 				}
 				if volumes[i].Name == "certificates" {
-					volumes[i] = grpcCertsVolume
-					grpcCertsVolumeFound = true
+					volumes[i] = certificatesVolume
+					certificatesVolumeFound = true
 				}
 			}
-			if !cabundleVolumeFound {
+
+			if containerName == containerNameKedaOperator && !cabundleVolumeFound {
 				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, cabundleVolume)
 			}
-			if !certsVolumeFound {
-				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, certsVolume)
-			}
-			if !grpcCertsVolumeFound {
-				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, grpcCertsVolume)
+			if !certificatesVolumeFound {
+				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, certificatesVolume)
 			}
 
 			containers := deploy.Spec.Template.Spec.Containers
 			for i := range containers {
-				if containers[i].Name == containerNameMetricsServer {
-					// mount Volumes referencing certs in ConfigMap and Secret
-					cabundleVolumeMount := corev1.VolumeMount{
-						Name:      "cabundle",
-						MountPath: "/cabundle",
+				if containers[i].Name == containerName {
+					var cabundleVolumeMount corev1.VolumeMount
+					if containerName == containerNameKedaOperator {
+						cabundleVolumeMount = corev1.VolumeMount{
+							Name:      "cabundle",
+							MountPath: "/custom/ca",
+						}
 					}
 
-					certsVolumeMount := corev1.VolumeMount{
-						Name:      "certs",
-						MountPath: "/certs",
-					}
-
-					grpcCertsVolumeMount := corev1.VolumeMount{
+					// mount Volume referencing certs in ConfigMap and Secret
+					certificatesVolumeMount := corev1.VolumeMount{
 						Name:      "certificates",
-						MountPath: "/grpc-certs",
+						MountPath: "/certs",
+						ReadOnly:  true,
 					}
 
 					volumeMounts := containers[i].VolumeMounts
 					cabundleVolumeMountFound := false
-					certsVolumeMountFound := false
-					grpcCertsVolumeMountFound := false
+					certificatesVolumeMountFound := false
 					for j := range volumeMounts {
-						if volumeMounts[j].Name == "cabundle" {
-							volumeMounts[j] = cabundleVolumeMount
-							cabundleVolumeMountFound = true
-						}
-						if volumeMounts[j].Name == "certs" {
-							volumeMounts[j] = certsVolumeMount
-							certsVolumeMountFound = true
+						// add custom CA to Operator
+						if containerName == containerNameKedaOperator {
+							if volumeMounts[j].Name == "cabundle" {
+								volumeMounts[j] = cabundleVolumeMount
+								cabundleVolumeMountFound = true
+							}
 						}
 						if volumeMounts[j].Name == "certificates" {
-							volumeMounts[j] = grpcCertsVolumeMount
-							grpcCertsVolumeMountFound = true
+							volumeMounts[j] = certificatesVolumeMount
+							certificatesVolumeMountFound = true
 						}
 					}
-					if !cabundleVolumeMountFound {
+
+					if containerName == containerNameKedaOperator && !cabundleVolumeMountFound {
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, cabundleVolumeMount)
 					}
-					if !certsVolumeMountFound {
-						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certsVolumeMount)
-					}
-					if !grpcCertsVolumeMountFound {
-						containers[i].VolumeMounts = append(containers[i].VolumeMounts, grpcCertsVolumeMount)
+					if !certificatesVolumeMountFound {
+						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certificatesVolumeMount)
 					}
 
 					break
@@ -254,7 +366,7 @@ func EnsureCertInjectionForDeployment(configMapName, secretName, grpcCertSecretN
 }
 
 //nolint:dupl
-func EnsureCertInjectionForOperatorDeployment(configMapName string, scheme *runtime.Scheme) mf.Transformer {
+func EnsureOpenshiftCABundleForOperatorDeployment(configMapName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}

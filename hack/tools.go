@@ -1,3 +1,6 @@
+//go:build tools
+// +build tools
+
 /*
 Copyright 2023 The KEDA Authors
 
@@ -13,3 +16,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package tools imports things required by build scripts, to force `go mod` to see them as dependencies
+package tools
+
+import (
+	// Import code-generator to use in build tools
+	_ "sigs.k8s.io/controller-runtime/tools/setup-envtest"
+	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	_ "sigs.k8s.io/kustomize/kustomize/v4"
+)
