@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	kedaControllerFinalizer = "finalizer.kedacontroller.keda.k8s.io"
+	kedaControllerFinalizer = "finalizer.kedacontroller.keda.sh"
 )
 
 // finalizeKedaController is deleting resources for the respective KedaController
