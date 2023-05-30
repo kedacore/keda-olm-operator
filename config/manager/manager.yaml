@@ -48,4 +48,4 @@ spec:
             initialDelaySeconds: 20
           env:
             - name: WATCH_NAMESPACE
-              value: ""
+              value: keda

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   labels:
     app.kubernetes.io/part-of: keda-olm-operator
@@ -3253,7 +3253,7 @@ spec:
           status:
             description: KedaControllerStatus defines the observed state of KedaController
             properties:
-              configmadatasum:
+              configmapdatasum:
                 type: string
               phase:
                 type: string
@@ -3269,9 +3269,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: null
-  storedVersions: null

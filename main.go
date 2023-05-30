@@ -79,6 +79,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "olm-operator.keda.sh",
+		Namespace:              getWatchNamespace(),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -129,4 +130,15 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+// getWatchNamespace returns the namespace the operator should be watching for changes
+// it tries to read this information from env variable `WATCH_NAMESPACE`
+// if not set, namespace `keda` is used
+func getWatchNamespace() string {
+	ns, found := os.LookupEnv("WATCH_NAMESPACE")
+	if !found {
+		return "keda"
+	}
+	return ns
 }
