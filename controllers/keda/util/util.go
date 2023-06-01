@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
@@ -71,6 +73,30 @@ func UpdateKedaControllerStatus(ctx context.Context, cl client.Client, kedaContr
 func RunningOnOpenshift(ctx context.Context, logger logr.Logger, cl client.Client) bool {
 	gvk := schema.GroupVersionKind{Group: "route.openshift.io", Version: "v1", Kind: "route"}
 	return isGvkPresent(ctx, logger, cl, gvk)
+}
+
+// RunningOnClusterWithoutSeccompProfileDefault returns true if running on cluster <= 1.23.Z which lacks the RuntimeDefault seccomp profile
+func RunningOnClusterWithoutSeccompProfileDefault(logger logr.Logger, discoveryClient *discovery.DiscoveryClient) bool {
+	var major, minor int
+
+	if discoveryClient == nil {
+		logger.Error(nil, "Unable to get cluster version without discoveryClient")
+		return false
+	}
+	versionInfo, err := discoveryClient.ServerVersion()
+	if err != nil {
+		logger.Error(err, "Unable to get cluster version from ServerVersion()")
+		return false
+	}
+	if major, err = strconv.Atoi(versionInfo.Major); err != nil {
+		logger.Error(err, "Unable to get numeric major cluster version", "major", versionInfo.Major)
+		return false
+	}
+	if minor, err = strconv.Atoi(versionInfo.Minor); err != nil {
+		logger.Error(err, "Unable to get numeric minor cluster version", "minor", versionInfo.Minor)
+		return false
+	}
+	return major <= 1 && minor <= 23
 }
 
 // HasServiceMonitorCRD returns true if the ServiceMonitor CRD is present in the cluster, false otherwise

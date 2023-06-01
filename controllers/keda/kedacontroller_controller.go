@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
+	"k8s.io/client-go/discovery"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -81,9 +82,10 @@ type KedaControllerReconciler struct {
 	resourcesMetrics    mf.Manifest
 	resourcesWebhooks   mf.Manifest
 	resourcesMonitoring mf.Manifest
+	discoveryClient     *discovery.DiscoveryClient
 }
 
-func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, logger logr.Logger) error {
 	resourcesManifest, err := resources.GetResourcesManifest()
 	if err != nil {
 		return err
@@ -98,6 +100,13 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.resourcesMetrics = manifestMetrics
 	r.resourcesWebhooks = manifestWebhooks
 	r.resourcesMonitoring = manifestMonitoring
+	if restConfig, err := ctrl.GetConfig(); err != nil {
+		logger.Info("Unable to get REST Config for cluster version discovery. Ignore this message in test environments", "err", err)
+	} else {
+		if r.discoveryClient, err = discovery.NewDiscoveryClientForConfig(restConfig); err != nil {
+			logger.Info("Unable to get discovery client for cluster version discovery. Ignore this message in test environments", "err", err)
+		}
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.KedaController{}).
@@ -358,6 +367,11 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transforms = append(transforms, transform.ReplaceKedaOperatorImage(controllerImage, r.Scheme))
 	}
 
+	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
+	if util.RunningOnOpenshift(ctx, logger, r.Client) && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient) {
+		transforms = append(transforms, transform.RemoveSeccompProfileFromKedaOperator(r.Scheme, logger))
+	}
+
 	if len(instance.Spec.Operator.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(instance.Spec.Operator.LogLevel, r.Scheme, logger))
 	}
@@ -457,6 +471,11 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 	// Use alternate image spec if env var set
 	if controllerImage := os.Getenv("KEDA_METRICS_SERVER_IMAGE"); len(controllerImage) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerImage(controllerImage, r.Scheme))
+	}
+
+	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
+	if util.RunningOnOpenshift(ctx, logger, r.Client) && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient) {
+		transforms = append(transforms, transform.RemoveSeccompProfileFromMetricsServer(r.Scheme, logger))
 	}
 
 	// certificates rotation works only on Openshift due to openshift/service-ca-operator
@@ -723,6 +742,11 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	transforms := []mf.Transformer{
 		mf.InjectOwner(instance),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-admission-webhooks", r.Scheme, logger),
+	}
+
+	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
+	if util.RunningOnOpenshift(ctx, logger, r.Client) && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient) {
+		transforms = append(transforms, transform.RemoveSeccompProfileFromAdmissionWebhooks(r.Scheme, logger))
 	}
 
 	// certificates rotation works only on Openshift due to openshift/service-ca-operator

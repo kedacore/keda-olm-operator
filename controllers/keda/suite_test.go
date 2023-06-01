@@ -97,7 +97,7 @@ var _ = BeforeSuite(func() {
 			Log:    ctrl.Log.WithName("test").WithName("KedaController"),
 			Scheme: k8sManager.GetScheme(),
 		}
-		err = (kedaControllerReconciler).SetupWithManager(k8sManager)
+		err = (kedaControllerReconciler).SetupWithManager(k8sManager, kedaControllerReconciler.Log)
 		Expect(err).ToNot(HaveOccurred())
 
 	} else {
