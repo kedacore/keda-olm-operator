@@ -89,7 +89,7 @@ func main() {
 	if err = (&kedacontrollers.KedaControllerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, setupLog); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KedaController")
 		os.Exit(1)
 	}

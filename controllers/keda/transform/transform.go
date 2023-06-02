@@ -98,6 +98,47 @@ func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *
 	}
 }
 
+func RemoveSeccompProfile(containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		changed := false
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerName {
+					if container.SecurityContext != nil && container.SecurityContext.SeccompProfile != nil && container.SecurityContext.SeccompProfile.Type == corev1.SeccompProfileTypeRuntimeDefault {
+						containers[i].SecurityContext.SeccompProfile = nil
+						changed = true
+						logger.Info("Removed SeccomProfile from SecurityContext from pod", "container", container.Name)
+						break
+					}
+				}
+			}
+			if changed {
+				if err := scheme.Convert(deploy, u, nil); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+}
+
+func RemoveSeccompProfileFromKedaOperator(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return RemoveSeccompProfile(containerNameKedaOperator, scheme, logger)
+}
+
+func RemoveSeccompProfileFromMetricsServer(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return RemoveSeccompProfile(containerNameMetricsServer, scheme, logger)
+}
+
+func RemoveSeccompProfileFromAdmissionWebhooks(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return RemoveSeccompProfile(containerNameAdmissionWebhooks, scheme, logger)
+}
+
 func EnsureCABundleInjectionForValidatingWebhookConfiguration(annotation string, annotationValue string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "ValidatingWebhookConfiguration" {
