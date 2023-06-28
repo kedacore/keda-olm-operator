@@ -1096,3 +1096,17 @@ func EnsureAuditLogMount(pvc string, path string, scheme *runtime.Scheme) mf.Tra
 		return nil
 	}
 }
+
+// InjectOwner creates a Transformer which adds an OwnerReference
+// pointing to `owner`, but only if the object is in the same namespace as `owner`
+func InjectOwner(owner mf.Owner) mf.Transformer {
+	f := mf.InjectOwner(owner) // This is just a wrapper around manifestival.InjectOwner
+	return func(u *unstructured.Unstructured) error {
+		// Since the controller is namespaced, it can only have namespace-scoped dependants in the same namespace
+		// https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+		if u.GetNamespace() == owner.GetNamespace() {
+			return f(u)
+		}
+		return nil
+	}
+}
