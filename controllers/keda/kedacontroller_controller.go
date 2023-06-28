@@ -324,7 +324,7 @@ func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured
 
 func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA ServiceAccount")
-	transforms := []mf.Transformer{mf.InjectOwner(instance)}
+	transforms := []mf.Transformer{transform.InjectOwner(instance)}
 
 	if len(instance.Spec.ServiceAccount.Annotations) > 0 {
 		transforms = append(transforms, transform.AddServiceAccountAnnotations(instance.Spec.ServiceAccount.Annotations, r.Scheme))
@@ -352,7 +352,7 @@ func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav
 func (r *KedaControllerReconciler) installController(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA Controller deployment")
 	transforms := []mf.Transformer{
-		mf.InjectOwner(instance),
+		transform.InjectOwner(instance),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-operator", r.Scheme, logger),
 	}
 
@@ -465,7 +465,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 	logger.Info("Reconciling KEDA Metrics Server Deployment")
 
 	transforms := []mf.Transformer{
-		mf.InjectOwner(instance),
+		transform.InjectOwner(instance),
 	}
 
 	// Use alternate image spec if env var set
@@ -740,7 +740,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA Admission Webhooks deployment")
 	transforms := []mf.Transformer{
-		mf.InjectOwner(instance),
+		transform.InjectOwner(instance),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-admission-webhooks", r.Scheme, logger),
 	}
 
