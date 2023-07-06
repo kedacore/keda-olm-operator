@@ -56,7 +56,8 @@ jobs:
           kind create cluster
           OLM_VERSION=$(curl -s https://api.github.com/repos/operator-framework/operator-lifecycle-manager/releases/latest | jq -r .tag_name)
           curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$OLM_VERSION/install.sh -o install.sh
-          sh install.sh $OLM_VERSION
+          chmod +x install.sh
+          ./install.sh $OLM_VERSION
 
       - name: Build and deploy KEDA olm operator index for deployment testing
         run: |
