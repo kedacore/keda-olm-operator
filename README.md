@@ -27,7 +27,7 @@
 <a href="https://github.com/kedacore/keda-olm-operator/actions"><img src="https://github.com/kedacore/keda-olm-operator/workflows/nightly%20tests/badge.svg" alt="nightly e2e"></a></p>
 
 
-Operator for deploying KEDA controller on OpenShift or any Kubernetes cluster with
+Operator for deploying [KEDA](https://keda.sh/) (Kubernetes Event-driven Autoscaling) controller on OpenShift or any Kubernetes cluster with
 [Operator Lifecycle Manager](https://github.com/operator-framework/operator-lifecycle-manager) framework installed.
 
 ## Installation
