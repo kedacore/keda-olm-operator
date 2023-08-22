@@ -262,31 +262,31 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 	}
 
 	manifestClient := mfc.NewClient(c)
-	manifestGeneral, err = mf.ManifestFrom(mf.Slice(generalResources))
+	manifestGeneral, err = mf.ManifestFrom(mf.Slice(generalResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
 		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestGeneral.Client = manifestClient
 
-	manifestController, err = mf.ManifestFrom(mf.Slice(controllerResources))
+	manifestController, err = mf.ManifestFrom(mf.Slice(controllerResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
 		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestController.Client = manifestClient
 
-	manifestMetrics, err = mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)))
+	manifestMetrics, err = mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
 		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestMetrics.Client = manifestClient
 
-	manifestWebhook, err = mf.ManifestFrom(mf.Slice(webhookResources))
+	manifestWebhook, err = mf.ManifestFrom(mf.Slice(webhookResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
 		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
 	manifestWebhook.Client = manifestClient
 
-	manifestMonitoring, err = mf.ManifestFrom(mf.Slice(monitoringResources))
+	manifestMonitoring, err = mf.ManifestFrom(mf.Slice(monitoringResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
 		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
 	}
