@@ -72,6 +72,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	installNamespace := getWatchNamespace()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -79,7 +80,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "olm-operator.keda.sh",
-		Namespace:              getWatchNamespace(),
+		Namespace:              installNamespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -89,7 +90,7 @@ func main() {
 	if err = (&kedacontrollers.KedaControllerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr, setupLog); err != nil {
+	}).SetupWithManager(mgr, installNamespace, setupLog); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KedaController")
 		os.Exit(1)
 	}
@@ -97,7 +98,7 @@ func main() {
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("ConfigMap"),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, installNamespace); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ConfigMap")
 		os.Exit(1)
 	}
@@ -105,7 +106,7 @@ func main() {
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Secret"),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, installNamespace); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}

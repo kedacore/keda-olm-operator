@@ -36,28 +36,29 @@ import (
 )
 
 const (
-	secretName      = "keda-metrics-apiserver"
-	secretNamespace = "keda"
+	secretName = "keda-metrics-apiserver"
 )
 
 // SecretReconciler reconciles a Secret object
 type SecretReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log             logr.Logger
+	Scheme          *runtime.Scheme
+	secretNamespace string
 }
 
-func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager, secretNamespace string) error {
+	r.secretNamespace = secretNamespace
 	// we are interested only in one particular Secret and only to it's creation/updates
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == secretName && e.Object.GetNamespace() == secretNamespace {
+			if e.Object.GetName() == secretName && e.Object.GetNamespace() == r.secretNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == secretName && e.ObjectNew.GetNamespace() == secretNamespace {
+			if e.ObjectNew.GetName() == secretName && e.ObjectNew.GetNamespace() == r.secretNamespace {
 				return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 			}
 			return false
@@ -100,7 +101,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	kedaController := &kedav1alpha1.KedaController{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: "keda", Namespace: "keda"}, kedaController)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: "keda", Namespace: r.secretNamespace}, kedaController)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// there isn't any keda KedaController CR created in namespace keda -> do nothing
@@ -121,7 +122,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		// Secret.Data were changed -> let's restart KEDA Metrics Server
 		logger.Info("Secret containing Certificates was changed -> let's restart KEDA Metrics Server")
-		if err := util.DeleteMetricsServerPod(ctx, logger, r.Client); err != nil {
+		if err := util.DeleteMetricsServerPod(ctx, r.secretNamespace, logger, r.Client); err != nil {
 			logger.Error(err, "Unable to restart KEDA Metrics Server")
 			return ctrl.Result{}, err
 		}

@@ -36,28 +36,29 @@ import (
 )
 
 const (
-	configMapName      = "keda-metrics-apiserver"
-	configMapNamespace = "keda"
+	configMapName = "keda-metrics-apiserver"
 )
 
 // ConfigMapReconciler reconciles a ConfigMap object
 type ConfigMapReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log              logr.Logger
+	Scheme           *runtime.Scheme
+	installNamespace string
 }
 
-func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager, installNamespace string) error {
+	r.installNamespace = installNamespace
 	// we are interested only in one particular ConfigMap and only to it's creation/updates
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == configMapName && e.Object.GetNamespace() == configMapNamespace {
+			if e.Object.GetName() == configMapName && e.Object.GetNamespace() == installNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == configMapName && e.ObjectNew.GetNamespace() == configMapNamespace {
+			if e.ObjectNew.GetName() == configMapName && e.ObjectNew.GetNamespace() == installNamespace {
 				return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 			}
 			return false
@@ -100,7 +101,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	kedaController := &kedav1alpha1.KedaController{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: "keda", Namespace: "keda"}, kedaController)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: "keda", Namespace: r.installNamespace}, kedaController)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// there isn't any keda KedaController CR created in namespace keda -> do nothing
@@ -121,7 +122,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		// ConfigMap.Data were changed -> let's restart KEDA Metrics Server
 		logger.Info("ConfigMap containing CA Bundle was changed -> let's restart KEDA Metrics Server")
-		if err := util.DeleteMetricsServerPod(ctx, logger, r.Client); err != nil {
+		if err := util.DeleteMetricsServerPod(ctx, r.installNamespace, logger, r.Client); err != nil {
 			r.Log.Error(err, "Unable to restart KEDA Metrics Server")
 			return ctrl.Result{}, err
 		}

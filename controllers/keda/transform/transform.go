@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -39,10 +40,44 @@ func (p Prefix) String() string {
 }
 
 const (
+	defaultNamespace               = "keda"
 	containerNameKedaOperator      = "keda-operator"
 	containerNameMetricsServer     = "keda-metrics-apiserver"
 	containerNameAdmissionWebhooks = "keda-admission-webhooks"
 )
+
+// ReplaceAllNamespaces returns a transformer which will traverse the unstructured content looking for map entries with
+// (key, value) of ("namespace", "keda"), changing the value of any matches to namespace
+func ReplaceAllNamespaces(namespace string) mf.Transformer {
+	// recursive function helper
+	var helper func(obj interface{})
+
+	helper = func(obj interface{}) {
+		if obj == nil || reflect.ValueOf(obj).Kind() == reflect.Pointer && reflect.ValueOf(obj).IsNil() {
+			return
+		}
+		if mapInstance, ok := obj.(map[string]interface{}); ok {
+			for k, v := range mapInstance {
+				if stringVal, ok := v.(string); k == "namespace" && ok && stringVal == defaultNamespace {
+					mapInstance[k] = namespace
+				} else {
+					helper(v)
+				}
+			}
+		} else if arrayInstance, ok := obj.([]interface{}); ok {
+			for _, item := range arrayInstance {
+				helper(item)
+			}
+		} else {
+			return
+		}
+	}
+
+	return func(u *unstructured.Unstructured) error {
+		helper(u.UnstructuredContent())
+		return nil
+	}
+}
 
 func ReplaceNamespace(name string, namespace string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {

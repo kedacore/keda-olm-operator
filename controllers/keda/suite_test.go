@@ -71,6 +71,10 @@ func init() {
 }
 
 func TestAPIs(t *testing.T) {
+	// skip unit tests (or anything besides functionality or deployment)
+	if testType != "functionality" && testType != "deployment" {
+		return
+	}
 	RegisterFailHandler(Fail)
 
 	RunSpecs(t,
@@ -97,7 +101,7 @@ var _ = BeforeSuite(func() {
 			Log:    ctrl.Log.WithName("test").WithName("KedaController"),
 			Scheme: k8sManager.GetScheme(),
 		}
-		err = (kedaControllerReconciler).SetupWithManager(k8sManager, kedaControllerReconciler.Log)
+		err = (kedaControllerReconciler).SetupWithManager(k8sManager, "keda", kedaControllerReconciler.Log)
 		Expect(err).ToNot(HaveOccurred())
 
 	} else {

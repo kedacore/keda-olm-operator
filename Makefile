@@ -65,6 +65,9 @@ test-deployment: manifests generate fmt vet envtest ## Test OLM deployment.
 	kubectl create namespace olm --dry-run=client -o yaml | kubectl apply -f -
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -v -ginkgo.v -coverprofile cover.out -test.type deployment -ginkgo.focus "Deploying KedaController manifest"
 
+test: manifests generate fmt vet envtest
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -v -ginkgo.v -coverprofile cover.out -test.type unit
+
 ##@ Build
 
 build: generate fmt vet ## Build manager binary.

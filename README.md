@@ -42,8 +42,8 @@ kubectl delete crd triggerauthentications.keda.k8s.io
 
 
 ### Operator Hub Installation
-1. On Operator Hub Marketplace locate and install `KEDA` operator
-2. Create `KedaController` resource in `keda` namespace
+1. On Operator Hub Marketplace locate and install `KEDA` operator. Choose a namespace where the operator will be installed. The `keda` namespace is recommended.
+2. Create `KedaController` resource in namespace where the operator was installed (e.g. `keda`)
 
 ![Operator Hub Installation Demo](images/keda-olm-install.gif)
 
@@ -65,10 +65,11 @@ and then it will install KEDA into this namespace.
 
 The installation of KEDA is triggered by the creation of
 [a `KedaController` custom resource](config/samples/keda_v1alpha1_kedacontroller.yaml).
-Only custom resource named `keda` in namespace `keda` will trigger the installation,
-reconfiguration, or removal of the KEDA Controller resources.
+Only custom resource named `keda` in the namespace where the operator was
+installed (typically, `keda`) will trigger the installation, reconfiguration,
+or removal of the KEDA Controller resources.
 
-There could be only one KEDA Controller in the cluster.
+There should be only one KEDA Controller in the cluster.
 
 ### `KedaController` Spec
 ```
@@ -80,7 +81,7 @@ metadata:
 spec:
   ###
   # THERE SHOULD BE ONLY ONE INSTANCE OF THIS RESOURCE PER CLUSTER
-  # with Name set to 'keda' created in namespace 'keda'
+  # with Name set to 'keda' created in namespace where the operator is installed (usually 'keda')
   ###
 
   ## Namespace that should be watched by KEDA,
