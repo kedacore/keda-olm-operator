@@ -54,11 +54,8 @@ import (
 
 const (
 
-	// Allowed Name and Namespace of KedaController resource
-	kedaControllerResourceName      = "keda"
-	kedaControllerResourceNamespace = "keda"
-
-	installationNamespace = "keda"
+	// Allowed Name of KedaController resource
+	kedaControllerResourceName = "keda"
 
 	caBundleConfigMapName         = "keda-ocp-cabundle"
 	injectCABundleAnnotation      = "service.beta.openshift.io/inject-cabundle"
@@ -83,9 +80,11 @@ type KedaControllerReconciler struct {
 	resourcesWebhooks   mf.Manifest
 	resourcesMonitoring mf.Manifest
 	discoveryClient     *discovery.DiscoveryClient
+	resourceNamespace   string
 }
 
-func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, logger logr.Logger) error {
+func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaControllerResourceNamespace string, logger logr.Logger) error {
+	r.resourceNamespace = kedaControllerResourceNamespace
 	resourcesManifest, err := resources.GetResourcesManifest()
 	if err != nil {
 		return err
@@ -149,8 +148,8 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if !isInteresting(req) {
-		msg := fmt.Sprintf("The KedaController resource needs to be created in namespace %s with name %s, otherwise it will be ignored", kedaControllerResourceNamespace, kedaControllerResourceName)
+	if !isInteresting(req, r.resourceNamespace) {
+		msg := fmt.Sprintf("The KedaController resource needs to be created in namespace %s with name %s, otherwise it will be ignored", r.resourceNamespace, kedaControllerResourceName)
 		logger.Info(msg)
 		status := instance.Status.DeepCopy()
 		status.MarkIgnored(msg)
@@ -217,7 +216,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if err := r.installMonitoring(ctx, logger); err != nil {
+	if err := r.installMonitoring(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install monitoring resources")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -226,7 +225,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	status.Version = version.Version
-	status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, installationNamespace))
+	status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, r.resourceNamespace))
 	if err := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -324,7 +323,10 @@ func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured
 
 func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA ServiceAccount")
-	transforms := []mf.Transformer{transform.InjectOwner(instance)}
+	transforms := []mf.Transformer{
+		transform.InjectOwner(instance),
+		transform.ReplaceAllNamespaces(instance.Namespace),
+	}
 
 	if len(instance.Spec.ServiceAccount.Annotations) > 0 {
 		transforms = append(transforms, transform.AddServiceAccountAnnotations(instance.Spec.ServiceAccount.Annotations, r.Scheme))
@@ -353,6 +355,7 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 	logger.Info("Reconciling KEDA Controller deployment")
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
+		transform.ReplaceAllNamespaces(instance.Namespace),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-operator", r.Scheme, logger),
 	}
 
@@ -440,7 +443,7 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 }
 
 // installMonitoring install the controller resources for the monitoring stack
-func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger logr.Logger) error {
+func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling monitoring resources")
 
 	// this works only if required CRDs are present
@@ -452,6 +455,18 @@ func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger
 		logger.V(4).Info("PodMonitor CRD not found, skipping monitoring resources")
 		return nil
 	}
+
+	transforms := []mf.Transformer{
+		transform.InjectOwner(instance),
+		transform.ReplaceAllNamespaces(instance.Namespace),
+	}
+
+	manifest, err := r.resourcesMonitoring.Transform(transforms...)
+	if err != nil {
+		logger.Error(err, "Unable to transform monitoring resource manifests")
+		return err
+	}
+	r.resourcesMonitoring = manifest
 
 	if err := r.resourcesMonitoring.Apply(); err != nil {
 		logger.Error(err, "Unable to install monitoring resources")
@@ -466,6 +481,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
+		transform.ReplaceAllNamespaces(instance.Namespace),
 	}
 
 	// Use alternate image spec if env var set
@@ -741,6 +757,7 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	logger.Info("Reconciling KEDA Admission Webhooks deployment")
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
+		transform.ReplaceAllNamespaces(instance.Namespace),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-admission-webhooks", r.Scheme, logger),
 	}
 
@@ -835,7 +852,7 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 
 // Because it's effectively cluster-scoped, we only care about a
 // single, named resource: keda in the specified namespace
-func isInteresting(request reconcile.Request) bool {
+func isInteresting(request reconcile.Request, kedaControllerResourceNamespace string) bool {
 	return request.Name == kedaControllerResourceName && request.Namespace == kedaControllerResourceNamespace
 }
 

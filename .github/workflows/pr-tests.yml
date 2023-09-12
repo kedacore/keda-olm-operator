@@ -16,6 +16,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Run unit tests
+        run: make test
+
       - name: Run functionality tests
         run: make test-functionality
 

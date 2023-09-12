@@ -18,7 +18,6 @@ import (
 )
 
 const (
-	metricsServerNamespace     = "keda"
 	metricsServerPodLabelKey   = "app"
 	metricsServerPodLabelValue = "keda-metrics-apiserver"
 )
@@ -39,7 +38,7 @@ func CalculateSecretedDataCheckSum(m map[string][]byte) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(data)))
 }
 
-func DeleteMetricsServerPod(ctx context.Context, logger logr.Logger, cl client.Client) error {
+func DeleteMetricsServerPod(ctx context.Context, metricsServerNamespace string, logger logr.Logger, cl client.Client) error {
 	selector := make(map[string]string)
 	selector[metricsServerPodLabelKey] = metricsServerPodLabelValue
 
