@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -44,6 +45,10 @@ import (
 var (
 	scheme   = apimachineryruntime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
+)
+
+const (
+	serviceAccountNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 )
 
 func init() {
@@ -134,12 +139,20 @@ func main() {
 }
 
 // getWatchNamespace returns the namespace the operator should be watching for changes
-// it tries to read this information from env variable `WATCH_NAMESPACE`
-// if not set, namespace `keda` is used
+// It tries to read this information from env variable `WATCH_NAMESPACE`. If not set
+// or empty, it attempts to determine which namespace it is running in via the
+// automounted service account data. If unavailable, namespace `keda` is used
 func getWatchNamespace() string {
-	ns, found := os.LookupEnv("WATCH_NAMESPACE")
-	if !found {
-		return "keda"
+	var ns string
+	var found bool
+	if ns, found = os.LookupEnv("WATCH_NAMESPACE"); found && len(ns) > 0 {
+		setupLog.Info(fmt.Sprintf("Using watch namespace '%s' from environment variable WATCH_NAMESPACE", ns))
+	} else if nsBytes, err := os.ReadFile(serviceAccountNamespaceFile); err == nil {
+		ns = strings.TrimSpace(string(nsBytes))
+		setupLog.Info(fmt.Sprintf("Using watch namespace '%s' from service account namespace specified in %s", ns, serviceAccountNamespaceFile))
+	} else {
+		ns = "keda"
+		setupLog.Info(fmt.Sprintf("Using default watch namespace '%s'", ns))
 	}
 	return ns
 }

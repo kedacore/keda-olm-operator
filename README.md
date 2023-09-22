@@ -69,6 +69,12 @@ Only custom resource named `keda` in the namespace where the operator was
 installed (typically, `keda`) will trigger the installation, reconfiguration,
 or removal of the KEDA Controller resources.
 
+The operator will behave in this manner whether it is installed with the
+`AllNamespaces` or `OwnNamespace` install mode. While the operator more
+closely matches the `OwnNamespace` semantics, `AllNamespaces` is a
+supported installation mode to allow it to be installed to namespaces with
+existing `OperatorGroups` which require that installation mode.
+
 There should be only one KEDA Controller in the cluster.
 
 ### `KedaController` Spec
@@ -412,7 +418,7 @@ spec:
 ## Uninstallation
 
 ### How to uninstall KEDA Controller
-Locate installed `KEDA` Operator in `keda` namespace and then remove created `KedaController` resoure or simply delete the `KedaController` resource:
+Locate installed `KEDA` Operator in `keda` namespace and then remove created `KedaController` resource or simply delete the `KedaController` resource:
 
 ```bash
 kubectl delete -n keda -f config/samples/keda_v1alpha1_kedacontroller.yaml

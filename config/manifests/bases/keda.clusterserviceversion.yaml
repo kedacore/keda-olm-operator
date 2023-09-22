@@ -454,7 +454,11 @@ spec:
     `KedaController` resource, please refer to [KedaController Example](https://github.com/kedacore/keda-olm-operator#kedacontroller-spec)
     for more deatils on available options.\n\nOnly resource named `keda` in the namespace
     where the KEDA OLM Operator is installed (typically `keda`) will trigger the installation,
-    reconfiguration or removal of the KEDA Controller resource.\n\nThere could be
+    reconfiguration or removal of the KEDA Controller resource.\n\nThe operator will behave
+    in this manner whether it is installed with the AllNamespaces or OwnNamespace install
+    mode. While the operator more closely matches the OwnNamespace semantics, AllNamespaces
+    is a supported installation mode to allow it to be installed to namespaces with
+    existing OperatorGroups which require that installation mode.\n\nThere should be
     only one KEDA Controller in the cluster. \n"
   displayName: KEDA
   icon:
@@ -626,7 +630,7 @@ spec:
               serviceAccountName: keda-olm-operator
     strategy: deployment
   installModes:
-  - supported: false
+  - supported: true
     type: OwnNamespace
   - supported: false
     type: SingleNamespace
