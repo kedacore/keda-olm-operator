@@ -8,6 +8,7 @@ require (
 	github.com/manifestival/manifestival v0.7.3-0.20230801201407-f20c69532c27
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
+	github.com/open-policy-agent/cert-controller v0.10.0
 	github.com/openshift/api v0.0.0-20230920152731-7d89b46689d4
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
@@ -67,6 +68,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.starlark.net v0.0.0-20230921161717-a9587466d7a5 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect

@@ -49,3 +49,12 @@ spec:
           env:
             - name: WATCH_NAMESPACE
               value: keda
+          volumeMounts:
+          - mountPath: /certs
+            name: certificates
+            readOnly: true
+      volumes:
+      - name: certificates
+        secret:
+          optional: true
+          secretName: kedaorg-certs

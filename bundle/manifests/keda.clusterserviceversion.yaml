@@ -625,7 +625,16 @@ spec:
                   requests:
                     cpu: 100m
                     memory: 100Mi
+                volumeMounts:
+                - mountPath: /certs
+                  name: certificates
+                  readOnly: true
               serviceAccountName: keda-olm-operator
+              volumes:
+              - name: certificates
+                secret:
+                  optional: true
+                  secretName: kedaorg-certs
     strategy: deployment
   installModes:
   - supported: true

@@ -33,6 +33,7 @@ const (
 	ClientCAFile          Prefix = "--client-ca-file="
 	TLSCertFile           Prefix = "--tls-cert-file="
 	TLSPrivateKeyFile     Prefix = "--tls-private-key-file="
+	CertRotation          Prefix = "--enable-cert-rotation="
 )
 
 func (p Prefix) String() string {
@@ -227,6 +228,91 @@ func MetricsServerEnsureCertificatesVolume(configMapName, secretName string, sch
 	return ensureCertificatesVolumeForDeployment(containerNameMetricsServer, configMapName, secretName, scheme)
 }
 
+func KedaOperatorEnsureCertificatesVolume(serviceSecretName string, grpcClientCertsSecretName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			certificatesVolume := corev1.Volume{
+				Name: "certificates",
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: serviceSecretName,
+									},
+									Items: []corev1.KeyToPath{
+										{Key: "tls.crt", Path: "tls.crt"}, // use OpenShift-generated service cert for gRPC service
+										{Key: "tls.key", Path: "tls.key"},
+									},
+								},
+							},
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: grpcClientCertsSecretName,
+									},
+									Items: []corev1.KeyToPath{{Key: "ca.crt", Path: "ca.crt"}}, // trust clients using kedaorg-certs cert
+								},
+							},
+						},
+					},
+				},
+			}
+
+			volumes := deploy.Spec.Template.Spec.Volumes
+			certificatesVolumeFound := false
+			for i := range volumes {
+				if volumes[i].Name == "certificates" {
+					volumes[i] = certificatesVolume
+					certificatesVolumeFound = true
+				}
+			}
+
+			if !certificatesVolumeFound {
+				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, certificatesVolume)
+			}
+
+			containers := deploy.Spec.Template.Spec.Containers
+			for i := range containers {
+				if containers[i].Name == containerNameAdmissionWebhooks {
+					// mount Volume referencing certs in Secrets
+					certificatesVolumeMount := corev1.VolumeMount{
+						Name:      "certificates",
+						MountPath: "/certs",
+						ReadOnly:  true,
+					}
+
+					volumeMounts := containers[i].VolumeMounts
+					certificatesVolumeMountFound := false
+					for j := range volumeMounts {
+						if volumeMounts[j].Name == "certificates" {
+							volumeMounts[j] = certificatesVolumeMount
+							certificatesVolumeMountFound = true
+						}
+					}
+
+					if !certificatesVolumeMountFound {
+						containers[i].VolumeMounts = append(containers[i].VolumeMounts, certificatesVolumeMount)
+					}
+
+					break
+				}
+			}
+
+			if err := scheme.Convert(deploy, u, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
 func AdmissionWebhooksEnsureCertificatesVolume(configMapName, secretName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -341,6 +427,10 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "kedaorg-certs",
 									},
+									Items: []corev1.KeyToPath{
+										{Key: "tls.crt", Path: "tls.crt"}, // use the generated gRPC client cert
+										{Key: "tls.key", Path: "tls.key"},
+									},
 								},
 							},
 							{
@@ -348,7 +438,10 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: secretName,
 									},
-									Items: []corev1.KeyToPath{{Key: "tls.crt", Path: "ocp-tls.crt"}, {Key: "tls.key", Path: "ocp-tls.key"}},
+									Items: []corev1.KeyToPath{
+										{Key: "tls.crt", Path: "ocp-tls.crt"},
+										{Key: "tls.key", Path: "ocp-tls.key"},
+									},
 								},
 							},
 							{
@@ -356,7 +449,7 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: configMapName,
 									},
-									Items: []corev1.KeyToPath{{Key: "service-ca.crt", Path: "ocp-ca.crt"}},
+									Items: []corev1.KeyToPath{{Key: "service-ca.crt", Path: "ca.crt"}}, // trust openshift-generated service certs
 								},
 							},
 						},
@@ -758,6 +851,14 @@ func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Schem
 			return nil
 		}
 	}
+}
+
+func SetOperatorCertRotation(enable bool, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	arg := "false"
+	if enable {
+		arg = "true"
+	}
+	return replaceContainerArg(arg, CertRotation, containerNameKedaOperator, scheme, logger)
 }
 
 func ReplaceAuditConfig(argument string, selector string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
