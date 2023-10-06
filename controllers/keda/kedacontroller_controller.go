@@ -18,6 +18,7 @@ package keda
 
 import (
 	"context"
+	"crypto/x509"
 	goerrors "errors"
 	"fmt"
 	"os"
@@ -29,6 +30,7 @@ import (
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
+	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -57,6 +59,7 @@ const (
 	// Allowed Name of KedaController resource
 	kedaControllerResourceName = "keda"
 
+	grpcClientCertsSecretName     = "kedaorg-certs"
 	caBundleConfigMapName         = "keda-ocp-cabundle"
 	injectCABundleAnnotation      = "service.beta.openshift.io/inject-cabundle"
 	injectCABundleAnnotationValue = "true"
@@ -74,6 +77,10 @@ type KedaControllerReconciler struct {
 	client.Client
 	Log                 logr.Logger
 	Scheme              *runtime.Scheme
+	CertDir             string
+	LeaderElection      bool
+	rotatorStarted      bool
+	mgr                 ctrl.Manager
 	resourcesGeneral    mf.Manifest
 	resourcesController mf.Manifest
 	resourcesMetrics    mf.Manifest
@@ -85,6 +92,7 @@ type KedaControllerReconciler struct {
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaControllerResourceNamespace string, logger logr.Logger) error {
 	r.resourceNamespace = kedaControllerResourceNamespace
+	r.mgr = mgr
 	resourcesManifest, err := resources.GetResourcesManifest()
 	if err != nil {
 		return err
@@ -253,6 +261,8 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 			} else {
 				metricsResources = append(metricsResources, r)
 			}
+		case "Secret":
+			controllerResources = append(controllerResources, r)
 		case "Namespace", "ServiceAccount":
 			generalResources = append(generalResources, r)
 		case "PodMonitor", "ServiceMonitor":
@@ -359,20 +369,31 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-operator", r.Scheme, logger),
 	}
 
-	if util.RunningOnOpenshift(ctx, logger, r.Client) {
+	runningOnOpenshift := util.RunningOnOpenshift(ctx, logger, r.Client)
+
+	if runningOnOpenshift {
+		// certificates rotation works only on Openshift due to openshift/service-ca-operator
+		serviceName := "keda-operator"
+		certsSecretName := serviceName + "-certs"
 		transforms = append(transforms,
+			transform.EnsureCertInjectionForService(serviceName, servingCertsAnnotation, certsSecretName),
+			transform.KedaOperatorEnsureCertificatesVolume(certsSecretName, grpcClientCertsSecretName, r.Scheme),
 			transform.EnsureOpenshiftCABundleForOperatorDeployment(caBundleConfigMapName, r.Scheme),
+			transform.SetOperatorCertRotation(false, r.Scheme, logger), // don't use KEDA operator's built-in cert rotation when on OpenShift
+		)
+		// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
+		if util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient) {
+			transforms = append(transforms, transform.RemoveSeccompProfileFromKedaOperator(r.Scheme, logger))
+		}
+	} else {
+		transforms = append(transforms,
+			transform.SetOperatorCertRotation(true, r.Scheme, logger), // use KEDA operator's built-in cert rotation when not on OpenShift
 		)
 	}
 
 	// Use alternate image spec if env var set
 	if controllerImage := os.Getenv("KEDA_OPERATOR_IMAGE"); len(controllerImage) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorImage(controllerImage, r.Scheme))
-	}
-
-	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
-	if util.RunningOnOpenshift(ctx, logger, r.Client) && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient) {
-		transforms = append(transforms, transform.RemoveSeccompProfileFromKedaOperator(r.Scheme, logger))
 	}
 
 	if len(instance.Spec.Operator.LogLevel) > 0 {
@@ -439,6 +460,28 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		return err
 	}
 
+	if runningOnOpenshift && !r.rotatorStarted {
+		err = rotator.AddRotator(r.mgr, &rotator.CertRotator{
+			SecretKey: types.NamespacedName{
+				Namespace: r.resourceNamespace,
+				Name:      grpcClientCertsSecretName,
+			},
+			// The 3 values for SecretKey.Name above and CAName, CAOrganization below match the names the KEDA operator uses to generate its certificate
+			CAName:                "KEDA",
+			CAOrganization:        "KEDAORG",
+			CertDir:               r.CertDir,
+			IsReady:               make(chan struct{}),
+			RequireLeaderElection: r.LeaderElection,
+			ExtKeyUsages: &[]x509.ExtKeyUsage{
+				x509.ExtKeyUsageClientAuth,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		r.rotatorStarted = true
+	}
+
 	return nil
 }
 
@@ -502,7 +545,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		}
 
 		argsPrefixes := []transform.Prefix{transform.ClientCAFile, transform.TLSCertFile, transform.TLSPrivateKeyFile}
-		newArgs := []string{"/certs/ocp-ca.crt", "/certs/ocp-tls.crt", "/certs/ocp-tls.key"}
+		newArgs := []string{"/certs/ca.crt", "/certs/ocp-tls.crt", "/certs/ocp-tls.key"}
 
 		serviceName := "keda-metrics-apiserver"
 		certsSecretName := serviceName + "-certs"

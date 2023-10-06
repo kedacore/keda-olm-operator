@@ -68,8 +68,10 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var certDir string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&certDir, "cert-dir", "/certs", "Directory where gRPC client certs secret is mounted.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -97,8 +99,10 @@ func main() {
 	}
 
 	if err = (&kedacontrollers.KedaControllerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		CertDir:        certDir,
+		LeaderElection: enableLeaderElection,
 	}).SetupWithManager(mgr, installNamespace, setupLog); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KedaController")
 		os.Exit(1)

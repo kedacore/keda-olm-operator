@@ -625,9 +625,18 @@ spec:
                   capabilities:
                     drop:
                     - ALL
+                volumeMounts:
+                - mountPath: /certs
+                  name: certificates
+                  readOnly: true
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: keda-olm-operator
+              volumes:
+              - name: certificates
+                secret:
+                  optional: true
+                  secretName: kedaorg-certs
     strategy: deployment
   installModes:
   - supported: true

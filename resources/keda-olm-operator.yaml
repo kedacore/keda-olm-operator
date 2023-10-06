@@ -1,4 +1,15 @@
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: keda-operator
+    app.kubernetes.io/component: keda-operator
+    app.kubernetes.io/name: keda-operator
+    app.kubernetes.io/part-of: keda
+  name: kedaorg-certs
+  namespace: keda
+---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
