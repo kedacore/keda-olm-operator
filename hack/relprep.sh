@@ -1,0 +1,115 @@
+#!/bin/bash
+
+ver=$1
+if ! [[ "$ver" =~ ^[0-9]\.[0-9][0-9]*\.[0-9][0-9]*$ ]]; then
+  echo "Usage: $0 <version>"
+  echo "Example:  $0 2.11.2"
+  exit 1
+fi
+
+set -o pipefail
+set -e
+
+echo "Finding out which version of Go KEDA v$ver is using"
+gover=$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod" | grep -Po '(?<=^go )[1-9][0-9]*\.[0-9][0-9]*$')
+
+echo "Making sure your go version is new enough to run 'go mod tidy' after this script does its updates"
+fake_go_ver="go version go$gover"
+if test "$( { echo "$fake_go_ver"; go version; } | sort --version-sort | head -1)" != "$fake_go_ver"; then
+  echo "Your go version '$(go version)' is not new enough for this script to run 'go mod tidy' after it updates go.mod to 'go $gover'"
+  exit 1
+fi
+
+echo "Updating go version in go.mod to '$gover'"
+sed -i "s/^go  *[1-9][0-9]*\.[0-9][0-9]*$/go $gover/" go.mod
+echo "Updatign go version in github workflows"
+while read f; do
+  echo " $f"
+  sed -i "s/^\\(  *go-version: \\) *'?[1-9][0-9]*\\.[0-9][0-9]*'?\$/\\1'${gover}'/" "$f"
+done < <(git grep -Pl "^  *go-version:  *'?[1-9][0-9]*\\.[0-9][0-9]*'?\$" .github/workflows/)
+
+echo "Getting latest tag for build-tools for version $gover"
+bttag=$(skopeo list-tags docker://ghcr.io/kedacore/build-tools | jq -r '.Tags|.[]' | grep -P "^${gover//./\\.}(\\.[0-9][0-9]*)?$" | sort --version-sort -r | head -1)
+
+echo "Updating build-tools tag to $bttag"
+while read f; do
+  echo " $f"
+  sed -i "s#ghcr.io/kedacore/build-tools:[0-9][0-9.]*#ghcr.io/kedacore/build-tools:$bttag#g" "$f"
+done < <(git grep -l "ghcr.io/kedacore/build-tools:[0-9]")
+
+echo "Updating resources from KEDA $ver release"
+wget "https://github.com/kedacore/keda/releases/download/v${ver}/keda-${ver}.yaml" -O resources/keda.yaml
+
+echo "Finding previous release version"
+prev=$(ls keda/ | grep -v "^${ver//./\\.}$" | sort --version-sort | tail -1)
+
+echo "Using a copy of previous release version $prev as a starting point for $ver"
+# using tar for easy overwrite of existing files (for idempotency, in case the script gets runs more than once)
+mkdir -p keda/$ver
+tar cf - --directory keda/$prev . | tar xvf - --directory keda/$ver
+echo "Updating version string in all manifests in keda/${ver}/manifests/"
+sed -i 's/\(app.kubernetes.io\/version:\) [0-9.][0-9.]*/\1 '${ver}/ keda/${ver}/manifests/*
+
+date="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+echo "Updating all version strings, 'replaces' and 'createdAt' fields in base CSV"
+sed -i "s/${prev//./\\.}/${ver}/; s/^\\(  replaces: *keda.v\\)[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/\1${prev}/; s/\\(  *createdAt: *\\)\"?[0-9-]*T[0-9:.]*Z\"/\1\"${date}\"/" config/manifests/bases/keda.clusterserviceversion.yaml
+
+rm -f keda/${ver}/manifests/keda.v${prev}.clusterserviceversion.yaml
+echo "Creating release CSV keda.v${ver}.clusterserviceversion.yaml"
+cp config/manifests/bases/keda.clusterserviceversion.yaml keda/${ver}/manifests/keda.v${ver}.clusterserviceversion.yaml
+sed -i 's#\(image: ghcr.io/kedacore/keda-olm-operator\):main#\1:'"${ver}"'#' keda/${ver}/manifests/keda.v${ver}.clusterserviceversion.yaml
+
+echo "Getting CRD list from resources/keda.yaml"
+crds="$(awk 'BEGIN {RS="\n---\n";} /\nkind: CustomResourceDefinition\n/ {print "---";print;}' resources/keda.yaml | sed -n '/^spec:/,/^[^ ]/ { /^  names:/,/^  [^ ]/ { s/    plural: *//p; }}')"
+
+echo "Splitting out each CRD from resources/keda.yaml into individual files and copyng to keda/$ver/manifests"
+for i in $crds; do
+  echo " $i"
+  awk 'BEGIN {RS="\n---\n";} /\nkind: CustomResourceDefinition\n.*\n  name: '$i'.keda.sh(\n.*)*\nspec:/ {print "---"; print;}' \
+      resources/keda.yaml > config/crd/bases/keda.sh_${i}.yaml
+  cp config/crd/bases/keda.sh_${i}.yaml keda/${ver}/manifests/
+done
+
+echo "Updating the kedacontrollers crd from code and copying it to $ver manifests"
+make manifests
+cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/${ver}/manifests/
+
+all_mods="$(go list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)"
+declare -A updated_mods
+
+echo
+echo Updating all deps
+for m in $all_mods; do
+    [ -n "${updated_mods[$m]+1}" ] && continue # already updated
+    echo go get -u $m
+    go get -u $m
+    updated_mods["$m"]=1
+done
+
+echo
+echo Running go mod tidy
+go mod tidy
+
+echo
+echo Updating bundle files
+make bundle
+# revert any changes to the kustomization
+git co config/manager/kustomization.yaml
+
+echo Validating bundle
+operator-sdk bundle validate ./keda/${ver}
+echo
+echo "Done! $0 successful"
+echo
+echo "To Do:"
+echo " 1. Validate changes made by this script and 'git add' them"
+echo " 2. Verify the code builds and works with vendor & toolchain update. Make any necessary changes to match changed APIs"
+echo " 3. Test that the bundle is deployable and functional on an OpenShift cluster:"
+echo "      make VERSION=${ver} IMAGE_REGISTRY=quay.io IMAGE_REPO=example_quay_user deploy-olm-testing"
+echo " 4. Test that the bundle is deployable and functional on a Kubernetes cluster:"
+echo "   a. Install OLM"
+echo "      OLM_VERSION=$(curl -s https://api.github.com/repos/operator-framework/operator-lifecycle-manager/releases/latest | jq -r .tag_name)"
+echo "      bash <(curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$OLM_VERSION/install.sh) $OLM_VERSION"
+echo "   b. Install bundle"
+echo "      make VERSION=${ver} IMAGE_REGISTRY=quay.io IMAGE_REPO=example_quay_user deploy-olm-testing"
+echo " 5. Follow release process steps 7-10. See: https://github.com/kedacore/keda-olm-operator/blob/main/RELEASE-PROCESS.md#7-commit-and-push-the-changed-code-to-github"
