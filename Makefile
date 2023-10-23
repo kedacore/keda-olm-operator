@@ -143,7 +143,8 @@ golangci:	## Run golangci against code.
 BUNDLE = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-bundle:$(VERSION)
 INDEX = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator-index:$(VERSION)
 # Options for 'bundle-build'
-DEFAULT_CHANNEL=alpha
+DEFAULT_CHANNEL?=stable
+CHANNELS?=stable
 
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)

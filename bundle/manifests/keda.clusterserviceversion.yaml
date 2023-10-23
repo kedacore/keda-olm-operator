@@ -662,7 +662,7 @@ spec:
   maintainers:
   - email: cncf-keda-maintainers@lists.cncf.io
     name: KEDA Community
-  maturity: alpha
+  maturity: stable
   minKubeVersion: 1.23.0
   provider:
     name: KEDA Community
