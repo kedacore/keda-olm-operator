@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.0
+    controller-gen.kubebuilder.io/version: v0.13.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/part-of: keda-olm-operator
@@ -141,6 +141,8 @@ spec:
                                   - For scale down: 300 (i.e. the stabilization window
                                   is 300 seconds long).'
                                 format: int32
+                                maximum: 3600
+                                minimum: 0
                                 type: integer
                             type: object
                           scaleUp:
@@ -198,6 +200,8 @@ spec:
                                   - For scale down: 300 (i.e. the stabilization window
                                   is 300 seconds long).'
                                 format: int32
+                                maximum: 3600
+                                minimum: 0
                                 type: integer
                             type: object
                         type: object
@@ -206,6 +210,22 @@ spec:
                     type: object
                   restoreToOriginalReplicaCount:
                     type: boolean
+                  scalingModifiers:
+                    description: ScalingModifiers describes advanced scaling logic
+                      options like formula
+                    properties:
+                      activationTarget:
+                        type: string
+                      formula:
+                        type: string
+                      metricType:
+                        description: MetricTargetType specifies the type of metric
+                          being targeted, and should be either "Value", "AverageValue",
+                          or "Utilization"
+                        type: string
+                      target:
+                        type: string
+                    type: object
                 type: object
               cooldownPeriod:
                 format: int32
@@ -236,8 +256,7 @@ spec:
                 format: int32
                 type: integer
               scaleTargetRef:
-                description: ScaleTarget holds the a reference to the scale target
-                  Object
+                description: ScaleTarget holds the reference to the scale target Object
                 properties:
                   apiVersion:
                     type: string
@@ -295,6 +314,8 @@ spec:
           status:
             description: ScaledObjectStatus is the status for a ScaledObject resource
             properties:
+              compositeScalerName:
+                type: string
               conditions:
                 description: Conditions an array representation to store multiple
                   Conditions

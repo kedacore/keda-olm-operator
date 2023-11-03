@@ -4,7 +4,7 @@ metadata:
   name: test-subscription
   namespace: keda
 spec:
-  channel: alpha
+  channel: stable
   installPlanApproval: Automatic
   name: keda-test
   source: test-catalog

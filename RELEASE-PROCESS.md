@@ -52,7 +52,7 @@ mv keda/2.9.0/manifests/keda.v2.8.0.clusterserviceversion.yaml keda/2.9.0/manife
 ```
 operator-sdk bundle validate ./keda/2.9.0
 ```
-- test that the bundle is deployable and functional on OpenShift instance.
+- test that the bundle is deployable and functional on OpenShift instance and on a vanilla K8s cluster with OLM installed.
 
 ## 7. Commit and push the changed code to GitHub
 ```bash
