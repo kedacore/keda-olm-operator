@@ -28,6 +28,10 @@ while read f; do
   sed -i "s/^\\(  *go-version: \\) *'?[1-9][0-9]*\\.[0-9][0-9]*'?\$/\\1'${gover}'/" "$f"
 done < <(git grep -Pl "^  *go-version:  *'?[1-9][0-9]*\\.[0-9][0-9]*'?\$" .github/workflows/)
 
+echo
+echo 'Running go mod tidy (pass 1)'
+go mod tidy
+
 echo "Getting latest tag for build-tools for version $gover"
 bttag=$(skopeo list-tags docker://ghcr.io/kedacore/build-tools | jq -r '.Tags|.[]' | grep -P "^${gover//./\\.}(\\.[0-9][0-9]*)?$" | sort --version-sort -r | head -1)
 
@@ -70,10 +74,6 @@ for i in $crds; do
   cp config/crd/bases/keda.sh_${i}.yaml keda/${ver}/manifests/
 done
 
-echo "Updating the kedacontrollers crd from code and copying it to $ver manifests"
-make manifests
-cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/${ver}/manifests/
-
 all_mods="$(go list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)"
 declare -A updated_mods
 
@@ -87,12 +87,16 @@ for m in $all_mods; do
 done
 
 echo
-echo Running go mod tidy
+echo 'Running go mod tidy (pass 2)'
 go mod tidy
 
 echo
 echo Updating bundle files
 make bundle
+
+echo "Updating the kedacontrollers crd from code and copying it to $ver manifests"
+make manifests
+cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/${ver}/manifests/
 # revert any changes to the kustomization
 git co config/manager/kustomization.yaml
 
