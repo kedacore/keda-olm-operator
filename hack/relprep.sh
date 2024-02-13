@@ -32,14 +32,14 @@ echo
 echo 'Running go mod tidy (pass 1)'
 go mod tidy
 
-echo "Getting latest tag for build-tools for version $gover"
-bttag=$(skopeo list-tags docker://ghcr.io/kedacore/build-tools | jq -r '.Tags|.[]' | grep -P "^${gover//./\\.}(\\.[0-9][0-9]*)?$" | sort --version-sort -r | head -1)
+echo "Getting latest tag for keda-tools for version $gover"
+bttag=$(skopeo list-tags docker://ghcr.io/kedacore/keda-tools | jq -r '.Tags|.[]' | sort --version-sort -r | head -1)
 
-echo "Updating build-tools tag to $bttag"
+echo "Updating keda-tools tag to $bttag"
 while read f; do
   echo " $f"
-  sed -i "s#ghcr.io/kedacore/build-tools:[0-9][0-9.]*#ghcr.io/kedacore/build-tools:$bttag#g" "$f"
-done < <(git grep -l "ghcr.io/kedacore/build-tools:[0-9]")
+  sed -i "s#ghcr.io/kedacore/keda-tools:[0-9][0-9.]*#ghcr.io/kedacore/keda-tools:$bttag#g" "$f"
+done < <(git grep -l "ghcr.io/kedacore/keda-tools:[0-9]")
 
 echo "Updating resources from KEDA $ver release"
 wget "https://github.com/kedacore/keda/releases/download/v${ver}/keda-${ver}.yaml" -O resources/keda.yaml
