@@ -14,16 +14,16 @@ const (
 )
 
 // finalizeKedaController is deleting resources for the respective KedaController
-func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger) error {
-	if err := r.resourcesGeneral.Delete(); err != nil {
+func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger, manifests *resourceManifests) error {
+	if err := manifests.resourcesGeneral.Delete(); err != nil {
 		logger.Info("error finalized KedaController general", "error", err)
 		return err
 	}
-	if err := r.resourcesController.Delete(); err != nil {
+	if err := manifests.resourcesController.Delete(); err != nil {
 		logger.Info("error finalized KedaController controller", "error", err)
 		return err
 	}
-	if err := r.resourcesMetrics.Delete(); err != nil {
+	if err := manifests.resourcesMetrics.Delete(); err != nil {
 		logger.Info("error finalized KedaController metrics", "error", err)
 		return err
 	}

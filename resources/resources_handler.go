@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"fmt"
 	"path/filepath"
 	"runtime"
 
@@ -11,14 +12,17 @@ const resourcesPath = "keda.yaml"
 const olmResourcesPath = "keda-olm-operator.yaml"
 const LastConfigID = "olm-operator.keda.sh/last-applied-configuration"
 
-func GetResourcesManifest() (mf.Manifest, error) {
+func GetResourcesManifest(kedaRelease string) (mf.Manifest, error) {
 	_, path, _, _ := runtime.Caller(0)
-	fullPath := filepath.Join(filepath.Dir(path), resourcesPath)
-	olmFullPath := filepath.Join(filepath.Dir(path), olmResourcesPath)
+	fullPath := filepath.Join(filepath.Dir(path), kedaRelease, resourcesPath)
+	olmFullPath := filepath.Join(filepath.Dir(path), kedaRelease, olmResourcesPath)
 	kedamf, err := mf.NewManifest(fullPath, mf.UseLastAppliedConfigAnnotation(LastConfigID))
 	if err != nil {
-		return kedamf, err
+		return kedamf, fmt.Errorf("error creating manifest from %s: %v", fullPath, err)
 	}
 	operatormf, err := mf.NewManifest(olmFullPath, mf.UseLastAppliedConfigAnnotation(LastConfigID))
-	return kedamf.Append(operatormf), err
+	if err != nil {
+		return mf.Manifest{}, fmt.Errorf("error creating manifest from %s: %v", olmFullPath, err)
+	}
+	return kedamf.Append(operatormf), nil
 }

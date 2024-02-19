@@ -36,6 +36,9 @@ const (
 type KedaControllerSpec struct {
 
 	// +optional
+	KedaRelease string `json:"kedaRelease,omitempty"`
+
+	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
 
 	// +optional
@@ -206,8 +209,6 @@ type KedaControllerStatus struct {
 	ConfigMapDataSum string `json:"configmapdatasum,omitempty"`
 	// +optional
 	SecretDataSum string `json:"secretdatasum,omitempty"`
-
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +kubebuilder:object:root=true

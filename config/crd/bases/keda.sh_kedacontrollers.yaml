@@ -1210,6 +1210,8 @@ spec:
                       type: object
                     type: array
                 type: object
+              kedaRelease:
+                type: string
               metricsServer:
                 properties:
                   affinity:

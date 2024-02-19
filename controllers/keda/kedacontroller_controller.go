@@ -75,38 +75,30 @@ const (
 // KedaControllerReconciler reconciles a KedaController object
 type KedaControllerReconciler struct {
 	client.Client
-	Log                 logr.Logger
-	Scheme              *runtime.Scheme
-	CertDir             string
-	LeaderElection      bool
-	rotatorStarted      bool
-	mgr                 ctrl.Manager
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	CertDir           string
+	LeaderElection    bool
+	rotatorStarted    bool
+	mgr               ctrl.Manager
+	manifests         map[string]resourceManifests
+	discoveryClient   *discovery.DiscoveryClient
+	resourceNamespace string
+}
+
+type resourceManifests struct {
 	resourcesGeneral    mf.Manifest
 	resourcesController mf.Manifest
 	resourcesMetrics    mf.Manifest
 	resourcesWebhooks   mf.Manifest
 	resourcesMonitoring mf.Manifest
-	discoveryClient     *discovery.DiscoveryClient
-	resourceNamespace   string
 }
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaControllerResourceNamespace string, logger logr.Logger) error {
 	r.resourceNamespace = kedaControllerResourceNamespace
 	r.mgr = mgr
-	resourcesManifest, err := resources.GetResourcesManifest()
-	if err != nil {
-		return err
-	}
-	manifestGeneral, manifestController, manifestMetrics, manifestWebhooks, manifestMonitoring, err := parseManifestsFromFile(resourcesManifest, r.Client)
-	if err != nil {
-		return err
-	}
+	r.manifests = make(map[string]resourceManifests)
 
-	r.resourcesGeneral = manifestGeneral
-	r.resourcesController = manifestController
-	r.resourcesMetrics = manifestMetrics
-	r.resourcesWebhooks = manifestWebhooks
-	r.resourcesMonitoring = manifestMonitoring
 	if restConfig, err := ctrl.GetConfig(); err != nil {
 		logger.Info("Unable to get REST Config for cluster version discovery. Ignore this message in test environments", "err", err)
 	} else {
@@ -164,12 +156,17 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, util.UpdateKedaControllerStatus(ctx, r.Client, instance, status)
 	}
 
-	if instance.GetDeletionTimestamp() != nil {
+	manifests, err := r.getResourceManifests(instance.Spec.KedaRelease)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !instance.GetDeletionTimestamp().IsZero() {
 		if contains(instance.GetFinalizers(), kedaControllerFinalizer) {
 			// Run finalization logic for kedaControllerFinalizer. If the
 			// finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
-			if err := r.finalizeKedaController(logger); err != nil {
+			if err := r.finalizeKedaController(logger, manifests); err != nil {
 				return ctrl.Result{}, err
 			}
 			// Remove kedaControllerFinalizer. Once all finalizers have been
@@ -194,21 +191,21 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	status := instance.Status.DeepCopy()
 
-	if err := r.installSA(logger, instance); err != nil {
+	if err := r.installSA(logger, instance, manifests); err != nil {
 		status.MarkInstallFailed("Not able to create ServiceAccount")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
 		}
 		return ctrl.Result{}, err
 	}
-	if err := r.installController(ctx, logger, instance); err != nil {
+	if err := r.installController(ctx, logger, instance, manifests); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Controller")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
 		}
 		return ctrl.Result{}, err
 	}
-	if err := r.installMetricsServer(ctx, logger, instance); err != nil {
+	if err := r.installMetricsServer(ctx, logger, instance, manifests); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Metrics Server")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -216,7 +213,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if err := r.installAdmissionWebhooks(ctx, logger, instance); err != nil {
+	if err := r.installAdmissionWebhooks(ctx, logger, instance, manifests); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Admission Webhooks")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -224,7 +221,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if err := r.installMonitoring(ctx, logger, instance); err != nil {
+	if err := r.installMonitoring(ctx, logger, instance, manifests); err != nil {
 		status.MarkInstallFailed("Not able to install monitoring resources")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -241,67 +238,91 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, nil
 }
 
-func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGeneral, manifestController,
-	manifestMetrics, manifestWebhook, manifestMonitoring mf.Manifest, err error) {
+func (r *KedaControllerReconciler) getResourceManifests(kedaRelease string) (*resourceManifests, error) {
+	if m, ok := r.manifests[kedaRelease]; ok {
+		return &m, nil
+	}
+	manifestsFile, err := resources.GetResourcesManifest(kedaRelease)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get resources manifest: %v", err)
+	}
+	parsedManifests, err := r.parseManifestsFromFile(manifestsFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse resources manifest: %v", err)
+	}
+
+	r.manifests[kedaRelease] = *parsedManifests
+
+	return parsedManifests, nil
+}
+
+func (r *KedaControllerReconciler) parseManifestsFromFile(manifest mf.Manifest) (*resourceManifests, error) {
 	var generalResources, controllerResources, metricsResources, webhookResources, monitoringResources []unstructured.Unstructured
 
-	for _, r := range manifest.Resources() {
-		switch kind := r.GetKind(); kind {
+	for _, res := range manifest.Resources() {
+		switch kind := res.GetKind(); kind {
 		case "APIService", "ValidatingWebhookConfiguration":
-			if name := r.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
-				webhookResources = append(webhookResources, r)
+			if name := res.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
+				webhookResources = append(webhookResources, res)
 			} else {
-				metricsResources = append(metricsResources, r)
+				metricsResources = append(metricsResources, res)
 			}
 		case "ClusterRole", "ClusterRoleBinding", "Deployment", "Role", "RoleBinding", "Service":
-			if name := r.GetName(); name == "keda-operator" {
-				controllerResources = append(controllerResources, r)
-			} else if name := r.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
-				webhookResources = append(webhookResources, r)
+			if name := res.GetName(); name == "keda-operator" {
+				controllerResources = append(controllerResources, res)
+			} else if name := res.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
+				webhookResources = append(webhookResources, res)
 			} else {
-				metricsResources = append(metricsResources, r)
+				metricsResources = append(metricsResources, res)
 			}
 		case "Secret":
-			controllerResources = append(controllerResources, r)
+			controllerResources = append(controllerResources, res)
 		case "Namespace", "ServiceAccount":
-			generalResources = append(generalResources, r)
+			generalResources = append(generalResources, res)
 		case "PodMonitor", "ServiceMonitor":
-			monitoringResources = append(monitoringResources, r)
+			monitoringResources = append(monitoringResources, res)
 		}
 	}
 
-	manifestClient := mfc.NewClient(c)
-	manifestGeneral, err = mf.ManifestFrom(mf.Slice(generalResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	var err error
+	manifestClient := mfc.NewClient(r.Client)
+	resourcesGeneral, err := mf.ManifestFrom(mf.Slice(generalResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return nil, err
 	}
-	manifestGeneral.Client = manifestClient
+	resourcesGeneral.Client = manifestClient
 
-	manifestController, err = mf.ManifestFrom(mf.Slice(controllerResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	resourcesController, err := mf.ManifestFrom(mf.Slice(controllerResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return nil, err
 	}
-	manifestController.Client = manifestClient
+	resourcesController.Client = manifestClient
 
-	manifestMetrics, err = mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	resourcesMetrics, err := mf.ManifestFrom(mf.Slice(sortMetricsResources(&metricsResources)), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return nil, err
 	}
-	manifestMetrics.Client = manifestClient
+	resourcesMetrics.Client = manifestClient
 
-	manifestWebhook, err = mf.ManifestFrom(mf.Slice(webhookResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	resourcesWebhooks, err := mf.ManifestFrom(mf.Slice(webhookResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return nil, err
 	}
-	manifestWebhook.Client = manifestClient
+	resourcesWebhooks.Client = manifestClient
 
-	manifestMonitoring, err = mf.ManifestFrom(mf.Slice(monitoringResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	resourcesMonitoring, err := mf.ManifestFrom(mf.Slice(monitoringResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
 	if err != nil {
-		return mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, mf.Manifest{}, err
+		return nil, err
 	}
-	manifestMonitoring.Client = manifestClient
+	resourcesMonitoring.Client = manifestClient
 
-	return
+	return &resourceManifests{
+		resourcesGeneral:    resourcesGeneral,
+		resourcesController: resourcesController,
+		resourcesMetrics:    resourcesMetrics,
+		resourcesWebhooks:   resourcesWebhooks,
+		resourcesMonitoring: resourcesMonitoring,
+	}, nil
 }
 
 func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured.Unstructured {
@@ -331,7 +352,7 @@ func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured
 	return sortedResources
 }
 
-func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav1alpha1.KedaController, manifests *resourceManifests) error {
 	logger.Info("Reconciling KEDA ServiceAccount")
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
@@ -346,14 +367,14 @@ func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav
 		transforms = append(transforms, transform.AddServiceAccountLabels(instance.Spec.ServiceAccount.Labels, r.Scheme))
 	}
 
-	manifest, err := r.resourcesGeneral.Transform(transforms...)
+	manifest, err := manifests.resourcesGeneral.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform ServiceAccount manifest")
 		return err
 	}
-	r.resourcesGeneral = manifest
+	manifests.resourcesGeneral = manifest
 
-	if err := r.resourcesGeneral.Apply(); err != nil {
+	if err := manifests.resourcesGeneral.Apply(); err != nil {
 		logger.Error(err, "Unable to install ServiceAccount")
 		return err
 	}
@@ -361,7 +382,7 @@ func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav
 	return nil
 }
 
-func (r *KedaControllerReconciler) installController(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installController(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController, manifests *resourceManifests) error {
 	logger.Info("Reconciling KEDA Controller deployment")
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
@@ -448,14 +469,14 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.Operator.Args[i], "operator", r.Scheme, logger))
 	}
 
-	manifest, err := r.resourcesController.Transform(transforms...)
+	manifest, err := manifests.resourcesController.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform KEDA Controller manifest")
 		return err
 	}
-	r.resourcesController = manifest
+	manifests.resourcesController = manifest
 
-	if err := r.resourcesController.Apply(); err != nil {
+	if err := manifests.resourcesController.Apply(); err != nil {
 		logger.Error(err, "Unable to install KEDA Controller")
 		return err
 	}
@@ -486,7 +507,7 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 }
 
 // installMonitoring install the controller resources for the monitoring stack
-func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController, manifests *resourceManifests) error {
 	logger.Info("Reconciling monitoring resources")
 
 	// this works only if required CRDs are present
@@ -504,14 +525,14 @@ func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger
 		transform.ReplaceAllNamespaces(instance.Namespace),
 	}
 
-	manifest, err := r.resourcesMonitoring.Transform(transforms...)
+	manifest, err := manifests.resourcesMonitoring.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform monitoring resource manifests")
 		return err
 	}
-	r.resourcesMonitoring = manifest
+	manifests.resourcesMonitoring = manifest
 
-	if err := r.resourcesMonitoring.Apply(); err != nil {
+	if err := manifests.resourcesMonitoring.Apply(); err != nil {
 		logger.Error(err, "Unable to install monitoring resources")
 		return err
 	}
@@ -519,7 +540,7 @@ func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger
 	return nil
 }
 
-func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController, manifests *resourceManifests) error {
 	logger.Info("Reconciling KEDA Metrics Server Deployment")
 
 	transforms := []mf.Transformer{
@@ -659,14 +680,14 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 	// replace namespace in RoleBinding from keda to kube-system
 	transforms = append(transforms, transform.ReplaceNamespace(roleBindingName, roleBindingNamespace, r.Scheme, logger))
 
-	manifest, err := r.resourcesMetrics.Transform(transforms...)
+	manifest, err := manifests.resourcesMetrics.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform Metrics Server manifest")
 		return err
 	}
-	r.resourcesMetrics = manifest
+	manifests.resourcesMetrics = manifest
 
-	if err := r.resourcesMetrics.Apply(); err != nil {
+	if err := manifests.resourcesMetrics.Apply(); err != nil {
 		logger.Error(err, "Unable to install Metrics Server")
 		return err
 	}
@@ -796,7 +817,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	return nil
 }
 
-func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController, manifests *resourceManifests) error {
 	logger.Info("Reconciling KEDA Admission Webhooks deployment")
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
@@ -878,14 +899,14 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.AdmissionWebhooks.Args[i], "admissionwebhooks", r.Scheme, logger))
 	}
 
-	manifest, err := r.resourcesWebhooks.Transform(transforms...)
+	manifest, err := manifests.resourcesWebhooks.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform KEDA Admission Webhooks manifest")
 		return err
 	}
-	r.resourcesWebhooks = manifest
+	manifests.resourcesWebhooks = manifest
 
-	if err := r.resourcesWebhooks.Apply(); err != nil {
+	if err := manifests.resourcesWebhooks.Apply(); err != nil {
 		logger.Error(err, "Unable to install KEDA Admission Webhooks")
 		return err
 	}

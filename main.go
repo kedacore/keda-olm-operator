@@ -91,7 +91,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "olm-operator.keda.sh",
-		Cache:                  cache.Options{DefaultNamespaces: map[string]cache.Config{getWatchNamespace(): {}}},
+		Cache:                  cache.Options{DefaultNamespaces: map[string]cache.Config{installNamespace: {}}},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
