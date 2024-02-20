@@ -625,10 +625,17 @@ spec:
                   requests:
                     cpu: 100m
                     memory: 100Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
                 volumeMounts:
                 - mountPath: /certs
                   name: certificates
                   readOnly: true
+              securityContext:
+                runAsNonRoot: true
               serviceAccountName: keda-olm-operator
               volumes:
               - name: certificates

@@ -569,7 +569,9 @@ spec:
           - list
         serviceAccountName: keda-olm-operator
       deployments:
-      - name: keda-olm-operator
+      - label:
+          app.kubernetes.io/part-of: keda-olm-operator
+        name: keda-olm-operator
         spec:
           replicas: 1
           selector:
