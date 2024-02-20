@@ -1,8 +1,6 @@
 module github.com/kedacore/keda-olm-operator
 
-go 1.21
-
-toolchain go1.21.3
+go 1.20
 
 require (
 	github.com/go-logr/logr v1.4.1
@@ -11,7 +9,8 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.31.1
 	github.com/open-policy-agent/cert-controller v0.10.1
-	github.com/openshift/api v0.0.0-20240213032657-54b3334bfac5
+	github.com/openshift/api v0.0.0-20240215110531-750a3e21ebaf
+	golang.org/x/mod v0.15.0
 	k8s.io/api v0.29.1
 	k8s.io/apimachinery v0.29.1
 	k8s.io/apiserver v0.29.1
@@ -72,8 +71,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
-	golang.org/x/mod v0.15.0 // indirect
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/oauth2 v0.17.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
