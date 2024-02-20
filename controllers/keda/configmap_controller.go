@@ -63,10 +63,10 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager, installNamespac
 			}
 			return false
 		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
+		DeleteFunc: func(event.DeleteEvent) bool {
 			return false
 		},
-		GenericFunc: func(e event.GenericEvent) bool {
+		GenericFunc: func(event.GenericEvent) bool {
 			return false
 		},
 	}

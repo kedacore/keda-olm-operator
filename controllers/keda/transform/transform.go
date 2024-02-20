@@ -687,7 +687,7 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 
 	if !found {
 		logger.Info("Ignoring speficied Log level for KEDA Operator, it needs to be set to ", strings.Join(logLevels, ", "), "or an integer value greater than 0")
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -707,7 +707,7 @@ func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, lo
 
 	if !found {
 		logger.Info("Ignoring speficied Log encoder for KEDA Operator", "specified", logEncoder, "allowed values", strings.Join(logEncoders, ", "))
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -724,7 +724,7 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 
 	if !found {
 		logger.Info("Ignoring speficied Log level for KEDA Metrics Server, it needs to be set to an integer value greater than 0")
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -744,7 +744,7 @@ func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.
 
 	if !found {
 		logger.Info("Ignoring speficied Log time encoding for KEDA Operator", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodings, ", "))
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -768,7 +768,7 @@ func ReplaceAdmissionWebhooksLogLevel(logLevel string, scheme *runtime.Scheme, l
 
 	if !found {
 		logger.Info("Ignoring speficied Log level for KEDA Admission Webhooks, it needs to be set to ", strings.Join(logLevels, ", "), "or an integer value greater than 0")
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -788,7 +788,7 @@ func ReplaceAdmissionWebhooksLogEncoder(logEncoder string, scheme *runtime.Schem
 
 	if !found {
 		logger.Info("Ignoring speficied Log encoder for KEDA Admission Webhooks", "specified", logEncoder, "allowed values", strings.Join(logEncoders, ", "))
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -808,7 +808,7 @@ func ReplaceAdmissionWebhooksLogTimeEncoding(logTimeEncoding string, scheme *run
 
 	if !found {
 		logger.Info("Ignoring speficied Log time encoding for KEDA Admission Webhooks", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodings, ", "))
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -847,7 +847,7 @@ func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Schem
 	case "admissionwebhooks":
 		return replaceContainerArg(argTrue, prefix, containerNameAdmissionWebhooks, scheme, logger)
 	default:
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}
@@ -877,7 +877,7 @@ func ReplaceAuditConfig(argument string, selector string, scheme *runtime.Scheme
 	case "maxsize":
 		prefix = "--audit-log-maxsize="
 	default:
-		return func(u *unstructured.Unstructured) error {
+		return func(*unstructured.Unstructured) error {
 			return nil
 		}
 	}

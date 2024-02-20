@@ -86,6 +86,9 @@ issues:
     - linters:
        - stylecheck
       text: "ST1000:"
+    # Exclude some linters from running on test files.
+    - path: _test\.go$
+      text: "dot-imports: should not use dot imports"
 
 linters-settings:
   funlen:
@@ -96,3 +99,10 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/kedacore/keda)
+  # copied from https://github.com/kedacore/keda/blob/1ab35e75a63b3b33ca59552dda93220fd916a05d/.golangci.yml#L163-L168
+  depguard: #https://github.com/kedacore/keda/issues/4980
+    rules:
+      main:
+        deny:
+          - pkg: sync/atomic
+            desc: "use type-safe atomics from go.uber.org/atomic"
