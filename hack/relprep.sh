@@ -64,15 +64,32 @@ cp config/manifests/bases/keda.clusterserviceversion.yaml keda/${ver}/manifests/
 sed -i 's#\(image: ghcr.io/kedacore/keda-olm-operator\):main#\1:'"${ver}"'#' keda/${ver}/manifests/keda.v${ver}.clusterserviceversion.yaml
 
 echo "Getting CRD list from resources/keda.yaml"
-crds="$(awk 'BEGIN {RS="\n---\n";} /\nkind: CustomResourceDefinition\n/ {print "---";print;}' resources/keda.yaml | sed -n '/^spec:/,/^[^ ]/ { /^  names:/,/^  [^ ]/ { s/    plural: *//p; }}')"
+crds="$(awk 'BEGIN {RS="\n---\n";} /\nkind: CustomResourceDefinition\n/ {print "---";print;}' resources/keda.yaml | sed -n '/^metadata:/,/^[^ ]/ { s/  name: *//p; }')"
 
 echo "Splitting out each CRD from resources/keda.yaml into individual files and copyng to keda/$ver/manifests"
 for i in $crds; do
-  echo " $i"
-  awk 'BEGIN {RS="\n---\n";} /\nkind: CustomResourceDefinition\n.*\n  name: '$i'.keda.sh(\n.*)*\nspec:/ {print "---"; print;}' \
-      resources/keda.yaml > config/crd/bases/keda.sh_${i}.yaml
-  cp config/crd/bases/keda.sh_${i}.yaml keda/${ver}/manifests/
+  pluralname="${i%%.*}"
+  crdns="${i#*.}"
+  echo " $i (for ${crdns}_${pluralname}.yaml)"
+  awk 'BEGIN {RS="\n---\n";} /\nkind: CustomResourceDefinition\n.*\n  name: '$i'(\n.*)*\nspec:/ {print "---"; print;}' \
+      resources/keda.yaml > config/crd/bases/${crdns}_${pluralname}.yaml
+  cp config/crd/bases/${crdns}_${pluralname}.yaml keda/${ver}/manifests/
+  if ! ( sed -n '/resources:/,/^[^ -]/ { s/ *- *//p; }' config/crd/kustomization.yaml | grep -qFl "bases/${crdns}_${pluralname}.yaml" ); then
+    echo "Error: New CRD 'bases/${crdns}_${pluralname}.yaml' must be manually added to config/crd/kustomization.yaml resources list"
+    exit 1
+  fi
 done
+
+echo "Verifying that bundle-generated CSV (for testing) is equivalent to shipping CSV"
+ignorefields='createdAt|operators\.operatorframework\.io/builder|app\.kubernetes\.io/version'
+bcsv=bundle/manifests/keda.clusterserviceversion.yaml
+mcsv=config/manifests/bases/keda.clusterserviceversion.yaml
+if ! diff -u <(grep -vE "$ignorefields" < $bcsv) <(grep -vE "$ignorefields" < $mcsv) | \
+    sed 's#^--- /dev/fd/[0-9]*#--- '"$bcsv"'#;s#^+++ /dev/fd/[0-9]*#+++ '"$mcsv"'#'; then
+  echo "Error: It appears that there are non-trivial differences between $bcsv and $mcsv."
+  echo "As appropriate, make changes to $mcsv or the inputs to $bcsv, and re-run this script"
+  exit 1
+fi
 
 all_mods="$(go list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)"
 declare -A updated_mods

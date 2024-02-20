@@ -13,7 +13,6 @@ spec:
       labels:
         name: keda-olm-operator
     spec:
-      serviceAccountName: keda-olm-operator
       containers:
         - name: keda-olm-operator
           image: ghcr.io/kedacore/keda-olm-operator:main
@@ -32,6 +31,11 @@ spec:
             limits:
               cpu: 500m
               memory: 1000Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
           ports:
             - containerPort: 8080
               name: http
@@ -53,6 +57,9 @@ spec:
           - mountPath: /certs
             name: certificates
             readOnly: true
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: keda-olm-operator
       volumes:
       - name: certificates
         secret:
