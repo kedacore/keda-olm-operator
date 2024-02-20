@@ -1,6 +1,19 @@
 package resources
 
-import "testing"
+import (
+	"flag"
+	"testing"
+
+	_ "github.com/onsi/ginkgo"
+)
+
+var (
+	testType string
+)
+
+func init() {
+	flag.StringVar(&testType, "test.type", "", "type of test: functionality / deployment")
+}
 
 // TestResourceHandler tests the GetResourcesManifest function
 func TestResourceHandler(t *testing.T) {
