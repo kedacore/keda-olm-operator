@@ -206,7 +206,8 @@ spec:
     #   policy:
     #     rules:
     #     - level: Metadata
-    #     omitStages: "RequestReceived"
+    #     omitStages:
+    #     - RequestReceived
     #     omitManagedFields: false
     #   lifetime:
     #     maxAge: "2"
