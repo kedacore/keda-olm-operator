@@ -10,8 +10,19 @@ fi
 set -o pipefail
 set -e
 
-echo "Finding out which version of Go KEDA v$ver is using"
-gover=$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod" | grep -Po '(?<=^go )[1-9][0-9]*\.[0-9][0-9]*$')
+# these components k8s.io/<item> are versioned for each k8s release and should match the version of k8s used in KEDA for a given release
+kube_components="api apimachinery apiextensions-apiserver apiserver client-go component-base kube-aggregator"
+
+echo "Fetching go.mod for KEDA v$ver"
+keda_gomod="$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod")"
+
+echo -n "Finding out which version of Go KEDA v$ver is using... "
+gover=$(echo "$keda_gomod" | grep -Po '(?<=^go )[1-9][0-9]*\.[0-9][0-9]*$')
+echo $gover
+
+echo -n "Finding out which K8s version KEDA v$ver is using... "
+k8sver=$(echo "$keda_gomod" | grep -Po '(?<=^\tk8s\.io/api )v[0-9]*\.[0-9]*\.[0-9]*$')
+echo $k8sver
 
 echo "Making sure your go version is new enough to run 'go mod tidy' after this script does its updates"
 fake_go_ver="go version go$gover"
@@ -80,28 +91,31 @@ for i in $crds; do
   fi
 done
 
-echo "Verifying that bundle-generated CSV (for testing) is equivalent to shipping CSV"
-ignorefields='createdAt|operators\.operatorframework\.io/builder|app\.kubernetes\.io/version'
-bcsv=bundle/manifests/keda.clusterserviceversion.yaml
-mcsv=config/manifests/bases/keda.clusterserviceversion.yaml
-if ! diff -u <(grep -vE "$ignorefields" < $bcsv) <(grep -vE "$ignorefields" < $mcsv) | \
-    sed 's#^--- /dev/fd/[0-9]*#--- '"$bcsv"'#;s#^+++ /dev/fd/[0-9]*#+++ '"$mcsv"'#'; then
-  echo "Error: It appears that there are non-trivial differences between $bcsv and $mcsv."
-  echo "As appropriate, make changes to $mcsv or the inputs to $bcsv, and re-run this script"
-  exit 1
-fi
-
 all_mods="$(go list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)"
 declare -A updated_mods
+to_update=()
+
+# force versions of k8s components
+for i in $kube_components; do
+    to_update+=("k8s.io/$i@$k8sver")
+    updated_mods["k8s.io/$i"]=1
+done
+
+# hack: force version of openshift API module based upon k8s->openshift version skew (e.g. 1.27 -> 4.14)
+openshift_branch="release-4.$(($(echo $k8sver | sed 's/v0\.\([0-9]*\)\.[0-9]*$/\1/')-13))"
+to_update+=("github.com/openshift/api@$openshift_branch")
+updated_mods[github.com/openshift/api]=1
+
+for m in $all_mods; do
+    [ -n "${updated_mods[$m]+1}" ] && continue # already updated
+    to_update+=("$m" )
+    updated_mods["$m"]=1
+done
 
 echo
 echo Updating all deps
-for m in $all_mods; do
-    [ -n "${updated_mods[$m]+1}" ] && continue # already updated
-    echo go get -u $m
-    go get -u $m
-    updated_mods["$m"]=1
-done
+echo go get "${to_update[@]}"
+go get -u "${to_update[@]}"
 
 echo
 echo 'Running go mod tidy (pass 2)'
@@ -116,6 +130,17 @@ make manifests
 cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/${ver}/manifests/
 # revert any changes to the kustomization
 git co config/manager/kustomization.yaml
+
+echo "Verifying that bundle-generated CSV (for testing) is equivalent to shipping CSV"
+ignorefields='createdAt|operators\.operatorframework\.io/builder|app\.kubernetes\.io/version'
+bcsv=bundle/manifests/keda.clusterserviceversion.yaml
+mcsv=config/manifests/bases/keda.clusterserviceversion.yaml
+if ! diff -u <(grep -vE "$ignorefields" < $bcsv) <(grep -vE "$ignorefields" < $mcsv) | \
+    sed 's#^--- /dev/fd/[0-9]*#--- '"$bcsv"'#;s#^+++ /dev/fd/[0-9]*#+++ '"$mcsv"'#'; then
+  echo "Error: It appears that there are non-trivial differences between $bcsv and $mcsv."
+  echo "As appropriate, make changes to $mcsv or the inputs to $bcsv, and re-run this script"
+  exit 1
+fi
 
 echo Validating bundle
 operator-sdk bundle validate ./keda/${ver}
