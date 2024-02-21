@@ -9,7 +9,7 @@ spec:
   # with Name set to 'keda' created in namespace 'keda'
   ###
 
-  # kedaRelease: "v2.12.1"
+  # kedaRelease: "2.12.1"
 
   ## Namespace that should be watched by KEDA,
   # omit or set empty to watch all namespaces (default setting)
