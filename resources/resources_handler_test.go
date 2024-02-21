@@ -3,10 +3,9 @@ package resources
 import (
 	"flag"
 
+	mf "github.com/manifestival/manifestival"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	mf "github.com/manifestival/manifestival"
 )
 
 var (
