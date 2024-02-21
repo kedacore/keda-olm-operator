@@ -31,6 +31,8 @@ RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION}
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
+COPY --from=builder /workspace/resources/keda.yaml /workspace/resources/${BUILD_VERSION}/keda.yaml
+COPY --from=builder /workspace/resources/keda-olm-operator.yaml /workspace/resources/${BUILD_VERSION}/keda-olm-operator.yaml
 COPY --from=builder /workspace/resources/keda.yaml /workspace/resources/keda.yaml
 COPY --from=builder /workspace/resources/keda-olm-operator.yaml /workspace/resources/keda-olm-operator.yaml
 COPY --from=builder /workspace/bin/manager .

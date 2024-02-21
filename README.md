@@ -90,6 +90,11 @@ spec:
   # with Name set to 'keda' created in namespace where the operator is installed (usually 'keda')
   ###
 
+  # select KEDA release to install
+  # from keda-olm-operator release 2.12.2 onwards, three latest KEDA releases are supported
+  # kedaRelease: "" # default value is empty, which means the latest KEDA release will be installed
+  # kedaRelease: "2.12.1"
+
   ## Namespace that should be watched by KEDA,
   # omit or set empty to watch all namespaces (default setting)
   watchNamespace: ""
