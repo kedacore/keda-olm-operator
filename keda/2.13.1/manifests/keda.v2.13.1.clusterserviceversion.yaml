@@ -601,7 +601,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: ghcr.io/kedacore/keda-olm-operator:main
+                image: ghcr.io/kedacore/keda-olm-operator:2.13.1
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:

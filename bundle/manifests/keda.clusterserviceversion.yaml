@@ -115,20 +115,23 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Cloud Provider
     certified: "false"
-    containerImage: ghcr.io/kedacore/keda-olm-operator:2.12.1
-    createdAt: "2024-02-12T19:54:14Z"
+    containerImage: ghcr.io/kedacore/keda-olm-operator:2.13.1
+    createdAt: "2024-06-05T03:33:22Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
     operators.operatorframework.io/builder: operator-sdk-v1.31.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
-  name: keda.v2.12.1
+  name: keda.v2.13.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - kind: CloudEventSource
+      name: cloudeventsources.eventing.keda.sh
+      version: v1alpha1
     - description: Describes cluster wide authentication parameters
       displayName: ClusterTriggerAuthentication
       kind: ClusterTriggerAuthentication
@@ -673,6 +676,6 @@ spec:
   minKubeVersion: 1.23.0
   provider:
     name: KEDA Community
-  replaces: keda.v2.12.0
+  replaces: keda.v2.12.1
   selector: {}
-  version: 2.12.1
+  version: 2.13.1
