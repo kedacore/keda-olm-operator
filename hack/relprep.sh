@@ -36,8 +36,8 @@ sed -i "s/^go  *[1-9][0-9]*\.[0-9][0-9]*$/go $gover/" go.mod
 echo "Updatign go version in github workflows"
 while read f; do
   echo " $f"
-  sed -i "s/^\\(  *go-version: \\) *'?[1-9][0-9]*\\.[0-9][0-9]*'?\$/\\1'${gover}'/" "$f"
-done < <(git grep -Pl "^  *go-version:  *'?[1-9][0-9]*\\.[0-9][0-9]*'?\$" .github/workflows/)
+  sed -i "s/^\\(  *go-version: \\) *'[1-9][0-9]*\\.[0-9][0-9]*'\$/\\1'${gover}'/" "$f"
+done < <(git grep -Pl "^  *go-version:  *'[1-9][0-9]*\\.[0-9][0-9]*'\$" .github/workflows/)
 
 echo
 echo 'Running go mod tidy (pass 1)'
@@ -141,6 +141,9 @@ if ! diff -u <(grep -vE "$ignorefields" < $bcsv) <(grep -vE "$ignorefields" < $m
   echo "As appropriate, make changes to $mcsv or the inputs to $bcsv, and re-run this script"
   exit 1
 fi
+
+echo "Updating K8s version for envtest components"
+sed -i "s#ENVTEST_K8S_VERSION *= *[0-9.]*#ENVTEST_K8S_VERSION = 1.${k8sver/v[0-9]./}#" Makefile
 
 echo Validating bundle
 operator-sdk bundle validate ./keda/${ver}
