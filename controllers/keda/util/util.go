@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"strconv"
+	"unicode"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -91,7 +92,15 @@ func RunningOnClusterWithoutSeccompProfileDefault(logger logr.Logger, discoveryC
 		logger.Error(err, "Unable to get numeric major cluster version", "major", versionInfo.Major)
 		return false
 	}
-	if minor, err = strconv.Atoi(versionInfo.Minor); err != nil {
+	// assume that any runes that follow digits can be ignored. So, "28" -> 28, and also "28+" -> 28
+	digitsLen := 0
+	for _, r := range versionInfo.Minor {
+		if !unicode.IsDigit(r) {
+			break
+		}
+		digitsLen++
+	}
+	if minor, err = strconv.Atoi(string([]rune(versionInfo.Minor)[0:digitsLen])); err != nil {
 		logger.Error(err, "Unable to get numeric minor cluster version", "minor", versionInfo.Minor)
 		return false
 	}

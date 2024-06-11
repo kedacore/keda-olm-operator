@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package transform_test
+package util_test
 
 import (
 	"flag"
@@ -28,9 +28,9 @@ var (
 	testType string
 )
 
-func TestTransform(t *testing.T) {
+func TestUtil(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Transform Suite")
+	RunSpecs(t, "Util Suite")
 }
 
 func init() {
