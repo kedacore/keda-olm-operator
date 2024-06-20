@@ -3597,6 +3597,14 @@ spec:
                     items:
                       type: string
                     type: array
+                  caConfigMaps:
+                    description: ConfigMaps containing PEM-encoded trusted certificate
+                      authorities (CAs). The files from the ConfigMaps will be loaded
+                      by the KEDA operator during start-up and will be used by scalers
+                      to authenticate TLS-enabled metrics data sources.
+                    items:
+                      type: string
+                    type: array
                   deploymentAnnotations:
                     additionalProperties:
                       type: string

@@ -34,6 +34,7 @@ const (
 	TLSCertFile           Prefix = "--tls-cert-file="
 	TLSPrivateKeyFile     Prefix = "--tls-private-key-file="
 	CertRotation          Prefix = "--enable-cert-rotation="
+	CADir                 Prefix = "--ca-dir="
 )
 
 func (p Prefix) String() string {
@@ -45,6 +46,7 @@ const (
 	containerNameKedaOperator      = "keda-operator"
 	containerNameMetricsServer     = "keda-metrics-apiserver"
 	containerNameAdmissionWebhooks = "keda-admission-webhooks"
+	caCertVolPrefix                = "cabundle"
 )
 
 // ReplaceAllNamespaces returns a transformer which will traverse the unstructured content looking for map entries with
@@ -406,7 +408,7 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 			var cabundleVolume corev1.Volume
 			if containerName == containerNameKedaOperator {
 				cabundleVolume = corev1.Volume{
-					Name: "cabundle",
+					Name: caCertVolPrefix,
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
@@ -462,7 +464,7 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 			certificatesVolumeFound := false
 			for i := range volumes {
 				if containerName == containerNameKedaOperator {
-					if volumes[i].Name == "cabundle" {
+					if volumes[i].Name == caCertVolPrefix {
 						volumes[i] = cabundleVolume
 						cabundleVolumeFound = true
 					}
@@ -486,7 +488,7 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 					var cabundleVolumeMount corev1.VolumeMount
 					if containerName == containerNameKedaOperator {
 						cabundleVolumeMount = corev1.VolumeMount{
-							Name:      "cabundle",
+							Name:      caCertVolPrefix,
 							MountPath: "/custom/ca",
 						}
 					}
@@ -504,7 +506,7 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 					for j := range volumeMounts {
 						// add custom CA to Operator
 						if containerName == containerNameKedaOperator {
-							if volumeMounts[j].Name == "cabundle" {
+							if volumeMounts[j].Name == caCertVolPrefix {
 								volumeMounts[j] = cabundleVolumeMount
 								cabundleVolumeMountFound = true
 							}
@@ -534,9 +536,18 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 	}
 }
 
-//nolint:dupl
-func EnsureOpenshiftCABundleForOperatorDeployment(configMapName string, scheme *runtime.Scheme) mf.Transformer {
-	return func(u *unstructured.Unstructured) error {
+// Add configmap volumes for configMapNames named cabundle0, cabundle1, etc. as /custom/ca0, /custom/ca1, etc. with
+// container args --ca-dir=/custom/ca0, --ca-dir=/custom/ca1, etc.
+func EnsureCACertsForOperatorDeployment(configMapNames []string, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
+	var retval []mf.Transformer
+
+	var caDirs []string
+	for i := range configMapNames {
+		caDirs = append(caDirs, "/custom/ca"+strconv.Itoa(i))
+	}
+	retval = append(retval, replaceContainerArgs(caDirs, CADir, containerNameKedaOperator, scheme, logger))
+
+	retval = append(retval, func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
 			if err := scheme.Convert(u, deploy, nil); err != nil {
@@ -544,49 +555,64 @@ func EnsureOpenshiftCABundleForOperatorDeployment(configMapName string, scheme *
 			}
 
 			// add Volumes referencing certs in ConfigMap
-			cabundleVolume := corev1.Volume{
-				Name: "cabundle",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: configMapName,
+			cabundleVolumes := map[string]corev1.Volume{}
+			cabundleVolumeMounts := map[string]corev1.VolumeMount{}
+			for i, configMapName := range configMapNames {
+				cabundleVolumes[configMapName] = corev1.Volume{
+					Name: caCertVolPrefix + strconv.Itoa(i),
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: configMapName,
+							},
 						},
 					},
-				},
-			}
+				}
 
-			volumes := deploy.Spec.Template.Spec.Volumes
-			cabundleVolumeFound := false
-			for i := range volumes {
-				if volumes[i].Name == "cabundle" {
-					volumes[i] = cabundleVolume
-					cabundleVolumeFound = true
+				cabundleVolumeMounts[caCertVolPrefix+strconv.Itoa(i)] = corev1.VolumeMount{
+					Name:      caCertVolPrefix + strconv.Itoa(i),
+					MountPath: "/custom/ca" + strconv.Itoa(i),
 				}
 			}
-			if !cabundleVolumeFound {
-				deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, cabundleVolume)
+
+			cabundleVolumeFound := map[string]bool{}
+			var volumes []corev1.Volume
+			for _, vol := range deploy.Spec.Template.Spec.Volumes {
+				if caVol, ok := cabundleVolumes[vol.Name]; ok {
+					volumes = append(volumes, caVol)
+					cabundleVolumeFound[vol.Name] = true
+				} else if !strings.HasPrefix(vol.Name, caCertVolPrefix) {
+					volumes = append(volumes, vol)
+				} // else don't copy it over since it shouldn't be there
 			}
+
+			for name, vol := range cabundleVolumes {
+				if !cabundleVolumeFound[name] {
+					volumes = append(volumes, vol)
+				}
+			}
+			deploy.Spec.Template.Spec.Volumes = volumes
+
 			containers := deploy.Spec.Template.Spec.Containers
 			for i := range containers {
 				if containers[i].Name == containerNameKedaOperator {
 					// mount Volumes referencing certs in ConfigMap
-					cabundleVolumeMount := corev1.VolumeMount{
-						Name:      "cabundle",
-						MountPath: "/custom/ca",
+					var volumeMounts []corev1.VolumeMount
+					cabundleVolumeMountFound := map[string]bool{}
+					for _, volMount := range containers[i].VolumeMounts {
+						if caVolMount, ok := cabundleVolumeMounts[volMount.Name]; ok {
+							volumeMounts = append(volumeMounts, caVolMount)
+							cabundleVolumeMountFound[volMount.Name] = true
+						} else if !strings.HasPrefix(volMount.Name, caCertVolPrefix) {
+							volumeMounts = append(volumeMounts, volMount)
+						} // else don't copy it over since it shouldn't be there
 					}
-
-					volumeMounts := containers[i].VolumeMounts
-					cabundleVolumeMountFound := false
-					for j := range volumeMounts {
-						if volumeMounts[j].Name == "cabundle" {
-							volumeMounts[j] = cabundleVolumeMount
-							cabundleVolumeMountFound = true
+					for name, volmount := range cabundleVolumeMounts {
+						if !cabundleVolumeMountFound[name] {
+							volumeMounts = append(volumeMounts, volmount)
 						}
 					}
-					if !cabundleVolumeMountFound {
-						containers[i].VolumeMounts = append(containers[i].VolumeMounts, cabundleVolumeMount)
-					}
-
+					containers[i].VolumeMounts = volumeMounts
 					break
 				}
 			}
@@ -596,7 +622,8 @@ func EnsureOpenshiftCABundleForOperatorDeployment(configMapName string, scheme *
 			}
 		}
 		return nil
-	}
+	})
+	return retval
 }
 
 func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
@@ -607,7 +634,6 @@ func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *
 	return transforms
 }
 
-//nolint:dupl
 func EnsureAuditPolicyConfigMapMountsVolume(configMapName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -921,6 +947,62 @@ func replaceContainerArg(value string, prefix Prefix, containerName string, sche
 					if !argFound {
 						logger.Info("Adding", "deployment", container.Name, "prefix", prefix.String(), "value", value)
 						containers[i].Args = append(containers[i].Args, prefix.String()+value)
+						changed = true
+					}
+					break
+				}
+			}
+			if changed {
+				if err := scheme.Convert(deploy, u, nil); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+}
+
+func replaceContainerArgs(values []string, prefix Prefix, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		// this function only supports flags with a prefix
+		if prefix == "" {
+			return nil
+		}
+		changed := false
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerName {
+					argFound := false
+					var newArgs []string
+					for _, arg := range container.Args {
+						if !strings.HasPrefix(arg, prefix.String()) {
+							newArgs = append(newArgs, arg)
+						} else {
+							if argFound {
+								continue
+							}
+							argFound = true
+							for _, value := range values {
+								newArgs = append(newArgs, prefix.String()+value)
+							}
+						}
+					}
+					if argFound {
+						changed = !reflect.DeepEqual(containers[i].Args, newArgs)
+						if changed {
+							logger.Info("Updating args", "deployment", container.Name, "prefix", prefix.String(), "values", values)
+							containers[i].Args = newArgs
+						}
+					} else if len(values) > 0 {
+						logger.Info("Adding args", "deployment", container.Name, "prefix", prefix.String(), "value", values)
+						for _, value := range values {
+							containers[i].Args = append(containers[i].Args, prefix.String()+value)
+						}
 						changed = true
 					}
 					break

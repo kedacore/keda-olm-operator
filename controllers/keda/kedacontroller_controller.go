@@ -371,6 +371,23 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 
 	runningOnOpenshift := util.RunningOnOpenshift(ctx, logger, r.Client)
 
+	caConfigMaps := instance.Spec.Operator.CAConfigMaps
+	if runningOnOpenshift {
+		found := false
+		for _, cmName := range caConfigMaps {
+			if cmName == caBundleConfigMapName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			// prepend it
+			caConfigMaps = append([]string{caBundleConfigMapName}, caConfigMaps...)
+		}
+	}
+
+	transforms = append(transforms, transform.EnsureCACertsForOperatorDeployment(caConfigMaps, r.Scheme, logger)...)
+
 	if runningOnOpenshift {
 		// certificates rotation works only on Openshift due to openshift/service-ca-operator
 		serviceName := "keda-operator"
@@ -378,7 +395,6 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transforms = append(transforms,
 			transform.EnsureCertInjectionForService(serviceName, servingCertsAnnotation, certsSecretName),
 			transform.KedaOperatorEnsureCertificatesVolume(certsSecretName, grpcClientCertsSecretName, r.Scheme),
-			transform.EnsureOpenshiftCABundleForOperatorDeployment(caBundleConfigMapName, r.Scheme),
 			transform.SetOperatorCertRotation(false, r.Scheme, logger), // don't use KEDA operator's built-in cert rotation when on OpenShift
 		)
 		// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC

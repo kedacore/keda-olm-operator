@@ -30,6 +30,14 @@ spec:
     # default value: rfc3339
     # logTimeEncoding: rfc3339
 
+    ## CA Certificate ConfigMap Names
+    # ConfigMaps containing PEM-encoded trusted certificate authorities (CAs).
+    # The files from the ConfigMaps will be loaded by the KEDA operator during
+    # start-up and will be used by scalers to authenticate TLS-enabled metrics
+    # data sources.
+    # default value: []
+    # caConfigMaps: []
+
     ## Arbitrary arguments
     # Define any argument with possibility to override already existing ones.
     # Array of strings (format is either with prefix '--key=value' or just 'value')
