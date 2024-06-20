@@ -93,6 +93,13 @@ type KedaOperatorSpec struct {
 	// 'argument=value' or just 'value'. Ex.: '--v=0' or 'ENV_ARGUMENT'
 	// +optional
 	Args []string `json:"args,omitempty"`
+
+	// ConfigMaps containing PEM-encoded trusted certificate authorities (CAs).
+	// The files from the ConfigMaps will be loaded by the KEDA operator during
+	// start-up and will be used by scalers to authenticate TLS-enabled metrics
+	// data sources.
+	// +optional
+	CAConfigMaps []string `json:"caConfigMaps,omitempty"`
 }
 
 type KedaMetricsServerSpec struct {
