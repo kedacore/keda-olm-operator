@@ -13,6 +13,16 @@ set -e
 # these components k8s.io/<item> are versioned for each k8s release and should match the version of k8s used in KEDA for a given release
 kube_components="api apimachinery apiextensions-apiserver apiserver client-go component-base kube-aggregator"
 
+echo "Fetching sample CRs for KEDA v$ver"
+curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/config/samples/kustomization.yaml" > config/samples/kustomization.yaml
+for cr in $(sed -n '/^resources:$/,/^[^-]/ { s#[^0-9a-zA-Z_. -]##g; s#^- ##p}' config/samples/kustomization.yaml); do
+  curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/config/samples/$cr" > "config/samples/$cr"
+done
+
+echo "Updating list of sample CRs to include KedaControllers"
+# Since the above fetch of config/samples/kustomization.yaml reverts changes specific to this repo, re-add here
+sed -i $'/^resources:$/ a\\\n- keda_v1alpha1_kedacontroller.yaml' config/samples/kustomization.yaml
+
 echo "Fetching go.mod for KEDA v$ver"
 keda_gomod="$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod")"
 
