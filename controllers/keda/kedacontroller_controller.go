@@ -263,10 +263,12 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 			}
 		case "Secret":
 			controllerResources = append(controllerResources, r)
-		case "Namespace", "ServiceAccount":
+		case "ServiceAccount":
 			generalResources = append(generalResources, r)
 		case "PodMonitor", "ServiceMonitor":
 			monitoringResources = append(monitoringResources, r)
+		case "Namespace":
+			// ignore. we don't need to create or label the namespace since it's a prereq for OLM install anyway
 		}
 	}
 
