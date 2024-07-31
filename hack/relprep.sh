@@ -53,8 +53,8 @@ echo
 echo 'Running go mod tidy (pass 1)'
 go mod tidy
 
-echo "Getting latest tag for keda-tools for version $gover"
-bttag=$(skopeo list-tags docker://ghcr.io/kedacore/keda-tools | jq -r '.Tags|.[]' | sort --version-sort -r | head -1)
+echo "Getting tag for keda-tools used to build KEDA version $ver"
+bttag=$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/Dockerfile" | sed -n 's#^FROM.* ghcr.io/kedacore/keda-tools:\([0-9][0-9.]*\) AS builder$#\1#p;T;q')
 
 echo "Updating keda-tools tag to $bttag"
 while read f; do
