@@ -13,6 +13,8 @@ set -e
 # these components k8s.io/<item> are versioned for each k8s release and should match the version of k8s used in KEDA for a given release
 kube_components="api apimachinery apiextensions-apiserver apiserver client-go component-base kube-aggregator"
 
+match_keda_version_deps="sigs.k8s.io/controller-runtime sigs.k8s.io/controller-runtime/tools/setup-envtest sigs.k8s.io/controller-tools"
+
 echo "Fetching sample CRs for KEDA v$ver"
 curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/config/samples/kustomization.yaml" > config/samples/kustomization.yaml
 for cr in $(sed -n '/^resources:$/,/^[^-]/ { s#[^0-9a-zA-Z_. -]##g; s#^- ##p}' config/samples/kustomization.yaml); do
@@ -109,6 +111,17 @@ to_update=()
 for i in $kube_components; do
     to_update+=("k8s.io/$i@$k8sver")
     updated_mods["k8s.io/$i"]=1
+done
+
+for i in $match_keda_version_deps; do
+    echo -n checking upstream version of $i .....
+    if ! modver=$(echo "$keda_gomod" | grep -Po '(?<=^\t'"$i"' )v[0-9]*\.[0-9]*\.[0-9]*(-[0-9]*(-[0-9a-e]*)?)?$'); then
+      echo "  Unable to find $i in https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod .  Exiting!"
+      exit 1
+    fi
+    echo "  got version $modver"
+    to_update+=("$i@$modver")
+    updated_mods["$i"]=1
 done
 
 # hack: force version of openshift API module based upon k8s->openshift version skew (e.g. 1.27 -> 4.14)
