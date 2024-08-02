@@ -26,8 +26,15 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# if we're running on a platform where the bundle is going to be deploying into a restricted namespace,
+# allow that to be specified so we can supply the proper args
+RESTRICTED ?= false
+ifeq ($(RESTRICTED),true)
+BUNDLE_RUN_OPTS= --security-context-config restricted
+endif
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.29
+ENVTEST_K8S_VERSION = 1.29.3
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -192,7 +199,7 @@ index-push:
 .PHONY: deploy-olm	## Deploy bundle. -- build & bundle to update if changes were made to code
 deploy-olm: build bundle docker-build docker-push bundle-build bundle-push index-build index-push
 	kubectl create namespace keda --dry-run=client -o yaml | kubectl apply --server-side -f -
-	operator-sdk run bundle ${BUNDLE} --namespace keda
+	operator-sdk run bundle ${BUNDLE} --namespace keda $(BUNDLE_RUN_OPTS)
 
 .PHONY: deploy-olm-testing
 deploy-olm-testing:

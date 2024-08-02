@@ -116,10 +116,10 @@ metadata:
     categories: Cloud Provider
     certified: "false"
     containerImage: ghcr.io/kedacore/keda-olm-operator:2.14.1
-    createdAt: "2024-08-02T17:41:13Z"
+    createdAt: "2023-09-11T23:35:30Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
-    operators.operatorframework.io/builder: operator-sdk-v1.31.0
+    operators.operatorframework.io/builder: operator-sdk-v1.23.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
@@ -574,21 +574,18 @@ spec:
       deployments:
       - label:
           app.kubernetes.io/part-of: keda-olm-operator
-          app.kubernetes.io/version: main
         name: keda-olm-operator
         spec:
           replicas: 1
           selector:
             matchLabels:
               app.kubernetes.io/part-of: keda-olm-operator
-              app.kubernetes.io/version: main
               name: keda-olm-operator
           strategy: {}
           template:
             metadata:
               labels:
                 app.kubernetes.io/part-of: keda-olm-operator
-                app.kubernetes.io/version: main
                 name: keda-olm-operator
             spec:
               containers:
@@ -604,7 +601,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: ghcr.io/kedacore/keda-olm-operator:main
+                image: ghcr.io/kedacore/keda-olm-operator:2.14.1
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
