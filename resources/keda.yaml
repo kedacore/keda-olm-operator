@@ -4,7 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -14,7 +14,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.14.0
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: cloudeventsources.eventing.keda.sh
 spec:
   group: eventing.keda.sh
@@ -157,7 +157,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.14.0
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: clustertriggerauthentications.keda.sh
 spec:
   group: keda.sh
@@ -733,7 +733,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.14.0
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: scaledjobs.keda.sh
 spec:
   group: keda.sh
@@ -8512,7 +8512,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.14.0
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: scaledobjects.keda.sh
 spec:
   group: keda.sh
@@ -8916,7 +8916,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.14.0
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: triggerauthentications.keda.sh
 spec:
   group: keda.sh
@@ -9490,7 +9490,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-operator
   namespace: keda
 ---
@@ -9500,7 +9500,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-operator
   namespace: keda
 rules:
@@ -9529,7 +9529,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-external-metrics-reader
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-external-metrics-reader
 rules:
 - apiGroups:
@@ -9545,7 +9545,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-operator
 rules:
 - apiGroups:
@@ -9688,7 +9688,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-operator
   namespace: keda
 roleRef:
@@ -9706,7 +9706,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-auth-reader
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-auth-reader
   namespace: kube-system
 roleRef:
@@ -9724,7 +9724,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-hpa-controller-external-metrics
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-hpa-controller-external-metrics
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -9741,7 +9741,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -9758,7 +9758,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-system-auth-delegator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-system-auth-delegator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -9778,7 +9778,7 @@ metadata:
     app.kubernetes.io/instance: admission-webhooks
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-admission-webhooks
   namespace: keda
 spec:
@@ -9800,7 +9800,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-metrics-apiserver
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-metrics-apiserver
   namespace: keda
 spec:
@@ -9820,7 +9820,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-operator
   namespace: keda
 spec:
@@ -9842,7 +9842,7 @@ metadata:
     app.kubernetes.io/component: admission-webhooks
     app.kubernetes.io/name: admission-webhooks
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-admission
   namespace: keda
 spec:
@@ -9873,7 +9873,7 @@ spec:
           value: ""
         - name: KEDA_HTTP_DEFAULT_TIMEOUT
           value: ""
-        image: ghcr.io/kedacore/keda-admission-webhooks:2.14.0
+        image: ghcr.io/kedacore/keda-admission-webhooks:2.14.1
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -9932,7 +9932,7 @@ metadata:
     app: keda-metrics-apiserver
     app.kubernetes.io/name: keda-metrics-apiserver
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-metrics-apiserver
   namespace: keda
 spec:
@@ -9966,7 +9966,7 @@ spec:
               fieldPath: metadata.namespace
         - name: KEDA_HTTP_DEFAULT_TIMEOUT
           value: ""
-        image: ghcr.io/kedacore/keda-metrics-apiserver:2.14.0
+        image: ghcr.io/kedacore/keda-metrics-apiserver:2.14.1
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -10029,7 +10029,7 @@ metadata:
     app.kubernetes.io/component: operator
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-operator
   namespace: keda
 spec:
@@ -10062,7 +10062,7 @@ spec:
           value: ""
         - name: KEDA_HTTP_DEFAULT_TIMEOUT
           value: ""
-        image: ghcr.io/kedacore/keda:2.14.0
+        image: ghcr.io/kedacore/keda:2.14.1
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -10118,7 +10118,7 @@ metadata:
   labels:
     app.kubernetes.io/name: v1beta1.external.metrics.k8s.io
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: v1beta1.external.metrics.k8s.io
 spec:
   group: external.metrics.k8s.io
@@ -10138,7 +10138,7 @@ metadata:
     app.kubernetes.io/instance: admission-webhooks
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.14.0
+    app.kubernetes.io/version: 2.14.1
   name: keda-admission
 webhooks:
 - admissionReviewVersions:

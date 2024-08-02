@@ -44,7 +44,7 @@ jobs:
       contents: read
       packages: write
 
-    container: ghcr.io/kedacore/keda-tools:1.22.2
+    container: ghcr.io/kedacore/keda-tools:1.21.12
     steps:
       - name: Check out code
         uses: actions/checkout@v4
