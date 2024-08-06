@@ -759,9 +759,14 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	realPolicy.Rules = policy.Rules
 	realPolicy.OmitStages = policy.OmitStages
 	realPolicy.OmitManagedFields = policy.OmitManagedFields
+	dataBytes, err := yaml.Marshal(realPolicy)
+	if err != nil {
+		logger.Error(err, "failed to Marshal Auditlog Policy struct")
+		return err
+	}
 
 	configMap := &corev1.ConfigMap{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: auditlogPolicyConfigMap, Namespace: instance.Namespace}, configMap)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: auditlogPolicyConfigMap, Namespace: instance.Namespace}, configMap)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// create ConfigMap if not found
@@ -769,11 +774,6 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 			configMap.Namespace = instance.Namespace
 			configMap.Data = make(map[string]string)
 
-			dataBytes, err := yaml.Marshal(realPolicy)
-			if err != nil {
-				logger.Error(err, "failed to Marshal Auditlog Policy struct")
-				return err
-			}
 			configMap.Data[auditPolicyFile] = string(dataBytes)
 
 			if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
@@ -794,6 +794,10 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	}
 
 	configMapUpdate := false
+	if configMap.Data[auditPolicyFile] != string(dataBytes) {
+		configMapUpdate = true
+		configMap.Data[auditPolicyFile] = string(dataBytes)
+	}
 
 	if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
 		if !goerrors.Is(err, &controllerutil.AlreadyOwnedError{}) {
