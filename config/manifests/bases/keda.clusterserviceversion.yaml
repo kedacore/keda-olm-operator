@@ -5,6 +5,28 @@ metadata:
     alm-examples: |-
       [
         {
+          "apiVersion": "eventing.keda.sh/v1alpha1",
+          "kind": "CloudEventSource",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "keda",
+              "app.kubernetes.io/instance": "cloudeventsource-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "cloudeventsource",
+              "app.kubernetes.io/part-of": "keda"
+            },
+            "name": "cloudeventsource-sample"
+          },
+          "spec": {
+            "clusterName": "cluster-sample",
+            "destination": {
+              "http": {
+                "uri": "http://foo.bar"
+              }
+            }
+          }
+        },
+        {
           "apiVersion": "keda.sh/v1alpha1",
           "kind": "ClusterTriggerAuthentication",
           "metadata": {
@@ -15,7 +37,7 @@ metadata:
               {
                 "key": "example-role-key",
                 "name": "example-secret-name",
-                "parameter": "exmaple-secret-parameter"
+                "parameter": "example-secret-parameter"
               }
             ]
           }
@@ -106,7 +128,7 @@ metadata:
               {
                 "key": "example-role-key",
                 "name": "example-secret-name",
-                "parameter": "exmaple-secret-parameter"
+                "parameter": "example-secret-parameter"
               }
             ]
           }
@@ -115,7 +137,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Cloud Provider
     certified: "false"
-    containerImage: ghcr.io/kedacore/keda-olm-operator:2.14.1
+    containerImage: ghcr.io/kedacore/keda-olm-operator:2.15.0
     createdAt: "2023-09-11T23:35:30Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
@@ -123,7 +145,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
-  name: keda.v2.14.1
+  name: keda.v2.15.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -673,6 +695,6 @@ spec:
   minKubeVersion: 1.23.0
   provider:
     name: KEDA Community
-  replaces: keda.v2.14.0
+  replaces: keda.v2.14.1
   selector: {}
-  version: 2.14.1
+  version: 2.15.0
