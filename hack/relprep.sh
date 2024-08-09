@@ -144,6 +144,9 @@ echo
 echo 'Running go mod tidy (pass 2)'
 go mod tidy
 
+# make sure we re-build the right version of the build tools
+rm -f bin/controller-gen bin/kustomize
+
 echo
 echo Updating bundle files
 make bundle
@@ -181,7 +184,7 @@ echo "      make VERSION=${ver} IMAGE_REGISTRY=quay.io IMAGE_REPO=example_quay_u
 echo " 4. Test that the bundle is deployable and functional on a Kubernetes cluster:"
 echo "   a. Install OLM"
 echo "      OLM_VERSION=$(curl -s https://api.github.com/repos/operator-framework/operator-lifecycle-manager/releases/latest | jq -r .tag_name)"
-echo "      bash <(curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$OLM_VERSION/install.sh) $OLM_VERSION"
+echo "      bash <(curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/\$OLM_VERSION/install.sh) \$OLM_VERSION"
 echo "   b. Install bundle"
 echo "      make VERSION=${ver} IMAGE_REGISTRY=quay.io IMAGE_REPO=example_quay_user deploy-olm-testing"
 echo " 5. Follow release process steps 7-10. See: https://github.com/kedacore/keda-olm-operator/blob/main/RELEASE-PROCESS.md#7-commit-and-push-the-changed-code-to-github"

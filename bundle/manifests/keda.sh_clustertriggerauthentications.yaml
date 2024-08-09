@@ -164,12 +164,10 @@ spec:
                       provider:
                         description: PodIdentityProvider contains the list of providers
                         enum:
-                        - azure
                         - azure-workload
                         - gcp
                         - aws
                         - aws-eks
-                        - aws-kiam
                         - none
                         type: string
                       roleArn:
@@ -274,12 +272,10 @@ spec:
                       provider:
                         description: PodIdentityProvider contains the list of providers
                         enum:
-                        - azure
                         - azure-workload
                         - gcp
                         - aws
                         - aws-eks
-                        - aws-kiam
                         - none
                         type: string
                       roleArn:
@@ -398,12 +394,10 @@ spec:
                       provider:
                         description: PodIdentityProvider contains the list of providers
                         enum:
-                        - azure
                         - azure-workload
                         - gcp
                         - aws
                         - aws-eks
-                        - aws-kiam
                         - none
                         type: string
                       roleArn:
@@ -525,12 +519,10 @@ spec:
                   provider:
                     description: PodIdentityProvider contains the list of providers
                     enum:
-                    - azure
                     - azure-workload
                     - gcp
                     - aws
                     - aws-eks
-                    - aws-kiam
                     - none
                     type: string
                   roleArn:
