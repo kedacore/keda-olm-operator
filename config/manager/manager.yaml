@@ -36,6 +36,7 @@ spec:
             capabilities:
               drop:
               - ALL
+            readOnlyRootFilesystem: true
           ports:
             - containerPort: 8080
               name: http
