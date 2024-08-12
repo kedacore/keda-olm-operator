@@ -10,16 +10,16 @@ require (
 	github.com/manifestival/manifestival v0.7.3-0.20230801201407-f20c69532c27
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.1
-	github.com/open-policy-agent/cert-controller v0.10.1
-	github.com/openshift/api v0.0.0-20240807154336-f88762435571
-	k8s.io/api v0.29.4
-	k8s.io/apimachinery v0.29.4
-	k8s.io/apiserver v0.29.4
-	k8s.io/client-go v0.29.4
-	k8s.io/kube-aggregator v0.29.4
-	sigs.k8s.io/controller-runtime v0.17.3
-	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240201105228-4000e996a202
-	sigs.k8s.io/controller-tools v0.14.0
+	github.com/open-policy-agent/cert-controller v0.11.0
+	github.com/openshift/api v0.0.0-20240809035623-d6942fb7294e
+	k8s.io/api v0.30.3
+	k8s.io/apimachinery v0.30.3
+	k8s.io/apiserver v0.30.3
+	k8s.io/client-go v0.30.3
+	k8s.io/kube-aggregator v0.30.3
+	sigs.k8s.io/controller-runtime v0.18.5
+	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240812163513-75a38d2123d4
+	sigs.k8s.io/controller-tools v0.15.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.4.3
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -92,8 +92,7 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.29.4 // indirect
-	k8s.io/component-base v0.29.4 // indirect
+	k8s.io/apiextensions-apiserver v0.30.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240808142205-8e686545bdb8 // indirect
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
