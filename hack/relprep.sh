@@ -29,7 +29,7 @@ echo "Fetching go.mod for KEDA v$ver"
 keda_gomod="$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod")"
 
 echo -n "Finding out which version of Go KEDA v$ver is using... "
-gover=$(echo "$keda_gomod" | grep -Po '(?<=^go )[1-9][0-9]*\.[0-9][0-9]*$')
+gover=$(echo "$keda_gomod" | grep -Po '(?<=^go )[1-9][0-9]*\.[0-9][0-9]*(?=(\.[0-9]+)?$)')
 echo $gover
 
 echo -n "Finding out which K8s version KEDA v$ver is using... "
