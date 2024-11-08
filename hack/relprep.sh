@@ -36,6 +36,8 @@ echo -n "Finding out which K8s version KEDA v$ver is using... "
 k8sver=$(echo "$keda_gomod" | grep -Po '(?<=^\tk8s\.io/api )v[0-9]*\.[0-9]*\.[0-9]*$')
 echo $k8sver
 
+k8sminorver=$(echo "$k8sver" | sed 's/v0\.\([0-9]*\)\.[0-9]*$/\1/')
+
 echo "Making sure your go version is new enough to run 'go mod tidy' after this script does its updates"
 fake_go_ver="go version go$gover"
 if test "$( { echo "$fake_go_ver"; go version; } | sort --version-sort | head -1)" != "$fake_go_ver"; then
@@ -125,7 +127,7 @@ for i in $match_keda_version_deps; do
 done
 
 # hack: force version of openshift API module based upon k8s->openshift version skew (e.g. 1.27 -> 4.14)
-openshift_branch="release-4.$(($(echo $k8sver | sed 's/v0\.\([0-9]*\)\.[0-9]*$/\1/')-13))"
+openshift_branch="release-4.$((k8sminorver-13))"
 to_update+=("github.com/openshift/api@$openshift_branch")
 updated_mods[github.com/openshift/api]=1
 
@@ -169,7 +171,7 @@ if ! diff -u <(grep -vE "$ignorefields" < $bcsv) <(grep -vE "$ignorefields" < $m
 fi
 
 echo "Updating K8s version for envtest components"
-sed -i "s#ENVTEST_K8S_VERSION *= *[0-9.]*#ENVTEST_K8S_VERSION = 1.${k8sver/v[0-9]./}#" Makefile
+sed -i "s#ENVTEST_K8S_VERSION *= *[0-9.]*#ENVTEST_K8S_VERSION = 1.${k8sminorver}#" Makefile
 
 echo Validating bundle
 operator-sdk bundle validate ./keda/${ver}

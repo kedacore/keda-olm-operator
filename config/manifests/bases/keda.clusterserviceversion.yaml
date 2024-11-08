@@ -27,6 +27,28 @@ metadata:
           }
         },
         {
+          "apiVersion": "eventing.keda.sh/v1alpha1",
+          "kind": "ClusterCloudEventSource",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "keda",
+              "app.kubernetes.io/instance": "clustercloudeventsource-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "clustercloudeventsource",
+              "app.kubernetes.io/part-of": "keda"
+            },
+            "name": "clustercloudeventsource-sample"
+          },
+          "spec": {
+            "clusterName": "clustercluster-sample",
+            "destination": {
+              "http": {
+                "uri": "http://foo.bar"
+              }
+            }
+          }
+        },
+        {
           "apiVersion": "keda.sh/v1alpha1",
           "kind": "ClusterTriggerAuthentication",
           "metadata": {
@@ -137,7 +159,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Cloud Provider
     certified: "false"
-    containerImage: ghcr.io/kedacore/keda-olm-operator:2.15.1
+    containerImage: ghcr.io/kedacore/keda-olm-operator:2.16.0
     createdAt: "2023-09-11T23:35:30Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
@@ -145,7 +167,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/kedacore/keda-olm-operator
     support: KEDA Community
-  name: keda.v2.15.1
+  name: keda.v2.16.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -153,6 +175,9 @@ spec:
     owned:
     - kind: CloudEventSource
       name: cloudeventsources.eventing.keda.sh
+      version: v1alpha1
+    - kind: ClusterCloudEventSource
+      name: clustercloudeventsources.eventing.keda.sh
       version: v1alpha1
     - description: Describes cluster wide authentication parameters
       displayName: ClusterTriggerAuthentication
@@ -696,6 +721,6 @@ spec:
   minKubeVersion: 1.23.0
   provider:
     name: KEDA Community
-  replaces: keda.v2.15.0
+  replaces: keda.v2.15.1
   selector: {}
-  version: 2.15.1
+  version: 2.16.0
