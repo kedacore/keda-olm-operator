@@ -199,6 +199,13 @@ type GenericDeploymentSpec struct {
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Manage volumes and volumeMounts
+	// https://kubernetes.io/docs/concepts/storage/volumes/
+	// +optional
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// +optional
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 // KedaControllerStatus defines the observed state of KedaController
