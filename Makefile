@@ -80,10 +80,10 @@ test: manifests generate fmt vet envtest
 build: generate fmt vet ## Build manager binary.
 	${GO_BUILD_VARS} go build \
 	-ldflags "-X=github.com/kedacore/keda-olm-operator/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda-olm-operator/version.Version=$(VERSION)" \
-	-o bin/manager main.go
+	-o bin/manager cmd/main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	WATCH_NAMESPACE="keda" go run ./main.go
+	WATCH_NAMESPACE="keda" go run ./cmd/main.go
 
 docker-build: ## Build docker image with the manager.
 	docker build . -t ${IMAGE_CONTROLLER}  --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
@@ -124,15 +124,22 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
+## Tool Versions
+KUSTOMIZE_VERSION ?= v5.3.0
+
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Install controller-gen from vendor dir if necessary.
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen
 
 .PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Install kustomize from vendor dir if necessary.
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
-	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) go install sigs.k8s.io/kustomize/kustomize/v5
+	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION); then \
+	    echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
+	    rm -rf $(LOCALBIN)/kustomize; \
+	fi
+	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION)
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Install envtest-setup from vendor dir if necessary.

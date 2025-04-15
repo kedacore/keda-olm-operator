@@ -47,9 +47,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
-	"github.com/kedacore/keda-olm-operator/controllers/keda/transform"
-	"github.com/kedacore/keda-olm-operator/controllers/keda/util"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
+	"github.com/kedacore/keda-olm-operator/internal/controller/keda/transform"
+	"github.com/kedacore/keda-olm-operator/internal/controller/keda/util"
 	"github.com/kedacore/keda-olm-operator/resources"
 	"github.com/kedacore/keda-olm-operator/version"
 )

@@ -40,8 +40,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
-	kedacontrollers "github.com/kedacore/keda-olm-operator/controllers/keda"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
+	kedacontrollers "github.com/kedacore/keda-olm-operator/internal/controller/keda"
 	"github.com/kedacore/keda-olm-operator/version"
 	//+kubebuilder:scaffold:imports
 )

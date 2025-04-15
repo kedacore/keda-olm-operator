@@ -30,14 +30,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
 )
 
 var _ = Describe("Deploying KedaController manifest", func() {
 	const (
 		olmOperatorName      = "keda-olm-operator"
 		operatorName         = "keda-operator"
-		kedaManifestFilepath = "../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+		kedaManifestFilepath = "../../../config/samples/keda_v1alpha1_kedacontroller.yaml"
 		timeout              = time.Second * 60
 		interval             = time.Millisecond * 250
 		namespace            = "keda"
@@ -122,7 +122,7 @@ var _ = Describe("Testing functionality", func() {
 			kind                 = "KedaController"
 			name                 = "keda"
 			namespace            = "keda"
-			kedaManifestFilepath = "../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+			kedaManifestFilepath = "../../../config/samples/keda_v1alpha1_kedacontroller.yaml"
 		)
 
 		var (
@@ -230,7 +230,7 @@ var _ = Describe("Testing functionality", func() {
 			kind                 = "KedaController"
 			name                 = "keda"
 			namespace            = "keda"
-			kedaManifestFilepath = "../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+			kedaManifestFilepath = "../../../config/samples/keda_v1alpha1_kedacontroller.yaml"
 		)
 
 		var (
@@ -334,7 +334,7 @@ var _ = Describe("Testing audit flags", func() {
 		kind                 = "KedaController"
 		name                 = "keda"
 		namespace            = "keda"
-		kedaManifestFilepath = "../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+		kedaManifestFilepath = "../../../config/samples/keda_v1alpha1_kedacontroller.yaml"
 	)
 
 	var (

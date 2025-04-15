@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
-	"github.com/kedacore/keda-olm-operator/controllers/keda/util"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
+	"github.com/kedacore/keda-olm-operator/internal/controller/keda/util"
 )
 
 const (
