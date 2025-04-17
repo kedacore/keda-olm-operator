@@ -40,17 +40,17 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	kedav1alpha1 "github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	namespaceManifest     = "../../config/testing/namespace.yaml"
-	catalogManifest       = "../../config/testing/catalog.yaml"
-	operatorGroupManifest = "../../config/testing/operator_group.yaml"
-	subscriptionManifest  = "../../config/testing/subscription.yaml"
+	namespaceManifest     = "../../../config/testing/namespace.yaml"
+	catalogManifest       = "../../../config/testing/catalog.yaml"
+	operatorGroupManifest = "../../../config/testing/operator_group.yaml"
+	subscriptionManifest  = "../../../config/testing/subscription.yaml"
 )
 
 var (
@@ -88,7 +88,7 @@ var _ = BeforeSuite(func() {
 
 	if testType == "functionality" {
 		testEnv = &envtest.Environment{
-			CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")},
+			CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
 		}
 
 		k8sManager, k8sClient, err = setupEnv(testEnv, scheme.Scheme)

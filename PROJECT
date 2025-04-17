@@ -1,6 +1,6 @@
 domain: keda.sh
 layout:
-- go.kubebuilder.io/v3
+- go.kubebuilder.io/v4
 multigroup: true
 projectName: keda
 repo: github.com/kedacore/keda-olm-operator
@@ -12,6 +12,6 @@ resources:
   domain: keda.sh
   group: keda.sh
   kind: KedaController
-  path: github.com/kedacore/keda-olm-operator/apis/keda/v1alpha1
+  path: github.com/kedacore/keda-olm-operator/api/keda/v1alpha1
   version: v1alpha1
 version: "3"

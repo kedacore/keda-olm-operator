@@ -51,7 +51,7 @@ issues:
         - dupl
     # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
     # but we don't need to make them constants
-    - path: controllers/keda/transform/transform.go
+    - path: internal/controller/keda/transform/transform.go
       linters:
         - goconst
     # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
@@ -59,24 +59,24 @@ issues:
     # and:
     # "exported: type name will be used as keda.KedaControllerReconciler by other packages, and that stutters;
     # consider calling this ControllerReconciler (revive)"
-    - path: controllers/keda/kedacontroller_controller.go
+    - path: internal/controller/keda/kedacontroller_controller.go
       linters:
         - goconst
         - revive
     # Exclude for controllers, reason:
-    # "controllers/configmap_controller.go:49: 49-80 lines are duplicate of `controllers/secret_controller.go:49-80`"
+    # "internal/controller/configmap_controller.go:49: 49-80 lines are duplicate of `internal/controller/secret_controller.go:49-80`"
     - path: _controller.go
       linters:
         - dupl
-    # Exclude because: "controllers/suite_test.go:157:63: `getObject` - `namespace` always receives `namespace` (`"keda"`)"
-    - path: controllers/keda/suite_test.go
+    # Exclude because: "internal/controller/suite_test.go:157:63: `getObject` - `namespace` always receives `namespace` (`"keda"`)"
+    - path: internal/controller/keda/suite_test.go
       linters:
         - unparam
     # Exclude because: "declaration has 3 blank identifiers" -> it's ok, we don't need them
     - path: resources/resources_handler.go
       linters:
         - dogsled
-    - path: main.go
+    - path: cmd/main.go
       linters:
         - gci
     # https://github.com/go-critic/go-critic/issues/926

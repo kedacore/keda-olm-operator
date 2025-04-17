@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/kedacore/keda-olm-operator/controllers/keda/transform"
+	"github.com/kedacore/keda-olm-operator/internal/controller/keda/transform"
 )
 
 var _ = Describe("Transforming all resource namespaces", func() {

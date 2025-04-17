@@ -28,7 +28,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/kedacore/keda-olm-operator/controllers/keda/util"
+	"github.com/kedacore/keda-olm-operator/internal/controller/keda/util"
 )
 
 var _ = Describe("Checking for the OpenShift RuntimeDefault seccomp profile", func() {
