@@ -4,7 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -14,7 +14,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: cloudeventsources.eventing.keda.sh
 spec:
   group: eventing.keda.sh
@@ -173,7 +173,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: clustercloudeventsources.eventing.keda.sh
 spec:
   group: eventing.keda.sh
@@ -330,7 +330,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: clustertriggerauthentications.keda.sh
 spec:
   group: keda.sh
@@ -510,6 +510,8 @@ spec:
                           type: string
                         parameter:
                           type: string
+                        secretKey:
+                          type: string
                         versionId:
                           type: string
                         versionStage:
@@ -629,6 +631,18 @@ spec:
                 - secrets
                 - vaultUri
                 type: object
+              boundServiceAccountToken:
+                items:
+                  properties:
+                    parameter:
+                      type: string
+                    serviceAccountName:
+                      type: string
+                  required:
+                  - parameter
+                  - serviceAccountName
+                  type: object
+                type: array
               configMapTargetRef:
                 items:
                   description: AuthConfigMapTargetRef is used to authenticate using
@@ -898,7 +912,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: scaledjobs.keda.sh
 spec:
   group: keda.sh
@@ -9483,7 +9497,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: scaledobjects.keda.sh
 spec:
   group: keda.sh
@@ -9698,6 +9712,9 @@ spec:
                         description: |-
                           MetricTargetType specifies the type of metric being targeted, and should be either
                           "Value", "AverageValue", or "Utilization"
+                        enum:
+                        - AverageValue
+                        - Value
                         type: string
                       target:
                         type: string
@@ -9709,6 +9726,14 @@ spec:
               fallback:
                 description: Fallback is the spec for fallback options
                 properties:
+                  behavior:
+                    default: static
+                    enum:
+                    - static
+                    - currentReplicas
+                    - currentReplicasIfHigher
+                    - currentReplicasIfLower
+                    type: string
                   failureThreshold:
                     format: int32
                     type: integer
@@ -9891,7 +9916,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: triggerauthentications.keda.sh
 spec:
   group: keda.sh
@@ -10070,6 +10095,8 @@ spec:
                           type: string
                         parameter:
                           type: string
+                        secretKey:
+                          type: string
                         versionId:
                           type: string
                         versionStage:
@@ -10189,6 +10216,18 @@ spec:
                 - secrets
                 - vaultUri
                 type: object
+              boundServiceAccountToken:
+                items:
+                  properties:
+                    parameter:
+                      type: string
+                    serviceAccountName:
+                      type: string
+                  required:
+                  - parameter
+                  - serviceAccountName
+                  type: object
+                type: array
               configMapTargetRef:
                 items:
                   description: AuthConfigMapTargetRef is used to authenticate using
@@ -10457,7 +10496,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-operator
   namespace: keda
 ---
@@ -10467,7 +10506,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-operator
   namespace: keda
 rules:
@@ -10502,7 +10541,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-external-metrics-reader
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-external-metrics-reader
 rules:
 - apiGroups:
@@ -10518,7 +10557,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-operator
 rules:
 - apiGroups:
@@ -10656,7 +10695,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-operator
   namespace: keda
 roleRef:
@@ -10674,7 +10713,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-auth-reader
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-auth-reader
   namespace: kube-system
 roleRef:
@@ -10692,7 +10731,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-hpa-controller-external-metrics
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-hpa-controller-external-metrics
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -10709,7 +10748,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -10726,7 +10765,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-system-auth-delegator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-system-auth-delegator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -10746,7 +10785,7 @@ metadata:
     app.kubernetes.io/instance: admission-webhooks
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-admission-webhooks
   namespace: keda
 spec:
@@ -10768,7 +10807,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-metrics-apiserver
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-metrics-apiserver
   namespace: keda
 spec:
@@ -10788,7 +10827,7 @@ metadata:
   labels:
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-operator
   namespace: keda
 spec:
@@ -10810,7 +10849,7 @@ metadata:
     app.kubernetes.io/component: admission-webhooks
     app.kubernetes.io/name: admission-webhooks
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-admission
   namespace: keda
 spec:
@@ -10841,7 +10880,7 @@ spec:
           value: ""
         - name: KEDA_HTTP_DEFAULT_TIMEOUT
           value: ""
-        image: ghcr.io/kedacore/keda-admission-webhooks:2.16.1
+        image: ghcr.io/kedacore/keda-admission-webhooks:2.17.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -10900,7 +10939,7 @@ metadata:
     app: keda-metrics-apiserver
     app.kubernetes.io/name: keda-metrics-apiserver
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-metrics-apiserver
   namespace: keda
 spec:
@@ -10934,7 +10973,7 @@ spec:
               fieldPath: metadata.namespace
         - name: KEDA_HTTP_DEFAULT_TIMEOUT
           value: ""
-        image: ghcr.io/kedacore/keda-metrics-apiserver:2.16.1
+        image: ghcr.io/kedacore/keda-metrics-apiserver:2.17.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -10997,7 +11036,7 @@ metadata:
     app.kubernetes.io/component: operator
     app.kubernetes.io/name: keda-operator
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-operator
   namespace: keda
 spec:
@@ -11030,7 +11069,7 @@ spec:
           value: ""
         - name: KEDA_HTTP_DEFAULT_TIMEOUT
           value: ""
-        image: ghcr.io/kedacore/keda:2.16.1
+        image: ghcr.io/kedacore/keda:2.17.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -11086,7 +11125,7 @@ metadata:
   labels:
     app.kubernetes.io/name: v1beta1.external.metrics.k8s.io
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: v1beta1.external.metrics.k8s.io
 spec:
   group: external.metrics.k8s.io
@@ -11106,7 +11145,7 @@ metadata:
     app.kubernetes.io/instance: admission-webhooks
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.16.1
+    app.kubernetes.io/version: 2.17.0
   name: keda-admission
 webhooks:
 - admissionReviewVersions:
