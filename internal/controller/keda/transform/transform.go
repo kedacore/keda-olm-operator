@@ -1315,6 +1315,79 @@ func EnsureAuditLogMount(pvc string, path string, scheme *runtime.Scheme) mf.Tra
 	}
 }
 
+func ReplaceDeploymentVolumes(desiredVolumes []corev1.Volume, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			volumes := deploy.Spec.Template.Spec.Volumes
+
+			for j, volumeDevice := range desiredVolumes {
+				// for each existing volume mount
+				var alreadyExists bool
+				for k, existingVolumeDevice := range volumes {
+					// if the existing volume mount is for the same volume, replace it
+					if existingVolumeDevice.Name == volumeDevice.Name {
+						alreadyExists = true
+						deploy.Spec.Template.Spec.Volumes[k] = desiredVolumes[j]
+						break
+					}
+				}
+				// if we didn't find the name in our list already, add it (we allow both add and override)
+				if !alreadyExists {
+					deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, desiredVolumes[j])
+				}
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+func ReplaceDeploymentVolumeMounts(desiredVolumeMounts []corev1.VolumeMount, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			containers := deploy.Spec.Template.Spec.Containers
+			// for each container
+			for i := range containers {
+				// only manipulate our operand containers, we don't want to attach these to all sidecars
+				if containers[i].Name != containerNameKedaOperator &&
+					containers[i].Name != containerNameMetricsServer &&
+					containers[i].Name != containerNameAdmissionWebhooks {
+					continue
+				}
+				// for each existing volume mount
+				for j, volumeMount := range desiredVolumeMounts {
+					var alreadyExists bool
+					for k, existingVolumeMount := range containers[i].VolumeMounts {
+						// if the existing volume mount is for the same volume, replace it
+						if existingVolumeMount.Name == volumeMount.Name {
+							alreadyExists = true
+							containers[i].VolumeMounts[k] = volumeMount
+							break
+						}
+					}
+					// if we didn't find the name in our list already, add it (we allow both add and override)
+					if !alreadyExists {
+						containers[i].VolumeMounts = append(containers[i].VolumeMounts, desiredVolumeMounts[j])
+					}
+				}
+				containers[i].VolumeMounts = desiredVolumeMounts
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
 // InjectOwner creates a Transformer which adds an OwnerReference
 // pointing to `owner`, but only if the object is in the same namespace as `owner`
 func InjectOwner(owner mf.Owner) mf.Transformer {
