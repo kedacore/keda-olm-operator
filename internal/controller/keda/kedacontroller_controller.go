@@ -460,6 +460,14 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transforms = append(transforms, transform.ReplaceKedaOperatorResources(instance.Spec.Operator.Resources, r.Scheme))
 	}
 
+	if instance.Spec.Operator.Volumes != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumes(instance.Spec.Operator.Volumes, r.Scheme))
+	}
+
+	if instance.Spec.Operator.VolumeMounts != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(instance.Spec.Operator.VolumeMounts, r.Scheme))
+	}
+
 	// add arbitrary args defined by user
 	for i := range instance.Spec.Operator.Args {
 		i := i
@@ -666,6 +674,14 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	if !reflect.DeepEqual(instance.Spec.MetricsServer.AuditConfig, kedav1alpha1.AuditConfig{}) {
 		transforms = auditConfigTransformation(transforms, instance.Spec.MetricsServer.AuditConfig, r.Scheme, logger)
+	}
+
+	if instance.Spec.MetricsServer.Volumes != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumes(instance.Spec.MetricsServer.Volumes, r.Scheme))
+	}
+
+	if instance.Spec.MetricsServer.VolumeMounts != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(instance.Spec.MetricsServer.VolumeMounts, r.Scheme))
 	}
 
 	// add arbitrary args defined by user
@@ -892,6 +908,14 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 
 	if instance.Spec.AdmissionWebhooks.Resources.Limits != nil || instance.Spec.AdmissionWebhooks.Resources.Requests != nil {
 		transforms = append(transforms, transform.ReplaceAdmissionWebhooksResources(instance.Spec.AdmissionWebhooks.Resources, r.Scheme))
+	}
+
+	if instance.Spec.AdmissionWebhooks.Volumes != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumes(instance.Spec.Operator.Volumes, r.Scheme))
+	}
+
+	if instance.Spec.AdmissionWebhooks.VolumeMounts != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(instance.Spec.Operator.VolumeMounts, r.Scheme))
 	}
 
 	// add arbitrary args defined by user
