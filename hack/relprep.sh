@@ -11,7 +11,7 @@ set -o pipefail
 set -e
 
 # these components k8s.io/<item> are versioned for each k8s release and should match the version of k8s used in KEDA for a given release
-kube_components="api apimachinery apiextensions-apiserver apiserver client-go component-base kube-aggregator"
+kube_components="api apimachinery apiextensions-apiserver apiserver client-go component-base kube-aggregator kms"
 
 match_keda_version_deps="sigs.k8s.io/controller-runtime sigs.k8s.io/controller-runtime/tools/setup-envtest sigs.k8s.io/controller-tools"
 
