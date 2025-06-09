@@ -157,9 +157,6 @@ func setupEnv(testEnv *envtest.Environment, scheme *runtime.Scheme) (manager ctr
 	}
 
 	client = manager.GetClient()
-	if err != nil {
-		return
-	}
 
 	return
 }
