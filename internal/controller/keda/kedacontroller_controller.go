@@ -57,7 +57,8 @@ import (
 const (
 
 	// Allowed Name of KedaController resource
-	kedaControllerResourceName = "keda"
+	kedaControllerResourceName      = "keda"
+	kedaDefaultControllerAnnotation = "keda-olm-operator.openshift.io/create-default-controller" //TODO: NAMING CONVENTION??
 
 	grpcClientCertsSecretName     = "kedaorg-certs"
 	caBundleConfigMapName         = "keda-ocp-cabundle"
@@ -115,10 +116,85 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaContro
 		}
 	}
 
+	go r.ensureKedaController(logger)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.KedaController{}).
 		Owns(&appsv1.Deployment{}).
 		Complete(r)
+}
+
+func (r *KedaControllerReconciler) ensureKedaController(logger logr.Logger) {
+	// Wait for cache to sync before retrival
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) //TODO: How should I set the context
+	defer cancel()
+	if !r.mgr.GetCache().WaitForCacheSync(ctx) { //TODO: Is this correct?
+		logger.Error(ctx.Err(), "Cache sync wait timed out")
+		return
+	}
+
+	// Fetch operator namespace
+	kedaNamespace := &corev1.Namespace{}
+	err := r.Client.Get(ctx, types.NamespacedName{Name: r.resourceNamespace}, kedaNamespace)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Error(err, "Operator namespace not found.") //TODO: Should this return? Is this error even possible?
+			return
+		}
+		logger.Error(err, "Failed to get operator's namespace to check annotation.") //TODO: Should this return?
+		return
+	}
+	kedaNamespaceCopy := kedaNamespace.DeepCopy()
+
+	// Get annotations from namespace
+	annotations := kedaNamespace.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	// If operator namespace is not annotated, annotate and create a default KedaController if one doesn't exist
+	if _, ok := kedaNamespace.GetAnnotations()[kedaDefaultControllerAnnotation]; !ok {
+		err = r.Client.Get(ctx, types.NamespacedName{Name: r.resourceNamespace, Namespace: r.resourceNamespace}, &kedav1alpha1.KedaController{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("KedaController does not exist. Creating default KedaController resource")
+				instance := r.initalizeDefaultController()
+				if err = r.Client.Create(ctx, instance); err != nil {
+					logger.Error(err, "Error creating default KedaController")
+					return
+				}
+			} else {
+				logger.Error(err, "Error reading KedaController")
+				return
+			}
+		} else {
+			logger.Info("KedaController already exists")
+		}
+		// Set annotation in operator's namespace
+		annotations[kedaDefaultControllerAnnotation] = "true"
+		kedaNamespace.SetAnnotations(annotations) //TODO: Is this needed in addition to the previous line?
+		r.Client.Patch(ctx, kedaNamespace, client.MergeFrom(kedaNamespaceCopy))
+	}
+
+}
+
+func (r *KedaControllerReconciler) initalizeDefaultController() *kedav1alpha1.KedaController {
+	//TODO: Create default controller
+	keda := &kedav1alpha1.KedaController{}
+	keda.APIVersion = "keda.sh/v1alpha1"
+	keda.Kind = "KedaController"
+	keda.Name = kedaControllerResourceName
+	keda.Namespace = r.resourceNamespace
+	keda.Spec.WatchNamespace = ""
+	keda.Spec.Operator.LogLevel = "info"
+	keda.Spec.Operator.LogEncoder = "console"
+	keda.Spec.MetricsServer.LogLevel = "0"
+	keda.Spec.AdmissionWebhooks.LogLevel = "info"
+	keda.Spec.AdmissionWebhooks.LogEncoder = "console"
+
+	//TODO: Should I add resource specs???
+
+	return keda
 }
 
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
