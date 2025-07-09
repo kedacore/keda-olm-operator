@@ -147,9 +147,6 @@ func (r *KedaControllerReconciler) ensureKedaController(logger logr.Logger) {
 
 	// Get annotations from namespace
 	annotations := kedaNamespace.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
 
 	// If operator namespace is not annotated, annotate and create a default KedaController if one doesn't exist
 	if _, ok := annotations[kedaDefaultControllerAnnotation]; !ok {
@@ -173,6 +170,9 @@ func (r *KedaControllerReconciler) ensureKedaController(logger logr.Logger) {
 		// Set annotation in operator's namespace
 		kedaNamespaceCopy := kedaNamespace.DeepCopy()
 		annotations = kedaNamespaceCopy.GetAnnotations()
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
 
 		annotations[kedaDefaultControllerAnnotation] = "true"
 		kedaNamespaceCopy.SetAnnotations(annotations)
