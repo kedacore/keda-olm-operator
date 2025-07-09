@@ -27,8 +27,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
 )
@@ -112,6 +114,40 @@ var _ = Describe("Deploying KedaController manifest", func() {
 })
 
 var _ = Describe("Testing functionality", func() {
+
+	var _ = Describe("Default KedaController and Annotation Creation", func() {
+		const (
+			timeout                         = time.Second * 60
+			interval                        = time.Millisecond * 250
+			namespace                       = "keda"
+			kedaDefaultControllerAnnotation = "keda-olm-operator/create-default-controller"
+			deploymentName                  = "keda-operator"
+		)
+
+		var (
+			ctx = context.Background()
+			err error
+		)
+
+		Context("Default KedaController & annotation exist after operator installation", func() {
+			It("Should find the correct annotation in the keda namespace", func() {
+				kedaNamespace := &corev1.Namespace{}
+				Eventually(func(g Gomega) {
+					err = k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, kedaNamespace)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(kedaNamespace.GetAnnotations()).To(HaveKeyWithValue(kedaDefaultControllerAnnotation, "true"))
+				}, timeout, interval).Should(Succeed())
+			})
+
+			It("Should retrieve the default KedaController instance", func() {
+				kedaInstance := &kedav1alpha1.KedaController{}
+				Eventually(func() error {
+					err = k8sClient.Get(ctx, types.NamespacedName{Name: namespace, Namespace: namespace}, kedaInstance)
+					return err
+				}, timeout, interval).Should(Succeed())
+			})
+		})
+	})
 
 	var _ = Describe("Changing operator parameters", func() {
 
