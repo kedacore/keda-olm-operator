@@ -273,6 +273,137 @@ spec:
 				Expect(volumeMounts).To(ContainElement(structuredToMap(replaceVolumeMounts[0])))
 				Expect(volumeMounts).NotTo(ContainElement(structuredToMap(desiredVolumeMounts[0])))
 			})
+
+			// Test to verify pre-existing volumeMounts are preserved when adding new ones
+			It("Should preserve pre-existing volumeMounts when adding new ones (merge, not replace)", func() {
+
+				By("Starting with a deployment that has a pre-existing volumeMount")
+				manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+				Expect(err).To(BeNil())
+
+				// First, verify the pre-existing mount exists
+				containers, found, err := unstructured.NestedSlice(manifest.Resources()[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+				Expect(found).To(BeTrue(), "spec.template.spec.containers should exist")
+				Expect(err).To(BeNil())
+
+				originalVolumeMounts, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "volumeMounts")
+				Expect(found).To(BeTrue(), "original volumeMounts should exist")
+				Expect(err).To(BeNil())
+				originalCount := len(originalVolumeMounts)
+				Expect(originalCount).To(BeNumerically(">", 0), "deployment should have at least one pre-existing volumeMount")
+
+				preExistingMount := corev1.VolumeMount{Name: "example-volume", MountPath: "/example"}
+				Expect(originalVolumeMounts).To(ContainElement(structuredToMap(preExistingMount)), "pre-existing mount should exist before transformation")
+
+				By("Adding a NEW volumeMount to the deployment")
+				var desiredVolumeMounts = []corev1.VolumeMount{{Name: "temp-kerberos-vol", MountPath: "/tmp/kerberos", ReadOnly: false}}
+				transforms := []mf.Transformer{transform.ReplaceDeploymentVolumeMounts(desiredVolumeMounts, scheme)}
+				newManifest, err := manifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+				r := newManifest.Resources()
+				Expect(len(r)).To(Equal(1))
+
+				By("Verifying BOTH the pre-existing AND new volumeMounts exist (merge behavior)")
+				containers, found, err = unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+				Expect(found).To(BeTrue(), "spec.template.spec.containers should exist")
+				Expect(err).To(BeNil())
+
+				volumeMounts, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "volumeMounts")
+				Expect(found).To(BeTrue(), "volumeMounts should exist after transformation")
+				Expect(err).To(BeNil())
+
+				Expect(volumeMounts).To(HaveLen(originalCount+1), "volumeMount count should increase by 1, not be replaced")
+				Expect(volumeMounts).To(ContainElement(structuredToMap(preExistingMount)), "pre-existing volumeMount MUST be preserved")
+				Expect(volumeMounts).To(ContainElement(structuredToMap(desiredVolumeMounts[0])), "new volumeMount should be added")
+			})
+
+			// Test to verify multiple additions preserve all mounts
+			It("Should preserve all pre-existing volumeMounts when adding multiple new ones", func() {
+
+				By("Starting with a deployment that has a pre-existing volumeMount")
+				manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+				Expect(err).To(BeNil())
+
+				By("Adding multiple NEW volumeMounts")
+				var desiredVolumeMounts = []corev1.VolumeMount{
+					{Name: "mount-1", MountPath: "/mount1", ReadOnly: false},
+					{Name: "mount-2", MountPath: "/mount2", ReadOnly: true},
+					{Name: "mount-3", MountPath: "/mount3", ReadOnly: false},
+				}
+				transforms := []mf.Transformer{transform.ReplaceDeploymentVolumeMounts(desiredVolumeMounts, scheme)}
+				newManifest, err := manifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+				r := newManifest.Resources()
+
+				By("Verifying all volumeMounts exist")
+				containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				volumeMounts, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "volumeMounts")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				// Should have: 1 pre-existing + 3 new = 4 total
+				Expect(volumeMounts).To(HaveLen(4), "should have pre-existing + all new mounts")
+
+				// Verify pre-existing is preserved
+				preExistingMount := corev1.VolumeMount{Name: "example-volume", MountPath: "/example"}
+				Expect(volumeMounts).To(ContainElement(structuredToMap(preExistingMount)), "pre-existing mount must be preserved")
+
+				// Verify all new mounts are added
+				for _, mount := range desiredVolumeMounts {
+					Expect(volumeMounts).To(ContainElement(structuredToMap(mount)), "new mount %s should be added", mount.Name)
+				}
+			})
+
+			// Test replacement behavior while preserving other mounts
+			It("Should preserve other volumeMounts when replacing a specific mount", func() {
+
+				By("Adding two volumeMounts first")
+				manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+				Expect(err).To(BeNil())
+
+				var initialMounts = []corev1.VolumeMount{
+					{Name: "mount-1", MountPath: "/mount1", ReadOnly: false},
+					{Name: "mount-2", MountPath: "/mount2", ReadOnly: false},
+				}
+				transforms := []mf.Transformer{transform.ReplaceDeploymentVolumeMounts(initialMounts, scheme)}
+				newManifest, err := manifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+
+				By("Replacing mount-1 with a different path")
+				var replacementMount = []corev1.VolumeMount{
+					{Name: "mount-1", MountPath: "/mount1-replaced", ReadOnly: true}, // same name, different path
+				}
+				transforms = []mf.Transformer{transform.ReplaceDeploymentVolumeMounts(replacementMount, scheme)}
+				newManifest, err = newManifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+				r := newManifest.Resources()
+
+				By("Verifying mount-1 is replaced but mount-2 and example-volume are preserved")
+				containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				volumeMounts, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "volumeMounts")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				// Should have: example-volume + mount-1 (replaced) + mount-2 = 3 total
+				Expect(volumeMounts).To(HaveLen(3), "should have pre-existing + replaced + preserved mounts")
+
+				// Verify mount-1 is replaced
+				Expect(volumeMounts).To(ContainElement(structuredToMap(replacementMount[0])), "mount-1 should be replaced")
+				Expect(volumeMounts).NotTo(ContainElement(structuredToMap(initialMounts[0])), "old mount-1 should not exist")
+
+				// Verify mount-2 is preserved
+				Expect(volumeMounts).To(ContainElement(structuredToMap(initialMounts[1])), "mount-2 should be preserved")
+
+				// Verify pre-existing example-volume is preserved
+				preExistingMount := corev1.VolumeMount{Name: "example-volume", MountPath: "/example"}
+				Expect(volumeMounts).To(ContainElement(structuredToMap(preExistingMount)), "pre-existing mount should be preserved")
+			})
 		})
 	})
 })
