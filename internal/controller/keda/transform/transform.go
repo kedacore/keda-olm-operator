@@ -1380,7 +1380,6 @@ func ReplaceDeploymentVolumeMounts(desiredVolumeMounts []corev1.VolumeMount, sch
 						containers[i].VolumeMounts = append(containers[i].VolumeMounts, desiredVolumeMounts[j])
 					}
 				}
-				containers[i].VolumeMounts = desiredVolumeMounts
 			}
 			return scheme.Convert(deploy, u, nil)
 		}
