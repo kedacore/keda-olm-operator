@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/keda.sh_kedacontrollers.yaml
+- bases/keda.sh_kedahttpaddons.yaml
 - bases/keda.sh_scaledjobs.yaml
 - bases/keda.sh_scaledobjects.yaml
 - bases/keda.sh_triggerauthentications.yaml

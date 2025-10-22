@@ -8,8 +8,11 @@
     - [Manual installation](#manual-installation)
   - [The `KedaController` Custom Resource](#the-kedacontroller-custom-resource)
     - [`KedaController` Spec](#kedacontroller-spec)
+  - [The `KedaHTTPAddOn` Custom Resource](#the-kedahttpaddon-custom-resource)
+    - [`KedaHTTPAddOn` Spec](#kedahttpaddon-spec)
   - [Uninstallation](#uninstallation)
     - [How to uninstall KEDA Controller](#how-to-uninstall-keda-controller)
+    - [How to uninstall KEDA HTTP Add-on](#how-to-uninstall-keda-http-add-on)
     - [How to uninstall KEDA OLM Operator](#how-to-uninstall-keda-olm-operator)
   - [Monitoring](#monitoring)
   - [Development](#development)
@@ -27,8 +30,7 @@
 <a href="https://github.com/kedacore/keda-olm-operator/actions"><img src="https://github.com/kedacore/keda-olm-operator/workflows/nightly%20tests/badge.svg" alt="nightly e2e"></a></p>
 
 
-Operator for deploying [KEDA](https://keda.sh/) (Kubernetes Event-driven Autoscaling) controller on OpenShift or any Kubernetes cluster with
-[Operator Lifecycle Manager](https://github.com/operator-framework/operator-lifecycle-manager) framework installed.
+Operator for deploying [KEDA](https://keda.sh/) (Kubernetes Event-driven Autoscaling) controller and the optional [KEDA HTTP Add-on](https://github.com/kedacore/http-add-on) on OpenShift or any Kubernetes cluster with [Operator Lifecycle Manager](https://github.com/operator-framework/operator-lifecycle-manager) framework installed.
 
 ## Installation
 
@@ -60,6 +62,12 @@ kubectl apply -n keda -f config/samples/keda_v1alpha1_kedacontroller.yaml    # i
 
 To be clear, the operator will be deployed in the `keda` namespace,
 and then it will install KEDA into this namespace.
+
+Optionally, you can also install the KEDA HTTP Add-on:
+
+```bash
+kubectl apply -n keda -f config/samples/keda_v1alpha1_kedahttpaddon.yaml    # install KEDA HTTP Add-on
+```
 
 ## The `KedaController` Custom Resource
 
@@ -423,6 +431,47 @@ spec:
     #  labelKey: labelValue
 ```
 
+## The `KedaHTTPAddOn` Custom Resource
+
+The KEDA HTTP Add-on allows KEDA to scale HTTP workloads based on incoming HTTP traffic. The installation of the KEDA HTTP Add-on is triggered by the creation of [a `KedaHTTPAddOn` custom resource](config/samples/keda_v1alpha1_kedahttpaddon.yaml).
+
+Similar to `KedaController`, only a custom resource named `kedahttp` in the namespace where the operator was installed (typically, `keda`) will trigger the installation, reconfiguration, or removal of the KEDA HTTP Add-on resources.
+
+**Note:** The KEDA HTTP Add-on requires the KEDA Controller to be installed first.
+
+To install the KEDA HTTP Add-on:
+
+```bash
+kubectl apply -n keda -f config/samples/keda_v1alpha1_kedahttpaddon.yaml
+```
+
+### `KedaHTTPAddOn` Spec
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: KedaHTTPAddOn
+metadata:
+  name: kedahttp
+  namespace: keda
+spec:
+  ###
+  # THERE SHOULD BE ONLY ONE INSTANCE OF THIS RESOURCE PER NAMESPACE
+  # with Name set to 'kedahttp'
+  ###
+
+  ## Namespace that the add-on should watch
+  # omit or set empty to watch all namespaces (default setting)
+  watchNamespace: ""
+
+  ## Version (image tag) of the HTTP Add-on to deploy
+  # If not specified, defaults to 0.11.0
+  version: "0.11.0"
+
+  ## Optional: Custom images for HTTP Add-on components
+  # operatorImage: "ghcr.io/kedacore/http-add-on-operator:0.11.0"
+  # scalerImage: "ghcr.io/kedacore/http-add-on-scaler:0.11.0"
+  # interceptorImage: "ghcr.io/kedacore/http-add-on-interceptor:0.11.0"
+```
+
 
 ## Uninstallation
 
@@ -431,6 +480,13 @@ Locate installed `KEDA` Operator in `keda` namespace and then remove created `Ke
 
 ```bash
 kubectl delete -n keda -f config/samples/keda_v1alpha1_kedacontroller.yaml
+```
+
+### How to uninstall KEDA HTTP Add-on
+To remove the KEDA HTTP Add-on from your cluster, delete the `KedaHTTPAddOn` resource:
+
+```bash
+kubectl delete -n keda -f config/samples/keda_v1alpha1_kedahttpaddon.yaml
 ```
 
 ### How to uninstall KEDA OLM Operator

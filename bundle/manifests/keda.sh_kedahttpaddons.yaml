@@ -1,0 +1,80 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: kedahttpaddons.keda.sh
+spec:
+  group: keda.sh
+  names:
+    kind: KedaHTTPAddOn
+    listKind: KedaHTTPAddOnList
+    plural: kedahttpaddons
+    singular: kedahttpaddon
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: KedaHTTPAddOn is the Schema for the kedahttpaddons API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: KedaHTTPAddOnSpec defines the desired state of KedaHTTPAddOn
+            properties:
+              interceptorImage:
+                description: Optional custom image for the HTTP Add-on interceptor
+                type: string
+              operatorImage:
+                description: Optional custom image for the HTTP Add-on operator
+                type: string
+              scalerImage:
+                description: Optional custom image for the HTTP Add-on scaler
+                type: string
+              version:
+                description: |-
+                  Version (image tag) of the HTTP Add-on to deploy, e.g. "0.11.0"
+                  If empty, uses the default version
+                type: string
+              watchNamespace:
+                description: Namespace that the add-on should watch; empty means all
+                  namespaces
+                type: string
+            type: object
+          status:
+            description: KedaHTTPAddOnStatus defines the observed state of KedaHTTPAddOn
+            properties:
+              phase:
+                description: Phase describes the current state of the HTTP Add-on
+                  installation
+                type: string
+              reason:
+                description: Reason provides a human-readable message for the current
+                  phase
+                type: string
+              version:
+                description: Version indicates the deployed HTTP Add-on version
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

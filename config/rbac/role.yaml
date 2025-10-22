@@ -32,6 +32,18 @@ rules:
   - update
   - watch
 - apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - apiregistration.k8s.io
   resources:
   - apiservices
@@ -67,11 +79,22 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - http.keda.sh
+  resources:
+  - httpscaledobjects
+  - httpscaledobjects/finalizers
+  - httpscaledobjects/status
+  verbs:
+  - '*'
+- apiGroups:
   - keda.sh
   resources:
   - kedacontrollers
   - kedacontrollers/finalizers
   - kedacontrollers/status
+  - kedahttpaddons
+  - kedahttpaddons/finalizers
+  - kedahttpaddons/status
   verbs:
   - '*'
 - apiGroups:

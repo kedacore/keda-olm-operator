@@ -71,6 +71,8 @@ const (
 	auditlogPolicyConfigMap = "keda-metrics-server-audit-policy"
 	auditlogPolicyMountPath = "/var/audit-policy"
 	auditPolicyFile         = "policy.yaml"
+
+	watchNamespaceEnvName = "WATCH_NAMESPACE"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
@@ -448,7 +450,7 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
 		transform.ReplaceAllNamespaces(instance.Namespace),
-		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-operator", r.Scheme, logger),
+		transform.ReplaceEnv("keda-operator", watchNamespaceEnvName, instance.Spec.WatchNamespace, r.Scheme, logger),
 	}
 
 	runningOnOpenshift := util.RunningOnOpenshift(ctx, logger, r.Client)
@@ -919,7 +921,7 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
 		transform.ReplaceAllNamespaces(instance.Namespace),
-		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-admission-webhooks", r.Scheme, logger),
+		transform.ReplaceEnv("keda-admission-webhooks", watchNamespaceEnvName, instance.Spec.WatchNamespace, r.Scheme, logger),
 	}
 
 	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC

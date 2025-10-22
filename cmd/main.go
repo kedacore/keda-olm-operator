@@ -123,6 +123,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
+	if err = (&kedacontrollers.KedaHTTPAddOnReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("KedaHTTPAddOn"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr, installNamespace, setupLog); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "KedaHTTPAddOn")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

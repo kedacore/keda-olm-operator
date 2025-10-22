@@ -1,0 +1,500 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keda-http-add-on-operator
+  namespace: keda
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keda-http-add-on-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - services
+  - endpoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - http.keda.sh
+  resources:
+  - httpscaledobjects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - http.keda.sh
+  resources:
+  - httpscaledobjects/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - http.keda.sh
+  resources:
+  - httpscaledobjects/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: keda-http-add-on-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: keda-http-add-on-operator
+subjects:
+- kind: ServiceAccount
+  name: keda-http-add-on-operator
+  namespace: keda
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-http-add-on-operator
+  namespace: keda
+  labels:
+    app: keda-http-add-on-operator
+spec:
+  selector:
+    app: keda-http-add-on-operator
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-http-add-on-operator
+  namespace: keda
+  labels:
+    app: keda-http-add-on-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-http-add-on-operator
+  template:
+    metadata:
+      labels:
+        app: keda-http-add-on-operator
+    spec:
+      serviceAccountName: keda-http-add-on-operator
+      containers:
+      - name: operator
+        image: ghcr.io/kedacore/http-add-on-operator:0.11.0
+        imagePullPolicy: Always
+        env:
+        - name: WATCH_NAMESPACE
+          value: ""
+        - name: KEDA_HTTP_OPERATOR_LOG_LEVEL
+          value: "info"
+        - name: KEDA_HTTP_OPERATOR_LOG_ENCODER
+          value: "console"
+        - name: KEDAHTTP_OPERATOR_EXTERNAL_SCALER_SERVICE
+          value: "keda-add-ons-http-external-scaler.keda:9090"
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-add-ons-http-external-scaler
+  namespace: keda
+  labels:
+    app: keda-add-ons-http-external-scaler
+spec:
+  selector:
+    app: keda-add-ons-http-external-scaler
+  ports:
+  - name: grpc
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-add-ons-http-external-scaler
+  namespace: keda
+  labels:
+    app: keda-add-ons-http-external-scaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-add-ons-http-external-scaler
+  template:
+    metadata:
+      labels:
+        app: keda-add-ons-http-external-scaler
+    spec:
+      serviceAccountName: keda-http-add-on-operator
+      containers:
+      - name: external-scaler
+        image: ghcr.io/kedacore/http-add-on-scaler:0.11.0
+        imagePullPolicy: Always
+        env:
+        - name: KEDA_HTTP_SCALER_PORT
+          value: "9090"
+        - name: KEDA_HTTP_SCALER_TARGET_ADMIN_NAMESPACE
+          value: "keda"
+        - name: KEDA_HTTP_SCALER_TARGET_ADMIN_DEPLOYMENT
+          value: "keda-add-ons-http-interceptor"
+        - name: KEDA_HTTP_SCALER_TARGET_ADMIN_PORT
+          value: "9090"
+        - name: KEDA_HTTP_SCALER_TARGET_ADMIN_SERVICE
+          value: "keda-add-ons-http-interceptor-admin"
+        ports:
+        - containerPort: 9090
+          name: grpc
+          protocol: TCP
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-add-ons-http-interceptor-admin
+  namespace: keda
+  labels:
+    app: keda-add-ons-http-interceptor
+spec:
+  selector:
+    app: keda-add-ons-http-interceptor
+  ports:
+  - name: admin
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-add-ons-http-interceptor-proxy
+  namespace: keda
+  labels:
+    app: keda-add-ons-http-interceptor
+spec:
+  selector:
+    app: keda-add-ons-http-interceptor
+  ports:
+  - name: proxy
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-add-ons-http-interceptor
+  namespace: keda
+  labels:
+    app: keda-add-ons-http-interceptor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-add-ons-http-interceptor
+  template:
+    metadata:
+      labels:
+        app: keda-add-ons-http-interceptor
+    spec:
+      serviceAccountName: keda-http-add-on-operator
+      containers:
+      - name: interceptor
+        image: ghcr.io/kedacore/http-add-on-interceptor:0.11.0
+        imagePullPolicy: Always
+        env:
+        - name: KEDA_HTTP_PROXY_PORT
+          value: "8080"
+        - name: KEDA_HTTP_ADMIN_PORT
+          value: "9090"
+        - name: KEDA_HTTP_CONNECT_TIMEOUT
+          value: "500ms"
+        - name: KEDA_HTTP_KEEP_ALIVE
+          value: "1s"
+        - name: KEDA_HTTP_MAX_IDLE_CONNS
+          value: "100"
+        - name: KEDA_HTTP_IDLE_CONN_TIMEOUT
+          value: "90s"
+        - name: KEDA_HTTP_TLS_HANDSHAKE_TIMEOUT
+          value: "10s"
+        - name: KEDA_RESPONSE_HEADER_TIMEOUT
+          value: "0"
+        - name: KEDA_CONDITION_WAIT_TIMEOUT
+          value: "1s"
+        - name: KEDA_HTTP_CURRENT_NAMESPACE
+          value: "keda"
+        - name: KEDA_HTTP_WORKLOAD_REPLICAS_TIMEOUT
+          value: "500ms"
+        - name: KEDA_HTTP_FORCE_HTTP2
+          value: "false"
+        - name: KEDA_HTTP_MAX_RESPONSE_HEADER_BYTES
+          value: "0"
+        - name: KEDA_HTTP_LOG_LEVEL
+          value: "info"
+        ports:
+        - containerPort: 8080
+          name: proxy
+          protocol: TCP
+        - containerPort: 9090
+          name: admin
+          protocol: TCP
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httpscaledobjects.http.keda.sh
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+spec:
+  group: http.keda.sh
+  names:
+    kind: HTTPScaledObject
+    listKind: HTTPScaledObjectList
+    plural: httpscaledobjects
+    shortNames:
+    - httpso
+    singular: httpscaledobject
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.targetPendingRequests
+      name: TargetPendingRequests
+      type: integer
+    - jsonPath: .spec.scaleTargetRef.deployment
+      name: Deployment
+      type: string
+    - jsonPath: .spec.scaleTargetRef.service
+      name: Service
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Active
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: HTTPScaledObject is the Schema for the httpscaledobjects API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: HTTPScaledObjectSpec defines the desired state of HTTPScaledObject
+            properties:
+              hosts:
+                items:
+                  type: string
+                type: array
+              pathPrefixes:
+                items:
+                  type: string
+                type: array
+              replicas:
+                properties:
+                  max:
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  min:
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
+              scaleTargetRef:
+                properties:
+                  deployment:
+                    type: string
+                  name:
+                    type: string
+                  port:
+                    format: int32
+                    type: integer
+                  service:
+                    type: string
+                required:
+                - deployment
+                - port
+                - service
+                type: object
+              targetPendingRequests:
+                format: int32
+                minimum: 1
+                type: integer
+            required:
+            - scaleTargetRef
+            type: object
+          status:
+            description: HTTPScaledObjectStatus defines the observed state of HTTPScaledObject
+            properties:
+              conditions:
+                items:
+                  description: Condition to store the condition state
+                  properties:
+                    message:
+                      description: A human readable message indicating details about the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: Status of the condition
+                      type: string
+                    timestamp:
+                      description: Timestamp of the condition
+                      type: string
+                    type:
+                      description: Type of condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+
+
+
+
