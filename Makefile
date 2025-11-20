@@ -34,7 +34,7 @@ BUNDLE_RUN_OPTS= --security-context-config restricted
 endif
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.32
+ENVTEST_K8S_VERSION = 1.33
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
