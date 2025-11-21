@@ -24,7 +24,7 @@ linters:
     - unconvert
     - ineffassign
     - staticcheck
-    - exportloopref
+    #- exportloopref deprecated as of 1.60.2
     - depguard
     - dogsled
     - errcheck

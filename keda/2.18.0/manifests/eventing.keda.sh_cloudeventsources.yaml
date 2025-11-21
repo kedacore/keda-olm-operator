@@ -6,16 +6,16 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.16.5
   labels:
     app.kubernetes.io/part-of: keda-operator
-    app.kubernetes.io/version: 2.18.1
-  name: clustercloudeventsources.eventing.keda.sh
+    app.kubernetes.io/version: 2.18.0
+  name: cloudeventsources.eventing.keda.sh
 spec:
   group: eventing.keda.sh
   names:
-    kind: ClusterCloudEventSource
-    listKind: ClusterCloudEventSourceList
-    plural: clustercloudeventsources
-    singular: clustercloudeventsource
-  scope: Cluster
+    kind: CloudEventSource
+    listKind: CloudEventSourceList
+    plural: cloudeventsources
+    singular: cloudeventsource
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=="Active")].status
@@ -24,6 +24,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: CloudEventSource defines how a KEDA event will be sent to event
+          sink
         properties:
           apiVersion:
             description: |-
