@@ -1,6 +1,7 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - keda_v1alpha1_kedacontroller.yaml
+- keda_v1alpha1_kedahttpaddon.yaml
 - eventing_v1alpha1_cloudeventsource.yaml
 - eventing_v1alpha1_clustercloudeventsource.yaml
 - keda_v1alpha1_clustertriggerauthentication.yaml

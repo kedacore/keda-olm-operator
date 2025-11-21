@@ -102,7 +102,7 @@ func ReplaceNamespace(name string, namespace string, scheme *runtime.Scheme, log
 	}
 }
 
-func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+func ReplaceEnv(containerName string, envName string, envValue string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		changed := false
 		if u.GetKind() == "Deployment" {
@@ -114,10 +114,10 @@ func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *
 			for i, container := range containers {
 				if container.Name == containerName {
 					for j, env := range container.Env {
-						if env.Name == "WATCH_NAMESPACE" {
-							if env.Value != watchNamespace {
-								logger.Info("Replacing", "deployment", container.Name, "WATCH_NAMESPACE", watchNamespace, "previous", env.Value)
-								containers[i].Env[j].Value = watchNamespace
+						if env.Name == envName {
+							if env.Value != envValue {
+								logger.Info("Replacing", "deployment", container.Name, envName, envValue, "previous", env.Value)
+								containers[i].Env[j].Value = envValue
 								changed = true
 							}
 							break

@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: KedaHTTPAddOn
+metadata:
+  name: kedahttp
+  namespace: keda
+spec:
+  # Namespace that the add-on should watch; empty means all namespaces
+  watchNamespace: ""
+  
+  # Version (image tag) of the HTTP Add-on to deploy
+  # If not specified, defaults to 0.11.0
+  version: "0.11.0"
+  
+  # Optional: Custom images for HTTP Add-on components
+  # operatorImage: "ghcr.io/kedacore/http-add-on-operator:0.11.0"
+  # scalerImage: "ghcr.io/kedacore/http-add-on-scaler:0.11.0"
+  # interceptorImage: "ghcr.io/kedacore/http-add-on-interceptor:0.11.0"
+
+
