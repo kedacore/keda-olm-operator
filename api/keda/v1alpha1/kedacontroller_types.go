@@ -50,6 +50,11 @@ type KedaControllerSpec struct {
 	// +optional
 	ServiceAccount KedaServiceAccountSpec `json:"serviceAccount"`
 
+	// HTTPAddon defines the configuration for the KEDA HTTP Add-on
+	// The HTTP Add-on will only be installed if httpAddon.enabled is set to true
+	// +optional
+	HTTPAddon HTTPAddonSpec `json:"httpAddon,omitempty"`
+
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
@@ -234,6 +239,9 @@ type KedaControllerStatus struct {
 	ConfigMapDataSum string `json:"configmapdatasum,omitempty"`
 	// +optional
 	SecretDataSum string `json:"secretdatasum,omitempty"`
+	// HTTPAddonInstalled indicates whether the HTTP Add-on was installed by this operator
+	// +optional
+	HTTPAddonInstalled bool `json:"httpAddonInstalled,omitempty"`
 
 	// Important: Run "make" to regenerate code after modifying this file
 }

@@ -1,0 +1,29 @@
+# KedaController with HTTP Add-on enabled for testing
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  ###
+  # THERE SHOULD BE ONLY ONE INSTANCE OF THIS RESOURCE PER CLUSTER
+  # with Name set to 'keda' created in namespace 'keda'
+  ###
+
+  ## KEDA HTTP Add-on related config
+  ## This section enables the HTTP Add-on for testing
+  httpAddon:
+    ## Enable the HTTP Add-on installation (required)
+    enabled: true
+
+    ## HTTP Add-on Scaler configuration
+    ## Using fewer replicas for local testing (default: 3)
+    scaler:
+      replicas: 1
+
+    ## HTTP Add-on Interceptor configuration
+    ## Using fewer replicas for local testing (defaults: min=3, max=50)
+    interceptor:
+      replicas:
+        min: 1
+        max: 10

@@ -1,0 +1,99 @@
+# Sample HTTPScaledObject for testing
+# This demonstrates how to use the HTTP Add-on to scale an application based on HTTP traffic
+
+# First, create a sample application namespace
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: http-sample
+
+# Deploy a simple nginx application
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+  namespace: http-sample
+spec:
+  replicas: 0  # Start with 0 replicas - KEDA will scale it
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+
+# Create a service for the application
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-app
+  namespace: http-sample
+spec:
+  selector:
+    app: sample-app
+  ports:
+  - port: 80
+    targetPort: 80
+
+# Create the HTTPScaledObject to enable HTTP-based autoscaling
+---
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: sample-app-httpso
+  namespace: http-sample
+spec:
+  # The hosts to route traffic for
+  hosts:
+  - sample-app.local
+  - sample-app.example.com
+
+  # Path prefixes to route
+  pathPrefixes:
+  - /
+
+  # The deployment to scale and route traffic to
+  scaleTargetRef:
+    name: sample-app      # Name of the Deployment
+    service: sample-app   # Name of the Service
+    port: 80              # Port on the Service
+
+  # Replica configuration
+  replicas:
+    min: 0    # Scale to zero when no traffic
+    max: 10   # Maximum replicas
+
+  # Scaling metric configuration
+  scalingMetric:
+    # Scale based on request rate
+    requestRate:
+      targetValue: 10  # Target requests per second per replica
+      window: 1m       # Time window for rate calculation
+      granularity: 1s  # Granularity of rate calculation
+
+    # Alternatively, scale based on concurrent requests:
+    # concurrency:
+    #   targetValue: 100  # Target concurrent requests per replica
+
+  # Optional: Initial cooldown period (seconds) before scaling
+  # initialCooldownPeriod: 30
+
+  # Optional: Cooldown period (seconds) before scaling down
+  # scaledownPeriod: 300

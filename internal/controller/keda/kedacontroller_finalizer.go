@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
@@ -26,6 +27,16 @@ func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger) er
 	if err := r.resourcesMetrics.Delete(); err != nil {
 		logger.Info("error finalized KedaController metrics", "error", err)
 		return err
+	}
+
+	// Delete HTTP Add-on resources if they were installed
+	if err := r.uninstallHTTPAddon(logger); err != nil {
+		// Ignore NotFound errors - HTTP Add-on might not have been installed
+		if !apierrors.IsNotFound(err) {
+			logger.Error(err, "error finalizing KedaController HTTP Add-on")
+			return err
+		}
+		logger.Info("HTTP Add-on resources not found, skipping cleanup")
 	}
 
 	// DO NOT manage deletion of namespace at the moment (as it was created manually)

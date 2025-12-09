@@ -9,6 +9,7 @@ import (
 
 const resourcesPath = "keda.yaml"
 const olmResourcesPath = "keda-olm-operator.yaml"
+const httpAddonResourcesPath = "keda-http-addon.yaml"
 const LastConfigID = "olm-operator.keda.sh/last-applied-configuration"
 
 func GetResourcesManifest() (mf.Manifest, error) {
@@ -21,4 +22,10 @@ func GetResourcesManifest() (mf.Manifest, error) {
 	}
 	operatormf, err := mf.NewManifest(olmFullPath, mf.UseLastAppliedConfigAnnotation(LastConfigID))
 	return kedamf.Append(operatormf), err
+}
+
+func GetHTTPAddonManifest() (mf.Manifest, error) {
+	_, path, _, _ := runtime.Caller(0)
+	fullPath := filepath.Join(filepath.Dir(path), httpAddonResourcesPath)
+	return mf.NewManifest(fullPath, mf.UseLastAppliedConfigAnnotation(LastConfigID))
 }
