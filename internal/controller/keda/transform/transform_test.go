@@ -24,8 +24,11 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/kedacore/keda-olm-operator/internal/controller/keda/transform"
 )
@@ -404,6 +407,108 @@ spec:
 				preExistingMount := corev1.VolumeMount{Name: "example-volume", MountPath: "/example"}
 				Expect(volumeMounts).To(ContainElement(structuredToMap(preExistingMount)), "pre-existing mount should be preserved")
 			})
+		})
+	})
+})
+
+var _ = Describe("Updating a NetworkPolicy", func() {
+	Context("When transforming the keda-allow-egress-to-all policy", func() {
+
+		yamlData := `---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-egress-to-all
+spec:
+  egress:
+  - ports:
+    - port: 1
+      endPort: 65535
+      protocol: TCP
+    - port: 1
+      endPort: 65535
+      protocol: UDP
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-metrics-apiserver]}
+  policyTypes:
+  - Egress
+`
+		logger := ctrl.Log.WithName("test")
+		By("Setting up schemes")
+		// Set up the scheme; the transformer uses this to convert from unstructured, so we need this
+		scheme := runtime.NewScheme()
+		_ = networkingv1.AddToScheme(scheme)
+		It("Should be able to remove the pod selectors", func() {
+			manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+			Expect(err).To(BeNil())
+
+			transforms := []mf.Transformer{
+				transform.RemoveNetworkPolicyPodSelectorFromKedaOperator(scheme, logger),
+				transform.RemoveNetworkPolicyPodSelectorFromMetricsServer(scheme, logger),
+			}
+			newManifest, err := manifest.Transform(transforms...)
+			Expect(err).To(BeNil())
+
+			r := newManifest.Resources()
+			Expect(len(r)).To(Equal(1))
+			_, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "podSelector", "matchExpressions")
+			Expect(found).To(BeFalse(), "podSelector.matchExpressions shouldn't exist")
+			Expect(err).To(BeNil())
+		})
+	})
+	Context("When transforming the keda-allow-egress-to-dns policy", func() {
+
+		yamlData := `---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-egress-to-dns
+spec:
+  egress:
+  - ports:
+    - port: 5353
+      protocol: TCP
+    - port: 5353
+      protocol: UDP
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-admission-webhooks, keda-metrics-apiserver]}
+  policyTypes:
+  - Egress
+`
+		By("Setting up schemes")
+		// Set up the scheme; the transformer uses this to convert from unstructured, so we need this
+		scheme := runtime.NewScheme()
+		_ = networkingv1.AddToScheme(scheme)
+		It("Should be able to remove the pod selectors", func() {
+			manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+			Expect(err).To(BeNil())
+
+			newManifest, err := manifest.Transform(transform.AddOpenShiftPodToDNSNetworkPolicy(scheme))
+			Expect(err).To(BeNil())
+
+			r := newManifest.Resources()
+			Expect(len(r)).To(Equal(1))
+			egress, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "egress")
+			Expect(found).To(BeTrue(), "spec.egress should exist")
+			Expect(len(egress)).To(Equal(1))
+			Expect(err).To(BeNil())
+			peers, found, err := unstructured.NestedSlice(egress[0].(map[string]interface{}), "to")
+			Expect(found).To(BeTrue(), "spec.egress[0].to should exist")
+			Expect(len(peers)).To(Equal(1))
+			desiredPeer := &networkingv1.NetworkPolicyPeer{
+				NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "openshift-dns"}},
+				PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{"dns.operator.openshift.io/daemonset-dns": "default"}},
+			}
+			Expect(peers).To(ContainElement(structuredToMap(desiredPeer)))
+			Expect(err).To(BeNil())
 		})
 	})
 })

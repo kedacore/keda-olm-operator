@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"errors"
 	"reflect"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -134,6 +136,79 @@ func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *
 		}
 		return nil
 	}
+}
+
+func AddOpenShiftPodToDNSNetworkPolicy(scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "NetworkPolicy" {
+			policy := &networkingv1.NetworkPolicy{}
+			if err := scheme.Convert(u, policy, nil); err != nil {
+				return err
+			}
+			if policy.Name == "keda-allow-egress-to-dns" {
+				if len(policy.Spec.Egress) != 1 {
+					return errors.New("invalid manifest. Expected NetworkPolicy keda-allow-egress-to-dns to have exactly 1 `Egress` field")
+				}
+				policy.Spec.Egress[0].To = []networkingv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "openshift-dns"}},
+						PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{"dns.operator.openshift.io/daemonset-dns": "default"}},
+					},
+				}
+			}
+			if err := scheme.Convert(policy, u, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func RemoveNetworkPolicyPodSelector(podName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		changed := false
+		if u.GetKind() == "NetworkPolicy" {
+			policy := &networkingv1.NetworkPolicy{}
+			if err := scheme.Convert(u, policy, nil); err != nil {
+				return err
+			}
+			if policy.Name == "keda-allow-egress-to-all" {
+				matchExprs := policy.Spec.PodSelector.MatchExpressions
+				// iterate backwards for easy removal from slice (if needed)
+				for i := len(matchExprs) - 1; i >= 0; i-- {
+					if matchExprs[i].Key == "app" && matchExprs[i].Operator == metav1.LabelSelectorOpIn {
+						for j, value := range matchExprs[i].Values {
+							if value == podName {
+								matchExprs[i].Values = append(matchExprs[i].Values[:j], matchExprs[i].Values[j+1:]...)
+								policy.Spec.PodSelector.MatchExpressions[i].Values = matchExprs[i].Values
+								changed = true
+								logger.Info("Removed pod from NetworkPolicy keda-allow-egress-to-all", matchExprs[i].Key, podName)
+								if len(matchExprs[i].Values) == 0 {
+									matchExprs = append(matchExprs[:i], matchExprs[i+1:]...)
+								}
+								break
+							}
+						}
+					}
+				}
+				policy.Spec.PodSelector.MatchExpressions = matchExprs
+				if changed {
+					if err := scheme.Convert(policy, u, nil); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+}
+
+func RemoveNetworkPolicyPodSelectorFromKedaOperator(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return RemoveNetworkPolicyPodSelector(containerNameKedaOperator, scheme, logger)
+}
+
+func RemoveNetworkPolicyPodSelectorFromMetricsServer(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return RemoveNetworkPolicyPodSelector(containerNameMetricsServer, scheme, logger)
 }
 
 func RemoveSeccompProfile(containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {

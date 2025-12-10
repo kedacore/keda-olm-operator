@@ -33,6 +33,7 @@ import (
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -211,6 +212,7 @@ func (r *KedaControllerReconciler) initializeDefaultController() *kedav1alpha1.K
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -274,7 +276,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	status := instance.Status.DeepCopy()
 
-	if err := r.installSA(logger, instance); err != nil {
+	if err := r.installGeneralResources(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to create ServiceAccount")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -343,7 +345,7 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 			}
 		case "Secret":
 			controllerResources = append(controllerResources, r)
-		case "ServiceAccount":
+		case "ServiceAccount", "NetworkPolicy":
 			generalResources = append(generalResources, r)
 		case "PodMonitor", "ServiceMonitor":
 			monitoringResources = append(monitoringResources, r)
@@ -413,8 +415,8 @@ func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured
 	return sortedResources
 }
 
-func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
-	logger.Info("Reconciling KEDA ServiceAccount")
+func (r *KedaControllerReconciler) installGeneralResources(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+	logger.Info("Reconciling KEDA ServiceAccount and NetworkPolicies")
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
 		transform.ReplaceAllNamespaces(instance.Namespace),
@@ -428,15 +430,38 @@ func (r *KedaControllerReconciler) installSA(logger logr.Logger, instance *kedav
 		transforms = append(transforms, transform.AddServiceAccountLabels(instance.Spec.ServiceAccount.Labels, r.Scheme))
 	}
 
+	if instance.Spec.MetricsServer.NetworkEgressAllowAll == "false" {
+		transforms = append(transforms, transform.RemoveNetworkPolicyPodSelectorFromMetricsServer(r.Scheme, logger))
+	}
+
+	if instance.Spec.Operator.NetworkEgressAllowAll == "false" {
+		transforms = append(transforms, transform.RemoveNetworkPolicyPodSelectorFromKedaOperator(r.Scheme, logger))
+	}
+
+	runningOnOpenshift := util.RunningOnOpenshift(ctx, logger, r.Client)
+
+	if runningOnOpenshift {
+		transforms = append(transforms, transform.AddOpenShiftPodToDNSNetworkPolicy(r.Scheme))
+	}
+
 	manifest, err := r.resourcesGeneral.Transform(transforms...)
 	if err != nil {
-		logger.Error(err, "Unable to transform ServiceAccount manifest")
+		logger.Error(err, "Unable to transform ServiceAccount and NetworkPolicies manifests")
 		return err
 	}
 	r.resourcesGeneral = manifest
 
-	if err := r.resourcesGeneral.Apply(); err != nil {
-		logger.Error(err, "Unable to install ServiceAccount")
+	isEmptyKedaAllowEgressToAllNetworkPolicy := getIsEmptyKedaAllowEgressToAllNetworkPolicyPredicate(r.Scheme)
+	toDelete := r.resourcesGeneral.Filter(isEmptyKedaAllowEgressToAllNetworkPolicy)
+	toApply := r.resourcesGeneral.Filter(mf.Not(isEmptyKedaAllowEgressToAllNetworkPolicy))
+
+	if err := toDelete.Delete(); err != nil {
+		logger.Error(err, "Unable to delete unwanted NetworkPolicy keda-allow-egress-to-all")
+		return err
+	}
+
+	if err := toApply.Apply(); err != nil {
+		logger.Error(err, "Unable to install ServiceAccount and NetworkPolicies")
 		return err
 	}
 
@@ -1093,4 +1118,30 @@ func (r *KedaControllerReconciler) checkAuditLogVolumeExists(name string, ctx co
 	}
 
 	return nil
+}
+
+// Used for filtering out the empty NetworkPolicy which should be deleted when NetworkEgressAllowAll is false
+func getIsEmptyKedaAllowEgressToAllNetworkPolicyPredicate(scheme *runtime.Scheme) mf.Predicate {
+	return func(u *unstructured.Unstructured) bool {
+		if u.GetKind() == "NetworkPolicy" {
+			policy := &networkingv1.NetworkPolicy{}
+			if err := scheme.Convert(u, policy, nil); err != nil {
+				return false
+			}
+			if policy.Name == "keda-allow-egress-to-all" {
+				matchExprs := policy.Spec.PodSelector.MatchExpressions
+				if len(matchExprs) == 0 {
+					return true
+				}
+				empty := false
+				for _, expr := range matchExprs {
+					if expr.Key == "app" && expr.Operator == metav1.LabelSelectorOpIn && len(expr.Values) == 0 {
+						empty = true
+					}
+				}
+				return empty
+			}
+		}
+		return false
+	}
 }

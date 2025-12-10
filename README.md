@@ -124,6 +124,13 @@ spec:
     # Array of strings (format is either with prefix '--key=value' or just 'value')
     # args: []
 
+    ## Egress Network Policy Allow All
+    # By default, the operator will be permitted to reach any network endpoint to facilitate scalers and
+    # allow them to reach their data sources
+    # If set to "false", the allow all policy will be removed, and a cluster admin can create tailored policies
+    # to match their network security requirements
+    # networkEgressAllowAll: "true"
+
     ## Annotations to be added to the KEDA Operator Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
     # deploymentAnnotations:
@@ -200,6 +207,13 @@ spec:
     # Define any argument with possibility to override already existing ones.
     # Array of strings (format is either with prefix '--key=value' or just 'value')
     # args: []
+
+    ## Egress Network Policy Allow All
+    # By default, the metrics server will be permitted to reach any network endpoint to facilitate scalers and
+    # allow them to reach their data sources
+    # If set to "false", the allow all policy will be removed, and a cluster admin can create tailored policies
+    # to match their network security requirements
+    # networkEgressAllowAll: "true"
 
     ## Audit Config
     # https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy

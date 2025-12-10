@@ -94,6 +94,13 @@ type KedaOperatorSpec struct {
 	// +optional
 	Args []string `json:"args,omitempty"`
 
+	// If set to true, an "allow all" network policy will be added to permit the KEDA Controller to connect to network endpoints.
+	// If set to "false", the "allow all" policy will be removed, and a cluster admin can create tailored policies
+	// to match their network security requirements
+	// default value: "true"
+	// +optional
+	NetworkEgressAllowAll string `json:"networkEgressAllowAll,omitempty"`
+
 	// ConfigMaps containing PEM-encoded trusted certificate authorities (CAs).
 	// The files from the ConfigMaps will be loaded by the KEDA operator during
 	// start-up and will be used by scalers to authenticate TLS-enabled metrics
@@ -122,6 +129,13 @@ type KedaMetricsServerSpec struct {
 	// 'argument=value' or just 'value'. Ex.: '--v=0' or 'ENV_ARGUMENT'
 	// +optional
 	Args []string `json:"args,omitempty"`
+
+	// If set to true, an "allow all" network policy will be added to permit the KEDA Controller to connect to network endpoints.
+	// If set to "false", the "allow all" policy will be removed, and a cluster admin can create tailored policies
+	// to match their network security requirements
+	// default value: "true"
+	// +optional
+	NetworkEgressAllowAll string `json:"networkEgressAllowAll,omitempty"`
 }
 
 type KedaAdmissionWebhooksSpec struct {
