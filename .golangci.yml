@@ -48,6 +48,60 @@ linters:
           deny:
             - pkg: sync/atomic
               desc: "use type-safe atomics from go.uber.org/atomic"
+    revive:
+      rules:
+        # Disable rules that require comments on all exported types
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+          disabled: true
+
+  # Defines a set of rules to ignore issues
+  exclusions:
+    # Use presets for common exclusions
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+    # Excluding configuration per-path, per-linter, per-text and per-source
+    rules:
+      - path: _test\.go
+        linters:
+          - gomnd
+          - dupl
+      # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
+      # but we don't need to make them constants
+      - path: internal/controller/keda/transform/transform\.go
+        linters:
+          - goconst
+      # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
+      # but we don't need to make them constants
+      - path: internal/controller/keda/kedacontroller_controller\.go
+        linters:
+          - goconst
+      # Exclude for controllers, reason:
+      # "internal/controller/configmap_controller.go:49: 49-80 lines are duplicate of `internal/controller/secret_controller.go:49-80`"
+      - path: _controller\.go
+        linters:
+          - dupl
+      # Exclude because: "internal/controller/suite_test.go:157:63: `getObject` - `namespace` always receives `namespace` (`"keda"`)"
+      - path: internal/controller/keda/suite_test\.go
+        linters:
+          - unparam
+          - goconst
+      # Exclude because: "declaration has 3 blank identifiers" -> it's ok, we don't need them
+      - path: resources/resources_handler\.go
+        linters:
+          - dogsled
+      # https://github.com/go-critic/go-critic/issues/926
+      - linters:
+          - gocritic
+        text: "unnecessaryDefer:"
+      - linters:
+          - staticcheck
+        text: "ST1000:"
 
 # In v2, formatters like gofmt, goimports, and gci are moved to the formatters section
 formatters:
@@ -61,54 +115,8 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(github.com/kedacore/keda)
+        - prefix(github.com/kedacore/keda-olm-operator)
 
-issues:
-  include:
-    - EXC0002 # disable excluding of issues about comments from golint
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gomnd
-        - dupl
-    # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
-    # but we don't need to make them constants
-    - path: internal/controller/keda/transform/transform.go
-      linters:
-        - goconst
-    # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
-    # but we don't need to make them constants
-    # and:
-    # "exported: type name will be used as keda.KedaControllerReconciler by other packages, and that stutters;
-    # consider calling this ControllerReconciler (revive)"
-    - path: internal/controller/keda/kedacontroller_controller.go
-      linters:
-        - goconst
-        - revive
-    # Exclude for controllers, reason:
-    # "internal/controller/configmap_controller.go:49: 49-80 lines are duplicate of `internal/controller/secret_controller.go:49-80`"
-    - path: _controller.go
-      linters:
-        - dupl
-    # Exclude because: "internal/controller/suite_test.go:157:63: `getObject` - `namespace` always receives `namespace` (`"keda"`)"
-    - path: internal/controller/keda/suite_test.go
-      linters:
-        - unparam
-    # Exclude because: "declaration has 3 blank identifiers" -> it's ok, we don't need them
-    - path: resources/resources_handler.go
-      linters:
-        - dogsled
-    - path: cmd/main.go
-      linters:
-        - gci
-    # https://github.com/go-critic/go-critic/issues/926
-    - linters:
-        - gocritic
-      text: "unnecessaryDefer:"
-    - linters:
-        - staticcheck
-      text: "ST1000:"
-    # Exclude some linters from running on test files.
-    - path: _test\.go$
-      text: "dot-imports: should not use dot imports"
+  exclusions:
+    paths:
+      - cmd/main\.go

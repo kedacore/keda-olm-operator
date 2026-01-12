@@ -23,8 +23,10 @@ var (
 	logTimeEncodings = []string{"epoch", "millis", "nano", "iso8601", "rfc3339", "rfc3339nano"}
 )
 
+// Prefix represents a command-line argument prefix for container arguments.
 type Prefix string
 
+// Command-line argument prefixes for KEDA container configuration.
 const (
 	LogLevelArg           Prefix = "--zap-log-level="
 	LogEncoderArg         Prefix = "--zap-encoder="
@@ -559,8 +561,9 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 	}
 }
 
-// Add configmap volumes for configMapNames named cabundle0, cabundle1, etc. as /custom/ca0, /custom/ca1, etc. with
-// container args --ca-dir=/custom/ca0, --ca-dir=/custom/ca1, etc.
+// EnsureCACertsForOperatorDeployment returns transformers that add ConfigMap volumes for CA certificates.
+// The ConfigMaps are mounted as cabundle0, cabundle1, etc. at /custom/ca0, /custom/ca1, etc.
+// with corresponding container args --ca-dir=/custom/ca0, --ca-dir=/custom/ca1, etc.
 func EnsureCACertsForOperatorDeployment(configMapNames []string, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
 	var retval []mf.Transformer
 
