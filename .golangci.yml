@@ -1,3 +1,5 @@
+version: "2"
+
 # options for analysis running
 run:
   # default concurrency is a available CPU number
@@ -5,20 +7,18 @@ run:
 
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 10m
+
 linters:
-  # please, do not use `enable-all`: it's deprecated and will be removed soon.
-  # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
-  disable-all: true
+  # In v2, 'disable-all: true' is replaced with 'default: none'
+  default: none
   enable:
-    - typecheck
+    # typecheck is now built-in and always enabled in v2
     - dupl
     - goprintffuncname
     - govet
     - nolintlint
     #- rowserrcheck
-    - gofmt
     - revive
-    - goimports
     - misspell
     - bodyclose
     - unconvert
@@ -29,20 +29,43 @@ linters:
     - dogsled
     - errcheck
     #- funlen
-    - gci
     - goconst
     - gocritic
     - gocyclo
-    - gosimple
-    - stylecheck
+    # gosimple and stylecheck are now part of staticcheck in v2
     - unused
     - unparam
-    - unconvert
     - whitespace
+
+  settings:
+    funlen:
+      lines: 80
+      statements: 40
+    # copied from https://github.com/kedacore/keda/blob/1ab35e75a63b3b33ca59552dda93220fd916a05d/.golangci.yml#L163-L168
+    depguard: #https://github.com/kedacore/keda/issues/4980
+      rules:
+        main:
+          deny:
+            - pkg: sync/atomic
+              desc: "use type-safe atomics from go.uber.org/atomic"
+
+# In v2, formatters like gofmt, goimports, and gci are moved to the formatters section
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gci
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/kedacore/keda)
 
 issues:
   include:
-  - EXC0002 # disable excluding of issues about comments from golint
+    - EXC0002 # disable excluding of issues about comments from golint
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
     - path: _test\.go
@@ -84,25 +107,8 @@ issues:
         - gocritic
       text: "unnecessaryDefer:"
     - linters:
-       - stylecheck
+        - staticcheck
       text: "ST1000:"
     # Exclude some linters from running on test files.
     - path: _test\.go$
       text: "dot-imports: should not use dot imports"
-
-linters-settings:
-  funlen:
-    lines: 80
-    statements: 40
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/kedacore/keda)
-  # copied from https://github.com/kedacore/keda/blob/1ab35e75a63b3b33ca59552dda93220fd916a05d/.golangci.yml#L163-L168
-  depguard: #https://github.com/kedacore/keda/issues/4980
-    rules:
-      main:
-        deny:
-          - pkg: sync/atomic
-            desc: "use type-safe atomics from go.uber.org/atomic"
