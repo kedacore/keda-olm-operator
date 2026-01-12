@@ -1074,7 +1074,7 @@ func AddPodLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transform
 				return err
 			}
 
-			deploy.Spec.Template.ObjectMeta.Labels = updateMap(deploy.Spec.Template.ObjectMeta.Labels, labels)
+			deploy.Spec.Template.Labels = updateMap(deploy.Spec.Template.Labels, labels)
 
 			return scheme.Convert(deploy, u, nil)
 		}

@@ -498,13 +498,13 @@ func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *ru
 			kedaControllerInstance.Spec.AdmissionWebhooks.LogLevel = value
 		// metricsServer audit arguments
 		case "auditLogFormat":
-			kedaControllerInstance.Spec.MetricsServer.AuditConfig.LogFormat = value
+			kedaControllerInstance.Spec.MetricsServer.LogFormat = value
 		case "auditMaxAge":
-			kedaControllerInstance.Spec.MetricsServer.AuditConfig.AuditLifetime.MaxAge = value
+			kedaControllerInstance.Spec.MetricsServer.MaxAge = value
 		case "auditMaxBackup":
-			kedaControllerInstance.Spec.MetricsServer.AuditConfig.AuditLifetime.MaxBackup = value
+			kedaControllerInstance.Spec.MetricsServer.MaxBackup = value
 		case "auditLogMaxSize":
-			kedaControllerInstance.Spec.MetricsServer.AuditConfig.AuditLifetime.MaxSize = value
+			kedaControllerInstance.Spec.MetricsServer.MaxSize = value
 		default:
 			return errors.New("Not a valid attribute")
 		}

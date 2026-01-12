@@ -45,7 +45,7 @@ func (r *KedaControllerReconciler) addFinalizer(ctx context.Context, logger logr
 	// Update CR
 	patch := client.MergeFrom(instance.DeepCopy())
 	instance.SetFinalizers(append(instance.GetFinalizers(), kedaControllerFinalizer))
-	err := r.Client.Patch(ctx, instance, patch)
+	err := r.Patch(ctx, instance, patch)
 	if err != nil {
 		logger.Error(err, "Failed to update KedaController with finalizer")
 		return err
