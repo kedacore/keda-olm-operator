@@ -2,6 +2,9 @@ module github.com/kedacore/keda-olm-operator
 
 go 1.24.0
 
+//pin kube-openapi to the same version keda itself uses to avoid structured-merge-diff v4/v6 issues
+replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250627150254-e9823e99808e
+
 require (
 	github.com/go-logr/logr v1.4.3
 	github.com/manifestival/controller-runtime-client v0.4.0
@@ -109,6 +112,3 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
-
-//pin kube-openapi to the same version keda itself uses to avoid structured-merge-diff v4/v6 issues
-replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250627150254-e9823e99808e
