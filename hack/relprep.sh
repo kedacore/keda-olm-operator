@@ -67,7 +67,7 @@ while read f; do
 done < <(git grep -l "ghcr.io/kedacore/keda-tools:[0-9]")
 
 echo "Updating resources from KEDA $ver release"
-wget "https://github.com/kedacore/keda/releases/download/v${ver}/keda-${ver}.yaml" -O resources/keda.yaml
+curl -L "https://github.com/kedacore/keda/releases/download/v${ver}/keda-${ver}.yaml" | sed 's/\r//g' > resources/keda.yaml
 
 echo "Finding previous release version"
 prev=$(ls keda/ | grep -v "^${ver//./\\.}$" | sort --version-sort | tail -1)
