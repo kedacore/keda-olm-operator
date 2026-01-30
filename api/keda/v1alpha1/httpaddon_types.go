@@ -60,14 +60,6 @@ type HTTPAddonSpec struct {
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 }
 
-// HTTPAddonCRDsSpec defines CRD-related configuration
-type HTTPAddonCRDsSpec struct {
-	// Install specifies whether to install the HTTPScaledObject CRD
-	// default: true
-	// +optional
-	Install *bool `json:"install,omitempty"`
-}
-
 // HTTPAddonOperatorSpec defines the operator component configuration
 type HTTPAddonOperatorSpec struct {
 	// Replicas is the number of operator replicas
