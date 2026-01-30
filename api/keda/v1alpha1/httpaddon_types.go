@@ -82,18 +82,40 @@ type HTTPAddonOperatorSpec struct {
 	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
 
-	// Port for the operator main server
+	// Port for the operator metrics server (--metrics-bind-address)
 	// default: 8443
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port,omitempty"`
 
+	// Metrics configuration for the operator metrics endpoint
+	// +optional
+	Metrics HTTPAddonOperatorMetricsSpec `json:"metrics,omitempty"`
+
 	HTTPAddonComponentSpec `json:",inline"`
 
 	// Logging configuration for the operator
 	// +optional
 	Logging HTTPAddonLoggingSpec `json:"logging,omitempty"`
+}
+
+// HTTPAddonOperatorMetricsSpec defines metrics endpoint configuration for the operator
+type HTTPAddonOperatorMetricsSpec struct {
+	// Secure enables HTTPS for the metrics endpoint (--metrics-secure)
+	// default: true
+	// +optional
+	Secure *bool `json:"secure,omitempty"`
+
+	// Auth enables authentication and authorization for the metrics endpoint (--metrics-auth)
+	// default: true
+	// +optional
+	Auth *bool `json:"auth,omitempty"`
+
+	// CertDir is the directory containing TLS certificates (tls.crt/tls.key) for the metrics endpoint (--metrics-cert-dir)
+	// If empty, self-signed certs are generated
+	// +optional
+	CertDir string `json:"certDir,omitempty"`
 }
 
 // HTTPAddonScalerSpec defines the scaler component configuration

@@ -5469,6 +5469,26 @@ spec:
                             - rfc3339nano
                             type: string
                         type: object
+                      metrics:
+                        description: Metrics configuration for the operator metrics
+                          endpoint
+                        properties:
+                          auth:
+                            description: |-
+                              Auth enables authentication and authorization for the metrics endpoint (--metrics-auth)
+                              default: true
+                            type: boolean
+                          certDir:
+                            description: |-
+                              CertDir is the directory containing TLS certificates (tls.crt/tls.key) for the metrics endpoint (--metrics-cert-dir)
+                              If empty, self-signed certs are generated
+                            type: string
+                          secure:
+                            description: |-
+                              Secure enables HTTPS for the metrics endpoint (--metrics-secure)
+                              default: true
+                            type: boolean
+                        type: object
                       nodeSelector:
                         additionalProperties:
                           type: string
@@ -5481,7 +5501,7 @@ spec:
                         type: object
                       port:
                         description: |-
-                          Port for the operator main server
+                          Port for the operator metrics server (--metrics-bind-address)
                           default: 8443
                         format: int32
                         maximum: 65535

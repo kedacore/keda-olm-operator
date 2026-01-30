@@ -106,6 +106,131 @@ func replaceHTTPAddonDeploymentReplicas(replicas int32, deploymentName string, s
 	}
 }
 
+// ReplaceHTTPAddonOperatorMetricsPort replaces the operator metrics port (--metrics-bind-address arg and container port)
+func ReplaceHTTPAddonOperatorMetricsPort(port int32, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" && u.GetName() == deploymentNameHTTPAddonOperator {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerNameHTTPAddonOperator {
+					// Update the --metrics-bind-address arg
+					for j, arg := range container.Args {
+						if strings.HasPrefix(arg, "--metrics-bind-address=") {
+							// Preserve the host part (e.g., "127.0.0.1" or empty)
+							// Format is --metrics-bind-address=[host]:port
+							parts := strings.SplitN(strings.TrimPrefix(arg, "--metrics-bind-address="), ":", 2)
+							host := ""
+							if len(parts) == 2 {
+								host = parts[0]
+							}
+							containers[i].Args[j] = "--metrics-bind-address=" + host + ":" + strconv.Itoa(int(port))
+							break
+						}
+					}
+					// Update the container port named "metrics"
+					for j, p := range container.Ports {
+						if p.Name == "metrics" {
+							containers[i].Ports[j].ContainerPort = port
+							break
+						}
+					}
+					break
+				}
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+// ReplaceHTTPAddonOperatorMetricsSecure sets or removes the --metrics-secure arg
+func ReplaceHTTPAddonOperatorMetricsSecure(secure bool, scheme *runtime.Scheme) mf.Transformer {
+	return replaceHTTPAddonBoolArg("--metrics-secure", secure, containerNameHTTPAddonOperator, deploymentNameHTTPAddonOperator, scheme)
+}
+
+// ReplaceHTTPAddonOperatorMetricsAuth sets or removes the --metrics-auth arg
+func ReplaceHTTPAddonOperatorMetricsAuth(auth bool, scheme *runtime.Scheme) mf.Transformer {
+	return replaceHTTPAddonBoolArg("--metrics-auth", auth, containerNameHTTPAddonOperator, deploymentNameHTTPAddonOperator, scheme)
+}
+
+// ReplaceHTTPAddonOperatorMetricsCertDir sets or removes the --metrics-cert-dir arg
+func ReplaceHTTPAddonOperatorMetricsCertDir(certDir string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" && u.GetName() == deploymentNameHTTPAddonOperator {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerNameHTTPAddonOperator {
+					argPrefix := "--metrics-cert-dir="
+					argFound := false
+					for j, arg := range container.Args {
+						if strings.HasPrefix(arg, argPrefix) {
+							if certDir == "" {
+								// Remove the arg
+								containers[i].Args = append(container.Args[:j], container.Args[j+1:]...)
+							} else {
+								containers[i].Args[j] = argPrefix + certDir
+							}
+							argFound = true
+							break
+						}
+					}
+					if !argFound && certDir != "" {
+						containers[i].Args = append(containers[i].Args, argPrefix+certDir)
+					}
+					break
+				}
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+// replaceHTTPAddonBoolArg adds or removes a boolean arg (like --metrics-secure=true)
+func replaceHTTPAddonBoolArg(argName string, value bool, containerName string, deploymentName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" && u.GetName() == deploymentName {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerName {
+					argPrefix := argName + "="
+					argFound := false
+					for j, arg := range container.Args {
+						if strings.HasPrefix(arg, argPrefix) || arg == argName {
+							if value {
+								containers[i].Args[j] = argName + "=true"
+							} else {
+								// Remove the arg
+								containers[i].Args = append(container.Args[:j], container.Args[j+1:]...)
+							}
+							argFound = true
+							break
+						}
+					}
+					if !argFound && value {
+						containers[i].Args = append(containers[i].Args, argName+"=true")
+					}
+					break
+				}
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
 // ReplaceHTTPAddonOperatorLogLevel replaces the operator log level
 func ReplaceHTTPAddonOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return replaceHTTPAddonLogArg(logLevel, LogLevelArg, containerNameHTTPAddonOperator, deploymentNameHTTPAddonOperator, scheme, logger)

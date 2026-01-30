@@ -117,7 +117,18 @@ func (r *KedaControllerReconciler) httpAddonOperatorTransforms(ctx context.Conte
 	}
 
 	if spec.Port > 0 {
-		transforms = append(transforms, transform.ReplaceHTTPAddonOperatorEnv("KEDA_HTTP_OPERATOR_PORT", strconv.Itoa(int(spec.Port)), r.Scheme))
+		transforms = append(transforms, transform.ReplaceHTTPAddonOperatorMetricsPort(spec.Port, r.Scheme))
+	}
+
+	// Metrics endpoint configuration
+	if spec.Metrics.Secure != nil {
+		transforms = append(transforms, transform.ReplaceHTTPAddonOperatorMetricsSecure(*spec.Metrics.Secure, r.Scheme))
+	}
+	if spec.Metrics.Auth != nil {
+		transforms = append(transforms, transform.ReplaceHTTPAddonOperatorMetricsAuth(*spec.Metrics.Auth, r.Scheme))
+	}
+	if spec.Metrics.CertDir != "" {
+		transforms = append(transforms, transform.ReplaceHTTPAddonOperatorMetricsCertDir(spec.Metrics.CertDir, r.Scheme))
 	}
 
 	// Logging configuration
