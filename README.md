@@ -547,14 +547,21 @@ For more information about the HTTP Add-on, see the [KEDA HTTP Add-on documentat
 #### Updating the HTTP Add-on Manifest
 
 The HTTP Add-on resources are embedded in `resources/keda-http-addon.yaml`. To update this manifest
-for a new HTTP Add-on version, use the generation script:
+for a new HTTP Add-on version, use the release preparation script:
 
 ```bash
-./hack/generate-http-addon-manifest.sh [VERSION]
+./hack/http-addon-relprep.sh <VERSION>
 ```
 
-This script renders the upstream Helm chart and outputs a single YAML file. After generation,
-review and adjust the manifest as documented in the script's output.
+For example, to update to version 0.12.0:
+
+```bash
+./hack/http-addon-relprep.sh 0.12.0
+```
+
+This script downloads the release manifest from GitHub, extracts the HTTPScaledObject CRD,
+and provides guidance on next steps. After running the script, review the changes and test
+with a KedaController that has `httpAddon.enabled: true`.
 
 #### HTTPScaledObject CRD
 
