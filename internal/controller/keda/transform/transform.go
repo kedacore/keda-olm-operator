@@ -23,10 +23,8 @@ var (
 	logTimeEncodings = []string{"epoch", "millis", "nano", "iso8601", "rfc3339", "rfc3339nano"}
 )
 
-// Prefix represents a command-line argument prefix for container arguments.
 type Prefix string
 
-// Command-line argument prefixes for KEDA container configuration.
 const (
 	LogLevelArg           Prefix = "--zap-log-level="
 	LogEncoderArg         Prefix = "--zap-encoder="
@@ -84,7 +82,6 @@ func ReplaceAllNamespaces(namespace string) mf.Transformer {
 	}
 }
 
-// ReplaceNamespace returns a transformer that changes the namespace of a RoleBinding with the given name.
 func ReplaceNamespace(name string, namespace string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetName() == name {
@@ -105,8 +102,6 @@ func ReplaceNamespace(name string, namespace string, scheme *runtime.Scheme, log
 	}
 }
 
-// ReplaceWatchNamespace returns a transformer that sets the WATCH_NAMESPACE environment variable
-// for the specified container in a Deployment.
 func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		changed := false
@@ -141,8 +136,6 @@ func ReplaceWatchNamespace(watchNamespace string, containerName string, scheme *
 	}
 }
 
-// RemoveSeccompProfile returns a transformer that removes the SeccompProfile from the SecurityContext
-// of the specified container in a Deployment if it's set to RuntimeDefault.
 func RemoveSeccompProfile(containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		changed := false
@@ -172,26 +165,18 @@ func RemoveSeccompProfile(containerName string, scheme *runtime.Scheme, logger l
 	}
 }
 
-// RemoveSeccompProfileFromKedaOperator returns a transformer that removes the SeccompProfile
-// from the KEDA operator container.
 func RemoveSeccompProfileFromKedaOperator(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return RemoveSeccompProfile(containerNameKedaOperator, scheme, logger)
 }
 
-// RemoveSeccompProfileFromMetricsServer returns a transformer that removes the SeccompProfile
-// from the KEDA metrics server container.
 func RemoveSeccompProfileFromMetricsServer(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return RemoveSeccompProfile(containerNameMetricsServer, scheme, logger)
 }
 
-// RemoveSeccompProfileFromAdmissionWebhooks returns a transformer that removes the SeccompProfile
-// from the KEDA admission webhooks container.
 func RemoveSeccompProfileFromAdmissionWebhooks(scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	return RemoveSeccompProfile(containerNameAdmissionWebhooks, scheme, logger)
 }
 
-// EnsureCABundleInjectionForValidatingWebhookConfiguration returns a transformer that adds an annotation
-// to a ValidatingWebhookConfiguration to enable CA bundle injection.
 func EnsureCABundleInjectionForValidatingWebhookConfiguration(annotation string, annotationValue string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "ValidatingWebhookConfiguration" {
@@ -209,8 +194,6 @@ func EnsureCABundleInjectionForValidatingWebhookConfiguration(annotation string,
 	}
 }
 
-// EnsureCABundleInjectionForAPIService returns a transformer that adds an annotation to an APIService
-// to enable CA bundle injection and disables InsecureSkipTLSVerify.
 func EnsureCABundleInjectionForAPIService(annotation string, annotationValue string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "APIService" {
@@ -229,8 +212,6 @@ func EnsureCABundleInjectionForAPIService(annotation string, annotationValue str
 	}
 }
 
-// EnsureCertInjectionForService returns a transformer that adds an annotation to a Service
-// with the specified name to enable certificate injection.
 func EnsureCertInjectionForService(serviceName string, annotation string, annotationValue string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Service" && u.GetName() == serviceName {
@@ -245,14 +226,10 @@ func EnsureCertInjectionForService(serviceName string, annotation string, annota
 	}
 }
 
-// MetricsServerEnsureCertificatesVolume returns a transformer that configures certificate volumes
-// and mounts for the KEDA metrics server container.
 func MetricsServerEnsureCertificatesVolume(configMapName, secretName string, scheme *runtime.Scheme) mf.Transformer {
 	return ensureCertificatesVolumeForDeployment(containerNameMetricsServer, configMapName, secretName, scheme)
 }
 
-// KedaOperatorEnsureCertificatesVolume returns a transformer that configures certificate volumes
-// and mounts for the KEDA operator, using projected volumes from service and gRPC client secrets.
 func KedaOperatorEnsureCertificatesVolume(serviceSecretName string, grpcClientCertsSecretName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -338,8 +315,6 @@ func KedaOperatorEnsureCertificatesVolume(serviceSecretName string, grpcClientCe
 	}
 }
 
-// AdmissionWebhooksEnsureCertificatesVolume returns a transformer that configures certificate volumes
-// and mounts for the KEDA admission webhooks container using projected volumes.
 func AdmissionWebhooksEnsureCertificatesVolume(configMapName, secretName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -561,9 +536,8 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 	}
 }
 
-// EnsureCACertsForOperatorDeployment returns transformers that add ConfigMap volumes for CA certificates.
-// The ConfigMaps are mounted as cabundle0, cabundle1, etc. at /custom/ca0, /custom/ca1, etc.
-// with corresponding container args --ca-dir=/custom/ca0, --ca-dir=/custom/ca1, etc.
+// Add configmap volumes for configMapNames named cabundle0, cabundle1, etc. as /custom/ca0, /custom/ca1, etc. with
+// container args --ca-dir=/custom/ca0, --ca-dir=/custom/ca1, etc.
 func EnsureCACertsForOperatorDeployment(configMapNames []string, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
 	var retval []mf.Transformer
 
@@ -652,8 +626,6 @@ func EnsureCACertsForOperatorDeployment(configMapNames []string, scheme *runtime
 	return retval
 }
 
-// EnsurePathsToCertsInDeployment returns transformers that set certificate file path arguments
-// for the KEDA metrics server container.
 func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
 	transforms := []mf.Transformer{}
 	for i := range values {
@@ -662,8 +634,6 @@ func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *
 	return transforms
 }
 
-// EnsureAuditPolicyConfigMapMountsVolume returns a transformer that mounts an audit policy ConfigMap
-// as a volume in the KEDA metrics server container.
 func EnsureAuditPolicyConfigMapMountsVolume(configMapName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -728,8 +698,6 @@ func EnsureAuditPolicyConfigMapMountsVolume(configMapName string, scheme *runtim
 	}
 }
 
-// ReplaceKedaOperatorLogLevel returns a transformer that sets the log level argument
-// for the KEDA operator container. Valid values are: debug, info, error, or an integer.
 func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
 	for _, level := range logLevels {
@@ -754,8 +722,6 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 	return replaceContainerArg(logLevel, prefix, containerNameKedaOperator, scheme, logger)
 }
 
-// ReplaceKedaOperatorLogEncoder returns a transformer that sets the log encoder argument
-// for the KEDA operator container. Valid values are: json, console.
 func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
 	for _, format := range logEncoders {
@@ -776,8 +742,6 @@ func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, lo
 	return replaceContainerArg(logEncoder, prefix, containerNameKedaOperator, scheme, logger)
 }
 
-// ReplaceMetricsServerLogLevel returns a transformer that sets the log verbosity level
-// for the KEDA metrics server container. Value must be a positive integer.
 func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
 	if _, err := strconv.ParseUint(logLevel, 10, 64); err == nil {
@@ -795,8 +759,6 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 	return replaceContainerArg(logLevel, prefix, containerNameMetricsServer, scheme, logger)
 }
 
-// ReplaceKedaOperatorLogTimeEncoding returns a transformer that sets the log time encoding
-// for the KEDA operator container. Valid values are: epoch, millis, nano, iso8601, rfc3339, rfc3339nano.
 func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
 	for _, timeEncoding := range logTimeEncodings {
@@ -817,8 +779,6 @@ func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.
 	return replaceContainerArg(logTimeEncoding, prefix, containerNameKedaOperator, scheme, logger)
 }
 
-// ReplaceAdmissionWebhooksLogLevel returns a transformer that sets the log level argument
-// for the KEDA admission webhooks container. Valid values are: debug, info, error, or an integer.
 func ReplaceAdmissionWebhooksLogLevel(logLevel string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
 	for _, level := range logLevels {
@@ -843,8 +803,6 @@ func ReplaceAdmissionWebhooksLogLevel(logLevel string, scheme *runtime.Scheme, l
 	return replaceContainerArg(logLevel, prefix, containerNameAdmissionWebhooks, scheme, logger)
 }
 
-// ReplaceAdmissionWebhooksLogEncoder returns a transformer that sets the log encoder argument
-// for the KEDA admission webhooks container. Valid values are: json, console.
 func ReplaceAdmissionWebhooksLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
 	for _, format := range logEncoders {
@@ -865,8 +823,6 @@ func ReplaceAdmissionWebhooksLogEncoder(logEncoder string, scheme *runtime.Schem
 	return replaceContainerArg(logEncoder, prefix, containerNameAdmissionWebhooks, scheme, logger)
 }
 
-// ReplaceAdmissionWebhooksLogTimeEncoding returns a transformer that sets the log time encoding
-// for the KEDA admission webhooks container. Valid values are: epoch, millis, nano, iso8601, rfc3339, rfc3339nano.
 func ReplaceAdmissionWebhooksLogTimeEncoding(logTimeEncoding string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	found := false
 	for _, timeEncoding := range logTimeEncodings {
@@ -887,8 +843,6 @@ func ReplaceAdmissionWebhooksLogTimeEncoding(logTimeEncoding string, scheme *run
 	return replaceContainerArg(logTimeEncoding, prefix, containerNameAdmissionWebhooks, scheme, logger)
 }
 
-// ReplaceArbitraryArg returns a transformer that sets an arbitrary command-line argument
-// for the specified resource container. The resource can be: operator, metricsserver, or admissionwebhooks.
 func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	prefix := Prefix("")
 	prefixStr := ""
@@ -925,8 +879,6 @@ func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Schem
 	}
 }
 
-// SetOperatorCertRotation returns a transformer that enables or disables certificate rotation
-// for the KEDA operator container.
 func SetOperatorCertRotation(enable bool, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	arg := "false"
 	if enable {
@@ -935,8 +887,6 @@ func SetOperatorCertRotation(enable bool, scheme *runtime.Scheme, logger logr.Lo
 	return replaceContainerArg(arg, CertRotation, containerNameKedaOperator, scheme, logger)
 }
 
-// ReplaceAuditConfig returns a transformer that sets audit configuration arguments for the KEDA metrics server.
-// Valid selectors are: policyfile, logformat, logpath, maxage, maxbackup, maxsize.
 func ReplaceAuditConfig(argument string, selector string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
 	var prefix string
 	switch selector {
@@ -1068,8 +1018,6 @@ func replaceContainerArgs(values []string, prefix Prefix, containerName string, 
 	}
 }
 
-// AddServiceAccountAnnotations returns a transformer that adds the specified annotations
-// to ServiceAccount resources.
 func AddServiceAccountAnnotations(annotations map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "ServiceAccount" {
@@ -1086,8 +1034,6 @@ func AddServiceAccountAnnotations(annotations map[string]string, scheme *runtime
 	}
 }
 
-// AddServiceAccountLabels returns a transformer that adds the specified labels
-// to ServiceAccount resources.
 func AddServiceAccountLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "ServiceAccount" {
@@ -1104,8 +1050,6 @@ func AddServiceAccountLabels(labels map[string]string, scheme *runtime.Scheme) m
 	}
 }
 
-// AddPodAnnotations returns a transformer that adds the specified annotations
-// to the Pod template in Deployment resources.
 func AddPodAnnotations(annotations map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1122,8 +1066,6 @@ func AddPodAnnotations(annotations map[string]string, scheme *runtime.Scheme) mf
 	}
 }
 
-// AddPodLabels returns a transformer that adds the specified labels
-// to the Pod template in Deployment resources.
 func AddPodLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1140,8 +1082,6 @@ func AddPodLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transform
 	}
 }
 
-// AddDeploymentAnnotations returns a transformer that adds the specified annotations
-// to Deployment resources.
 func AddDeploymentAnnotations(annotations map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1158,8 +1098,6 @@ func AddDeploymentAnnotations(annotations map[string]string, scheme *runtime.Sch
 	}
 }
 
-// AddDeploymentLabels returns a transformer that adds the specified labels
-// to Deployment resources.
 func AddDeploymentLabels(labels map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1187,8 +1125,6 @@ func updateMap(mapToUpdate map[string]string, newValues map[string]string) map[s
 	return newValues
 }
 
-// ReplaceNodeSelector returns a transformer that sets the node selector
-// for the Pod template in Deployment resources.
 func ReplaceNodeSelector(nodeSelector map[string]string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1204,8 +1140,6 @@ func ReplaceNodeSelector(nodeSelector map[string]string, scheme *runtime.Scheme)
 	}
 }
 
-// ReplaceTolerations returns a transformer that sets the tolerations
-// for the Pod template in Deployment resources.
 func ReplaceTolerations(tolerations []corev1.Toleration, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1221,8 +1155,6 @@ func ReplaceTolerations(tolerations []corev1.Toleration, scheme *runtime.Scheme)
 	}
 }
 
-// ReplaceAffinity returns a transformer that sets the affinity rules
-// for the Pod template in Deployment resources.
 func ReplaceAffinity(affinity *corev1.Affinity, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1238,8 +1170,6 @@ func ReplaceAffinity(affinity *corev1.Affinity, scheme *runtime.Scheme) mf.Trans
 	}
 }
 
-// ReplacePriorityClassName returns a transformer that sets the priority class name
-// for the Pod template in Deployment resources.
 func ReplacePriorityClassName(priorityClassName string, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1255,20 +1185,14 @@ func ReplacePriorityClassName(priorityClassName string, scheme *runtime.Scheme) 
 	}
 }
 
-// ReplaceKedaOperatorResources returns a transformer that sets the resource requirements
-// for the KEDA operator container.
 func ReplaceKedaOperatorResources(resources corev1.ResourceRequirements, scheme *runtime.Scheme) mf.Transformer {
 	return replaceResources(resources, containerNameKedaOperator, scheme)
 }
 
-// ReplaceMetricsServerResources returns a transformer that sets the resource requirements
-// for the KEDA metrics server container.
 func ReplaceMetricsServerResources(resources corev1.ResourceRequirements, scheme *runtime.Scheme) mf.Transformer {
 	return replaceResources(resources, containerNameMetricsServer, scheme)
 }
 
-// ReplaceAdmissionWebhooksResources returns a transformer that sets the resource requirements
-// for the KEDA admission webhooks container.
 func ReplaceAdmissionWebhooksResources(resources corev1.ResourceRequirements, scheme *runtime.Scheme) mf.Transformer {
 	return replaceResources(resources, containerNameAdmissionWebhooks, scheme)
 }
@@ -1294,20 +1218,14 @@ func replaceResources(resources corev1.ResourceRequirements, containerName strin
 	}
 }
 
-// ReplaceMetricsServerImage returns a transformer that sets the container image
-// for the KEDA metrics server.
 func ReplaceMetricsServerImage(image string, scheme *runtime.Scheme) mf.Transformer {
 	return replaceContainerImage(image, containerNameMetricsServer, scheme)
 }
 
-// ReplaceKedaOperatorImage returns a transformer that sets the container image
-// for the KEDA operator.
 func ReplaceKedaOperatorImage(image string, scheme *runtime.Scheme) mf.Transformer {
 	return replaceContainerImage(image, containerNameKedaOperator, scheme)
 }
 
-// ReplaceAdmissionWebhooksImage returns a transformer that sets the container image
-// for the KEDA admission webhooks.
 func ReplaceAdmissionWebhooksImage(image string, scheme *runtime.Scheme) mf.Transformer {
 	return replaceContainerImage(image, containerNameAdmissionWebhooks, scheme)
 }
@@ -1333,8 +1251,6 @@ func replaceContainerImage(image string, containerName string, scheme *runtime.S
 	}
 }
 
-// EnsureAuditLogMount returns a transformer that mounts a PersistentVolumeClaim
-// for audit log output in the KEDA metrics server container.
 func EnsureAuditLogMount(pvc string, path string, scheme *runtime.Scheme) mf.Transformer {
 	const logOutputVolumeName = "audit-log"
 	return func(u *unstructured.Unstructured) error {
@@ -1399,8 +1315,6 @@ func EnsureAuditLogMount(pvc string, path string, scheme *runtime.Scheme) mf.Tra
 	}
 }
 
-// ReplaceDeploymentVolumes returns a transformer that adds or replaces volumes
-// in Deployment resources. Existing volumes with matching names are replaced.
 func ReplaceDeploymentVolumes(desiredVolumes []corev1.Volume, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
@@ -1433,8 +1347,6 @@ func ReplaceDeploymentVolumes(desiredVolumes []corev1.Volume, scheme *runtime.Sc
 	}
 }
 
-// ReplaceDeploymentVolumeMounts returns a transformer that adds or replaces volume mounts
-// in KEDA operand containers. Existing mounts with matching names are replaced.
 func ReplaceDeploymentVolumeMounts(desiredVolumeMounts []corev1.VolumeMount, scheme *runtime.Scheme) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
