@@ -88,7 +88,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Fetch the ConfigMap instance
 	instance := &corev1.ConfigMap{}
-	err := r.Client.Get(ctx, req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -101,7 +101,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	kedaController := &kedav1alpha1.KedaController{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: "keda", Namespace: r.installNamespace}, kedaController)
+	err = r.Get(ctx, types.NamespacedName{Name: "keda", Namespace: r.installNamespace}, kedaController)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// there isn't any keda KedaController CR created in namespace keda -> do nothing

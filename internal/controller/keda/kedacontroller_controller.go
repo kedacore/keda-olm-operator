@@ -136,7 +136,7 @@ func (r *KedaControllerReconciler) ensureKedaController(logger logr.Logger) {
 
 	// Fetch operator namespace
 	kedaNamespace := &corev1.Namespace{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: r.resourceNamespace}, kedaNamespace)
+	err := r.Get(ctx, types.NamespacedName{Name: r.resourceNamespace}, kedaNamespace)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Error(err, "Keda namespace not found.")
@@ -151,12 +151,12 @@ func (r *KedaControllerReconciler) ensureKedaController(logger logr.Logger) {
 
 	// If operator namespace is not annotated, annotate and create a default KedaController if one doesn't exist
 	if _, ok := annotations[kedaDefaultControllerAnnotation]; !ok {
-		err = r.Client.Get(ctx, types.NamespacedName{Name: kedaControllerResourceName, Namespace: r.resourceNamespace}, &kedav1alpha1.KedaController{})
+		err = r.Get(ctx, types.NamespacedName{Name: kedaControllerResourceName, Namespace: r.resourceNamespace}, &kedav1alpha1.KedaController{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				logger.Info("KedaController does not exist. Creating default KedaController resource")
 				instance := r.initializeDefaultController()
-				err = r.Client.Create(ctx, instance)
+				err = r.Create(ctx, instance)
 				if err != nil {
 					logger.Error(err, "Error creating default KedaController")
 					return
@@ -177,7 +177,7 @@ func (r *KedaControllerReconciler) ensureKedaController(logger logr.Logger) {
 
 		annotations[kedaDefaultControllerAnnotation] = "true"
 		kedaNamespaceCopy.SetAnnotations(annotations)
-		err = r.Client.Patch(ctx, kedaNamespaceCopy, client.StrategicMergeFrom(kedaNamespace))
+		err = r.Patch(ctx, kedaNamespaceCopy, client.StrategicMergeFrom(kedaNamespace))
 		if err != nil {
 			logger.Error(err, "Error patching namespace with annotation for default KedaController creation")
 			return
@@ -226,7 +226,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Fetch the KedaController instance
 	instance := &kedav1alpha1.KedaController{}
-	err := r.Client.Get(ctx, req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -258,7 +258,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			// removed, the object will be deleted.
 			patch := client.MergeFrom(instance.DeepCopy())
 			instance.SetFinalizers(remove(instance.GetFinalizers(), kedaControllerFinalizer))
-			err := r.Client.Patch(ctx, instance, patch)
+			err := r.Patch(ctx, instance, patch)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -693,8 +693,8 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	// Audit logging validation - configMap exists, logOutVolumeClaim validation
 	// policy is a wrapper AuditPolicy for auditv1.Policy for easier user exposure
-	policy := instance.Spec.MetricsServer.AuditConfig.Policy
-	logOutVolumeClaim := instance.Spec.MetricsServer.AuditConfig.LogOutputVolumeClaim
+	policy := instance.Spec.MetricsServer.Policy
+	logOutVolumeClaim := instance.Spec.MetricsServer.LogOutputVolumeClaim
 
 	// if policy is not empty, audit logging is ON
 	if !reflect.DeepEqual(policy, kedav1alpha1.AuditPolicy{}) {
@@ -712,7 +712,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 		// --- Log output setup ---
 		// validation checks around logOutVolumeClaim and lifetime arguments
-		if err := validateAuditLogVolumeWithArgs(logOutVolumeClaim, instance.Spec.MetricsServer.AuditConfig.AuditLifetime); err != nil {
+		if err := validateAuditLogVolumeWithArgs(logOutVolumeClaim, instance.Spec.MetricsServer.AuditLifetime); err != nil {
 			logger.Error(err, "unable to validate args for Audit logging")
 			return err
 		}
@@ -817,7 +817,7 @@ func (r *KedaControllerReconciler) ensureOpenshiftCABundleConfigMap(ctx context.
 	logger.Info("Ensure ConfigMap for OpenShift CA bundle exists")
 
 	configMap := &corev1.ConfigMap{}
-	err := r.Client.Get(ctx, types.NamespacedName{Name: caBundleConfigMapName, Namespace: instance.Namespace}, configMap)
+	err := r.Get(ctx, types.NamespacedName{Name: caBundleConfigMapName, Namespace: instance.Namespace}, configMap)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			configMap.Name = caBundleConfigMapName
@@ -829,7 +829,7 @@ func (r *KedaControllerReconciler) ensureOpenshiftCABundleConfigMap(ctx context.
 				return err
 			}
 
-			err = r.Client.Create(ctx, configMap)
+			err = r.Create(ctx, configMap)
 			if err != nil {
 				logger.Error(err, "Failed to create new ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", caBundleConfigMapName)
 				return err
@@ -860,7 +860,7 @@ func (r *KedaControllerReconciler) ensureOpenshiftCABundleConfigMap(ctx context.
 	}
 
 	if configMapUpdate {
-		err = r.Client.Update(ctx, configMap)
+		err = r.Update(ctx, configMap)
 		if err != nil {
 			logger.Error(err, "Failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", caBundleConfigMapName)
 			return err
@@ -871,7 +871,7 @@ func (r *KedaControllerReconciler) ensureOpenshiftCABundleConfigMap(ctx context.
 }
 
 func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
-	policy := instance.Spec.MetricsServer.AuditConfig.Policy
+	policy := instance.Spec.MetricsServer.Policy
 
 	// create real policy struct from higher level wrapper AuditPolicy exposed to user
 	realPolicy := auditv1.Policy{}
@@ -887,7 +887,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	}
 
 	configMap := &corev1.ConfigMap{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: auditlogPolicyConfigMap, Namespace: instance.Namespace}, configMap)
+	err = r.Get(ctx, types.NamespacedName{Name: auditlogPolicyConfigMap, Namespace: instance.Namespace}, configMap)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// create ConfigMap if not found
@@ -902,7 +902,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 				return err
 			}
 
-			err = r.Client.Create(ctx, configMap)
+			err = r.Create(ctx, configMap)
 			if err != nil {
 				logger.Error(err, "failed to create new Audit Policy ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
 				return err
@@ -930,7 +930,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	}
 
 	if configMapUpdate {
-		err = r.Client.Update(ctx, configMap)
+		err = r.Update(ctx, configMap)
 		if err != nil {
 			logger.Error(err, "failed to update ConfigMap in cluster", "ConfigMap.Namespace", instance.Namespace, "ConfigMap.Name", auditlogPolicyConfigMap)
 			return err
@@ -1058,14 +1058,14 @@ func auditConfigTransformation(t []mf.Transformer, ac kedav1alpha1.AuditConfig, 
 	if ac.LogFormat != "" {
 		t = append(t, transform.ReplaceAuditConfig(ac.LogFormat, "logformat", scheme, logger))
 	}
-	if ac.AuditLifetime.MaxAge != "" {
-		t = append(t, transform.ReplaceAuditConfig(ac.AuditLifetime.MaxAge, "maxage", scheme, logger))
+	if ac.MaxAge != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac.MaxAge, "maxage", scheme, logger))
 	}
-	if ac.AuditLifetime.MaxBackup != "" {
-		t = append(t, transform.ReplaceAuditConfig(ac.AuditLifetime.MaxBackup, "maxbackup", scheme, logger))
+	if ac.MaxBackup != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac.MaxBackup, "maxbackup", scheme, logger))
 	}
-	if ac.AuditLifetime.MaxSize != "" {
-		t = append(t, transform.ReplaceAuditConfig(ac.AuditLifetime.MaxSize, "maxsize", scheme, logger))
+	if ac.MaxSize != "" {
+		t = append(t, transform.ReplaceAuditConfig(ac.MaxSize, "maxsize", scheme, logger))
 	}
 	return t
 }

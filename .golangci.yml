@@ -1,3 +1,5 @@
+version: "2"
+
 # options for analysis running
 run:
   # default concurrency is a available CPU number
@@ -5,20 +7,16 @@ run:
 
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 10m
+
 linters:
-  # please, do not use `enable-all`: it's deprecated and will be removed soon.
-  # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
-  disable-all: true
+  default: none
   enable:
-    - typecheck
     - dupl
     - goprintffuncname
     - govet
     - nolintlint
     #- rowserrcheck
-    - gofmt
     - revive
-    - goimports
     - misspell
     - bodyclose
     - unconvert
@@ -29,80 +27,87 @@ linters:
     - dogsled
     - errcheck
     #- funlen
-    - gci
     - goconst
     - gocritic
     - gocyclo
-    - gosimple
-    - stylecheck
     - unused
     - unparam
-    - unconvert
     - whitespace
 
-issues:
-  include:
-  - EXC0002 # disable excluding of issues about comments from golint
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gomnd
-        - dupl
-    # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
-    # but we don't need to make them constants
-    - path: internal/controller/keda/transform/transform.go
-      linters:
-        - goconst
-    # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
-    # but we don't need to make them constants
-    # and:
-    # "exported: type name will be used as keda.KedaControllerReconciler by other packages, and that stutters;
-    # consider calling this ControllerReconciler (revive)"
-    - path: internal/controller/keda/kedacontroller_controller.go
-      linters:
-        - goconst
-        - revive
-    # Exclude for controllers, reason:
-    # "internal/controller/configmap_controller.go:49: 49-80 lines are duplicate of `internal/controller/secret_controller.go:49-80`"
-    - path: _controller.go
-      linters:
-        - dupl
-    # Exclude because: "internal/controller/suite_test.go:157:63: `getObject` - `namespace` always receives `namespace` (`"keda"`)"
-    - path: internal/controller/keda/suite_test.go
-      linters:
-        - unparam
-    # Exclude because: "declaration has 3 blank identifiers" -> it's ok, we don't need them
-    - path: resources/resources_handler.go
-      linters:
-        - dogsled
-    - path: cmd/main.go
-      linters:
-        - gci
-    # https://github.com/go-critic/go-critic/issues/926
-    - linters:
-        - gocritic
-      text: "unnecessaryDefer:"
-    - linters:
-       - stylecheck
-      text: "ST1000:"
-    # Exclude some linters from running on test files.
-    - path: _test\.go$
-      text: "dot-imports: should not use dot imports"
+  settings:
+    funlen:
+      lines: 80
+      statements: 40
+    # copied from https://github.com/kedacore/keda/blob/1ab35e75a63b3b33ca59552dda93220fd916a05d/.golangci.yml#L163-L168
+    depguard: #https://github.com/kedacore/keda/issues/4980
+      rules:
+        main:
+          deny:
+            - pkg: sync/atomic
+              desc: "use type-safe atomics from go.uber.org/atomic"
+    revive:
+      rules:
+        # Disable rules that require comments on all exported types
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+          disabled: true
 
-linters-settings:
-  funlen:
-    lines: 80
-    statements: 40
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/kedacore/keda)
-  # copied from https://github.com/kedacore/keda/blob/1ab35e75a63b3b33ca59552dda93220fd916a05d/.golangci.yml#L163-L168
-  depguard: #https://github.com/kedacore/keda/issues/4980
+  # Defines a set of rules to ignore issues
+  exclusions:
+    # Use presets for common exclusions
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+    # Excluding configuration per-path, per-linter, per-text and per-source
     rules:
-      main:
-        deny:
-          - pkg: sync/atomic
-            desc: "use type-safe atomics from go.uber.org/atomic"
+      - path: _test\.go
+        linters:
+          - dupl
+      # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
+      # but we don't need to make them constants
+      - path: internal/controller/keda/transform/transform\.go
+        linters:
+          - goconst
+      # Exclude because: "string `Deployment` has 3 occurrences, but such constant `Deployment` already exists"
+      # but we don't need to make them constants
+      - path: internal/controller/keda/kedacontroller_controller\.go
+        linters:
+          - goconst
+      # Exclude for controllers, reason:
+      # "internal/controller/configmap_controller.go:49: 49-80 lines are duplicate of `internal/controller/secret_controller.go:49-80`"
+      - path: _controller\.go
+        linters:
+          - dupl
+      # Exclude because: "internal/controller/suite_test.go:157:63: `getObject` - `namespace` always receives `namespace` (`"keda"`)"
+      - path: internal/controller/keda/suite_test\.go
+        linters:
+          - unparam
+          - goconst
+      # Exclude because: "declaration has 3 blank identifiers" -> it's ok, we don't need them
+      - path: resources/resources_handler\.go
+        linters:
+          - dogsled
+      - linters:
+          - staticcheck
+        text: "ST1000:"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gci
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/kedacore/keda-olm-operator)
+
+  exclusions:
+    paths:
+      - cmd/main\.go

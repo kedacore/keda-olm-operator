@@ -88,7 +88,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// Fetch the Secret instance
 	instance := &corev1.Secret{}
-	err := r.Client.Get(ctx, req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after ctrl req.
@@ -101,7 +101,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	kedaController := &kedav1alpha1.KedaController{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: "keda", Namespace: r.secretNamespace}, kedaController)
+	err = r.Get(ctx, types.NamespacedName{Name: "keda", Namespace: r.secretNamespace}, kedaController)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// there isn't any keda KedaController CR created in namespace keda -> do nothing
