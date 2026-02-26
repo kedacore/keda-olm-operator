@@ -4126,6 +4126,13 @@ spec:
                       allowed values: "0" for info, "4" for debug, or an integer value greater than 0, specified as string
                       default value: "0"
                     type: string
+                  networkEgressAllowAll:
+                    description: |-
+                      If set to true, an "allow all" network policy will be added to permit the KEDA Controller to connect to network endpoints.
+                      If set to "false", the "allow all" policy will be removed, and a cluster admin can create tailored policies
+                      to match their network security requirements
+                      default value: "true"
+                    type: string
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -7082,6 +7089,13 @@ spec:
                       Logging time encoding for KEDA Controller
                       allowed values are 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'
                       default value: rfc3339
+                    type: string
+                  networkEgressAllowAll:
+                    description: |-
+                      If set to true, an "allow all" network policy will be added to permit the KEDA Controller to connect to network endpoints.
+                      If set to "false", the "allow all" policy will be removed, and a cluster admin can create tailored policies
+                      to match their network security requirements
+                      default value: "true"
                     type: string
                   nodeSelector:
                     additionalProperties:

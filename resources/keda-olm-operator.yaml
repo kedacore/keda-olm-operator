@@ -76,3 +76,166 @@ spec:
     - targetPort: 8080
       path: /metrics
       interval: 60s
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-default-deny
+spec:
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-admission-webhooks, keda-metrics-apiserver]}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-egress-to-api-server
+spec:
+  egress:
+  - ports:
+    - port: 6443
+      protocol: TCP
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-admission-webhooks, keda-metrics-apiserver]}
+  policyTypes:
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-egress-to-dns
+spec:
+  egress:
+  - ports:
+    - port: 5353
+      protocol: TCP
+    - port: 5353
+      protocol: UDP
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-admission-webhooks, keda-metrics-apiserver]}
+  policyTypes:
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda-admission-webhooks
+  name: keda-allow-ingress-to-webhook
+spec:
+  ingress:
+  - ports:
+    - port: 9443
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      app: keda-admission-webhooks
+      name: keda-admission-webhooks
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-ingress-to-metrics-api
+spec:
+  ingress:
+  - ports:
+    - port: 6443
+      protocol: TCP
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-metrics-apiserver]}
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-grpc-access
+spec:
+  egress:
+  - ports:
+    - port: 9666
+      protocol: TCP
+    to:
+    - podSelector:
+        matchLabels:
+          app: keda-operator
+  ingress:
+  - ports:
+    - port: 9666
+      protocol: TCP
+    from:
+    - podSelector:
+        matchLabels:
+          app: keda-metrics-apiserver
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-metrics-apiserver]}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-ingress-to-metrics
+spec:
+  ingress:
+  - ports:
+    - port: 8443
+      protocol: TCP
+    - port: 8080
+      protocol: TCP
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-admission-webhooks, keda-metrics-apiserver]}
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: keda
+  labels:
+    app.kubernetes.io/name: keda
+  name: keda-allow-egress-to-all
+spec:
+  egress:
+  - ports:
+    - port: 1
+      endPort: 65535
+      protocol: TCP
+    - port: 1
+      endPort: 65535
+      protocol: UDP
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [keda-operator, keda-metrics-apiserver]}
+  policyTypes:
+  - Egress
