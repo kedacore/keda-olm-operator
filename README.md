@@ -8,6 +8,7 @@
     - [Manual installation](#manual-installation)
   - [The `KedaController` Custom Resource](#the-kedacontroller-custom-resource)
     - [`KedaController` Spec](#kedacontroller-spec)
+    - [HTTP Add-on](#http-add-on)
   - [Uninstallation](#uninstallation)
     - [How to uninstall KEDA Controller](#how-to-uninstall-keda-controller)
     - [How to uninstall KEDA OLM Operator](#how-to-uninstall-keda-olm-operator)
@@ -435,8 +436,139 @@ spec:
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
     # labels:
     #  labelKey: labelValue
+
+  ## KEDA HTTP Add-on related config
+  ## The HTTP Add-on will only be installed if httpAddon.enabled is set to true
+  httpAddon:
+    ## Enable the HTTP Add-on installation
+    # default: false
+    enabled: false
+
+    ## HTTP Add-on Operator configuration
+    # operator:
+    #   replicas: 1
+    #   watchNamespace: ""
+    #   port: 8443
+    #   logging:
+    #     level: info
+    #     format: console
+    #     timeEncoding: rfc3339
+    #   resources:
+    #     limits:
+    #       cpu: 0.5
+    #       memory: 64Mi
+    #     requests:
+    #       cpu: 250m
+    #       memory: 20Mi
+
+    ## HTTP Add-on Scaler configuration
+    # scaler:
+    #   replicas: 3
+    #   grpcPort: 9090
+    #   pendingRequestsInterceptor: 200
+    #   streamInterval: 200
+    #   logging:
+    #     level: info
+    #     format: console
+    #     timeEncoding: rfc3339
+
+    ## HTTP Add-on Interceptor configuration
+    # interceptor:
+    #   replicas:
+    #     min: 3
+    #     max: 50
+    #     waitTimeout: 20s
+    #   tcpConnectTimeout: 500ms
+    #   keepAlive: 1s
+    #   responseHeaderTimeout: 500ms
+    #   logging:
+    #     level: info
+    #     format: console
+    #     timeEncoding: rfc3339
+    #   podDisruptionBudget:
+    #     enabled: true
+    #     maxUnavailable: 1
+
+    ## Custom images configuration
+    # images:
+    #   tag: ""
+    #   operator: ghcr.io/kedacore/http-add-on-operator
+    #   interceptor: ghcr.io/kedacore/http-add-on-interceptor
+    #   scaler: ghcr.io/kedacore/http-add-on-scaler
 ```
 
+### HTTP Add-on
+
+> **⚠️ Experimental Feature**: The HTTP Add-on integration is currently experimental. The `HTTPScaledObject`
+> CRD is in `v1alpha1` and may change in future versions. Some configuration options are not yet fully
+> implemented. We recommend using this feature for testing and development purposes.
+
+The KEDA HTTP Add-on is an optional component that enables HTTP-based autoscaling for your applications.
+When enabled, it installs three components:
+
+- **Operator**: Manages `HTTPScaledObject` resources and creates KEDA `ScaledObject` resources
+- **Scaler**: External scaler that provides metrics to KEDA for HTTP-based scaling
+- **Interceptor**: Proxy that intercepts HTTP traffic and reports metrics to the scaler
+
+To enable the HTTP Add-on, set `httpAddon.enabled: true` in your `KedaController` resource:
+
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  httpAddon:
+    enabled: true
+```
+
+Once installed, you can create `HTTPScaledObject` resources to enable HTTP-based autoscaling:
+
+```yaml
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: my-http-app
+spec:
+  hosts:
+    - myapp.example.com
+  scaleTargetRef:
+    name: my-deployment
+    service: my-service
+    port: 8080
+  replicas:
+    min: 1
+    max: 10
+```
+
+For more information about the HTTP Add-on, see the [KEDA HTTP Add-on documentation](https://github.com/kedacore/http-add-on).
+
+#### Updating the HTTP Add-on Manifest
+
+The HTTP Add-on resources are embedded in `resources/keda-http-addon.yaml`. To update this manifest
+for a new HTTP Add-on version, use the release preparation script:
+
+```bash
+./hack/http-addon-relprep.sh <VERSION>
+```
+
+For example, to update to version 0.12.0:
+
+```bash
+./hack/http-addon-relprep.sh 0.12.0
+```
+
+This script downloads the release manifest from GitHub, extracts the HTTPScaledObject CRD,
+and provides guidance on next steps. After running the script, review the changes and test
+with a KedaController that has `httpAddon.enabled: true`.
+
+#### HTTPScaledObject CRD
+
+The `HTTPScaledObject` CRD is included in the embedded manifest and is installed by the operator
+when the HTTP Add-on is enabled. Note that since the CRD is in `v1alpha1`, future updates to
+the HTTP Add-on may require CRD schema changes. The operator will attempt to update the CRD
+when reconciling, but manual intervention may be needed for breaking changes.
 
 ## Uninstallation
 

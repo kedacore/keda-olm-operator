@@ -317,3 +317,93 @@ spec:
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
     # labels:
     #  labelKey: labelValue
+
+  # KEDA HTTP Add-on related config
+  # The HTTP Add-on will only be installed if httpAddon.enabled is set to true
+  httpAddon:
+    ## Enable the HTTP Add-on installation
+    enabled: false
+
+    ## Additional labels to be applied to HTTP Add-on resources
+    # additionalLabels: {}
+
+    ## HTTP Add-on Operator configuration
+    # operator:
+    #   replicas: 1
+    #   watchNamespace: ""
+    #   port: 8443
+    #   logging:
+    #     level: info
+    #     format: console
+    #     timeEncoding: rfc3339
+    #   resources:
+    #     limits:
+    #       cpu: 0.5
+    #       memory: 64Mi
+    #     requests:
+    #       cpu: 250m
+    #       memory: 20Mi
+
+    ## HTTP Add-on Scaler configuration
+    # scaler:
+    #   replicas: 3
+    #   grpcPort: 9090
+    #   pendingRequestsInterceptor: 200
+    #   streamInterval: 200
+    #   logging:
+    #     level: info
+    #     format: console
+    #     timeEncoding: rfc3339
+    #   resources:
+    #     limits:
+    #       cpu: 0.5
+    #       memory: 64Mi
+    #     requests:
+    #       cpu: 250m
+    #       memory: 20Mi
+
+    ## HTTP Add-on Interceptor configuration
+    # interceptor:
+    #   replicas:
+    #     min: 3
+    #     max: 50
+    #     waitTimeout: 20s
+    #   admin:
+    #     service: interceptor-admin
+    #     port: 9090
+    #   proxy:
+    #     service: interceptor-proxy
+    #     port: 8080
+    #   scaledObject:
+    #     pollingInterval: 1
+    #   tcpConnectTimeout: 500ms
+    #   keepAlive: 1s
+    #   responseHeaderTimeout: 500ms
+    #   endpointsCachePollingIntervalMS: 250
+    #   forceHTTP2: false
+    #   maxIdleConns: 100
+    #   idleConnTimeout: 90s
+    #   tlsHandshakeTimeout: 10s
+    #   expectContinueTimeout: 1s
+    #   logging:
+    #     level: info
+    #     format: console
+    #     timeEncoding: rfc3339
+    #   resources:
+    #     limits:
+    #       cpu: 0.5
+    #       memory: 64Mi
+    #     requests:
+    #       cpu: 250m
+    #       memory: 20Mi
+    #   podDisruptionBudget:
+    #     enabled: true
+    #     minAvailable: 0
+    #     maxUnavailable: 1
+
+    ## Custom images configuration
+    # images:
+    #   tag: ""
+    #   operator: ghcr.io/kedacore/http-add-on-operator
+    #   interceptor: ghcr.io/kedacore/http-add-on-interceptor
+    #   scaler: ghcr.io/kedacore/http-add-on-scaler

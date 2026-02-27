@@ -223,6 +223,20 @@ deploy-olm-testing:
 	sed -i 's/keda-test.v${VERSION}/keda.v${VERSION}/' bundle/manifests/keda.clusterserviceversion.yaml
 
 
+##@ HTTP Add-on Testing
+
+.PHONY: test-http-addon
+test-http-addon: ## Run HTTP Add-on installation test on Kind cluster
+	./hack/test-http-addon.sh
+
+.PHONY: test-http-addon-existing-cluster
+test-http-addon-existing-cluster: ## Run HTTP Add-on test using existing cluster (skip cluster creation and image build)
+	SKIP_CLUSTER_CREATE=true SKIP_BUILD=true ./hack/test-http-addon.sh
+
+.PHONY: test-http-addon-with-sample
+test-http-addon-with-sample: ## Run HTTP Add-on test with sample application
+	DEPLOY_SAMPLE_APP=true ./hack/test-http-addon.sh
+
 ##@ General
 
 # The help target prints out all targets with their descriptions organized

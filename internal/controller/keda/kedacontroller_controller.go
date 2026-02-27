@@ -88,6 +88,7 @@ type KedaControllerReconciler struct {
 	resourcesMetrics    mf.Manifest
 	resourcesWebhooks   mf.Manifest
 	resourcesMonitoring mf.Manifest
+	resourcesHTTPAddon  mf.Manifest
 	discoveryClient     *discovery.DiscoveryClient
 	resourceNamespace   string
 }
@@ -109,6 +110,16 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaContro
 	r.resourcesMetrics = manifestMetrics
 	r.resourcesWebhooks = manifestWebhooks
 	r.resourcesMonitoring = manifestMonitoring
+
+	// Load HTTP Add-on manifest
+	httpAddonManifest, err := resources.GetHTTPAddonManifest()
+	if err != nil {
+		logger.Error(err, "Unable to load HTTP Add-on manifest")
+		return err
+	}
+	r.resourcesHTTPAddon = httpAddonManifest
+	r.resourcesHTTPAddon.Client = mfc.NewClient(r.Client)
+
 	if restConfig, err := ctrl.GetConfig(); err != nil {
 		logger.Info("Unable to get REST Config for cluster version discovery. Ignore this message in test environments", "err", err)
 	} else {
@@ -213,6 +224,10 @@ func (r *KedaControllerReconciler) initializeDefaultController() *kedav1alpha1.K
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=create;delete;get;list;patch;update;watch
+// +kubebuilder:rbac:groups=http.keda.sh,resources=httpscaledobjects,verbs=create;delete;get;list;patch;update;watch
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects,verbs=create;delete;get;list;patch;update;watch
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=create;delete;get;list;patch;update;watch
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -314,8 +329,24 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	// Install HTTP Add-on if enabled
+	if err := r.installHTTPAddon(ctx, logger, instance); err != nil {
+		status.MarkInstallFailed("Not able to install KEDA HTTP Add-on")
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
+		return ctrl.Result{}, err
+	}
+
+	// Update HTTP Add-on installed status
+	status.HTTPAddonInstalled = instance.Spec.HTTPAddon.Enabled
+
 	status.Version = version.Version
-	status.MarkInstallSucceeded(fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, r.resourceNamespace))
+	successMsg := fmt.Sprintf("KEDA v%s is installed in namespace '%s'", version.Version, r.resourceNamespace)
+	if instance.Spec.HTTPAddon.Enabled {
+		successMsg += " with HTTP Add-on"
+	}
+	status.MarkInstallSucceeded(successMsg)
 	if err := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); err != nil {
 		return ctrl.Result{}, err
 	}
