@@ -9,6 +9,8 @@ resources:
 - bases/keda.sh_clustertriggerauthentications.yaml
 - bases/eventing.keda.sh_cloudeventsources.yaml
 - bases/eventing.keda.sh_clustercloudeventsources.yaml
+- bases/http.keda.sh_httpscaledobjects.yaml
+- bases/http.keda.sh_interceptorroutes.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
