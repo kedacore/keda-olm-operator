@@ -117,7 +117,7 @@ done
 
 for i in $match_keda_version_deps; do
     echo -n checking upstream version of $i .....
-    if ! modver=$(echo "$keda_gomod" | grep -Po '(?<=^\t'"$i"' )v[0-9]*\.[0-9]*\.[0-9]*(-[0-9]*(-[0-9a-e]*)?)?$'); then
+    if ! modver=$(echo "$keda_gomod" | grep -Po '(?<=^\t'"$i"' )v[0-9]*\.[0-9]*\.[0-9]*(-[0-9]*(-[0-9a-f]*)?)?$'); then
       echo "  Unable to find $i in https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod .  Exiting!"
       exit 1
     fi
