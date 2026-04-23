@@ -123,9 +123,11 @@ $(LOCALBIN):
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.3.0
+OPERATOR_SDK_VERSION ?= v1.38.0
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Install controller-gen from vendor dir if necessary.
@@ -145,6 +147,17 @@ $(KUSTOMIZE): $(LOCALBIN)
 envtest: $(ENVTEST) ## Install envtest-setup from vendor dir if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest
+
+.PHONY: operator-sdk
+operator-sdk: $(OPERATOR_SDK) ## Download operator-sdk locally if necessary.
+$(OPERATOR_SDK): $(LOCALBIN)
+	@if test -x $(LOCALBIN)/operator-sdk && ! $(LOCALBIN)/operator-sdk version | grep -q $(OPERATOR_SDK_VERSION); then \
+	    echo "$(LOCALBIN)/operator-sdk version is not expected $(OPERATOR_SDK_VERSION). Removing it before downloading."; \
+	    rm -rf $(LOCALBIN)/operator-sdk; \
+	fi
+	test -s $(LOCALBIN)/operator-sdk || \
+	    { curl -sSLo $(LOCALBIN)/operator-sdk https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$$(go env GOOS)_$$(go env GOARCH) && \
+	    chmod +x $(LOCALBIN)/operator-sdk; }
 
 # Run golangci against code
 .PHONY: golangci
@@ -170,16 +183,16 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: manifests kustomize	## Generate bundle manifests and metadata, then validate generated files.
+bundle: manifests kustomize operator-sdk	## Generate bundle manifests and metadata, then validate generated files.
 # edit image in config for current changes made to this Makefile so the deployed image is
 # the one that is being built & pushed (in case its no ghcr.io/kedacore)
 	cd config/manager && \
 		$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-olm-operator=${IMAGE_CONTROLLER}
 	cd config/default && \
   	$(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
-	operator-sdk generate kustomize manifests -q
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite $(BUNDLE_METADATA_OPTS)
-	operator-sdk bundle validate ./bundle
+	$(OPERATOR_SDK) generate kustomize manifests -q
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite $(BUNDLE_METADATA_OPTS)
+	$(OPERATOR_SDK) bundle validate ./bundle
 
 # Build the bundle image.
 .PHONY: bundle-build	## Build the bundle image.
@@ -189,7 +202,7 @@ bundle-build:
 .PHONY: bundle-push
 bundle-push:
 	docker push ${BUNDLE}
-	operator-sdk bundle validate ${BUNDLE}
+	$(OPERATOR_SDK) bundle validate ${BUNDLE}
 
 .PHONY: index-build
 index-build:
@@ -206,7 +219,7 @@ index-push:
 .PHONY: deploy-olm	## Deploy bundle. -- build & bundle to update if changes were made to code
 deploy-olm: build bundle docker-build docker-push bundle-build bundle-push index-build index-push
 	kubectl create namespace keda --dry-run=client -o yaml | kubectl apply --server-side -f -
-	operator-sdk run bundle ${BUNDLE} --namespace keda $(BUNDLE_RUN_OPTS)
+	$(OPERATOR_SDK) run bundle ${BUNDLE} --namespace keda $(BUNDLE_RUN_OPTS)
 
 .PHONY: deploy-olm-testing
 deploy-olm-testing:
