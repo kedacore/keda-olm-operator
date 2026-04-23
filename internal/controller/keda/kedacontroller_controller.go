@@ -25,6 +25,7 @@ import (
 	"path"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -72,6 +73,14 @@ const (
 	auditlogPolicyConfigMap = "keda-metrics-server-audit-policy"
 	auditlogPolicyMountPath = "/var/audit-policy"
 	auditPolicyFile         = "policy.yaml"
+
+	httpAddonContainerOperator    = "operator"
+	httpAddonContainerInterceptor = "interceptor"
+	httpAddonContainerScaler      = "scaler"
+
+	httpAddonDefaultOperatorImage    = "ghcr.io/kedacore/http-add-on-operator"
+	httpAddonDefaultInterceptorImage = "ghcr.io/kedacore/http-add-on-interceptor"
+	httpAddonDefaultScalerImage      = "ghcr.io/kedacore/http-add-on-scaler"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
@@ -90,6 +99,10 @@ type KedaControllerReconciler struct {
 	resourcesMonitoring mf.Manifest
 	discoveryClient     *discovery.DiscoveryClient
 	resourceNamespace   string
+
+	resourcesHttpAddonOperator    mf.Manifest
+	resourcesHttpAddonInterceptor mf.Manifest
+	resourcesHttpAddonScaler      mf.Manifest
 }
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaControllerResourceNamespace string, logger logr.Logger) error {
@@ -109,6 +122,16 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaContro
 	r.resourcesMetrics = manifestMetrics
 	r.resourcesWebhooks = manifestWebhooks
 	r.resourcesMonitoring = manifestMonitoring
+
+	httpAddonManifest, err := resources.GetHttpAddonResourcesManifest()
+	if err != nil {
+		logger.Info("HTTP Add-on manifest not found, HTTP Add-on support will be unavailable", "err", err)
+	} else {
+		if err := r.parseHttpAddonManifests(httpAddonManifest); err != nil {
+			return err
+		}
+	}
+
 	if restConfig, err := ctrl.GetConfig(); err != nil {
 		logger.Info("Unable to get REST Config for cluster version discovery. Ignore this message in test environments", "err", err)
 	} else {
@@ -203,6 +226,7 @@ func (r *KedaControllerReconciler) initializeDefaultController() *kedav1alpha1.K
 }
 
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets,verbs="*"
 // +kubebuilder:rbac:groups=apps,resources=deployments;daemonsets;replicasets;statefulsets,verbs="*"
 // +kubebuilder:rbac:groups=apps,resourceNames=keda-olm-operator,resources=deployments/finalizers,verbs="*"
@@ -213,6 +237,7 @@ func (r *KedaControllerReconciler) initializeDefaultController() *kedav1alpha1.K
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=create;delete;get;list;patch;update;watch
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -308,6 +333,14 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err := r.installMonitoring(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to install monitoring resources")
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
+		return ctrl.Result{}, err
+	}
+
+	if err := r.installHttpAddon(ctx, logger, instance, status); err != nil {
+		status.MarkInstallFailed("Not able to install HTTP Add-on")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
 		}
@@ -646,6 +679,280 @@ func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger
 		logger.Error(err, "Unable to install monitoring resources")
 		return err
 	}
+
+	return nil
+}
+
+func (r *KedaControllerReconciler) parseHttpAddonManifests(manifest mf.Manifest) error {
+	var operatorResources, interceptorResources, scalerResources []unstructured.Unstructured
+
+	for _, res := range manifest.Resources() {
+		name := res.GetName()
+		switch {
+		case strings.Contains(name, "interceptor"):
+			interceptorResources = append(interceptorResources, res)
+		case strings.Contains(name, "scaler") || strings.Contains(name, "external-scaler"):
+			scalerResources = append(scalerResources, res)
+		default:
+			operatorResources = append(operatorResources, res)
+		}
+	}
+
+	manifestClient := mfc.NewClient(r.Client)
+
+	var err error
+	r.resourcesHttpAddonOperator, err = mf.ManifestFrom(mf.Slice(operatorResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	if err != nil {
+		return err
+	}
+	r.resourcesHttpAddonOperator.Client = manifestClient
+
+	r.resourcesHttpAddonInterceptor, err = mf.ManifestFrom(mf.Slice(interceptorResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	if err != nil {
+		return err
+	}
+	r.resourcesHttpAddonInterceptor.Client = manifestClient
+
+	r.resourcesHttpAddonScaler, err = mf.ManifestFrom(mf.Slice(scalerResources), mf.UseLastAppliedConfigAnnotation(resources.LastConfigID))
+	if err != nil {
+		return err
+	}
+	r.resourcesHttpAddonScaler.Client = manifestClient
+
+	return nil
+}
+
+func (r *KedaControllerReconciler) deleteHttpAddon(logger logr.Logger) {
+	if err := r.resourcesHttpAddonScaler.Delete(); err != nil {
+		logger.Info("Unable to delete HTTP Add-on Scaler resources (may not exist)", "error", err)
+	}
+	if err := r.resourcesHttpAddonInterceptor.Delete(); err != nil {
+		logger.Info("Unable to delete HTTP Add-on Interceptor resources (may not exist)", "error", err)
+	}
+	if err := r.resourcesHttpAddonOperator.Delete(); err != nil {
+		logger.Info("Unable to delete HTTP Add-on Operator resources (may not exist)", "error", err)
+	}
+}
+
+func httpAddonResolveImage(imageSpec kedav1alpha1.HttpAddonImageSpec, defaultImage string, globalVersion string) string {
+	name := imageSpec.Name
+	if name == "" {
+		name = defaultImage
+	}
+	tag := imageSpec.Tag
+	if tag == "" {
+		tag = globalVersion
+	}
+	if tag == "" {
+		return name
+	}
+	return name + ":" + tag
+}
+
+func httpAddonComponentTransforms(
+	spec kedav1alpha1.GenericDeploymentSpec,
+	containerName string,
+	image string,
+	replicas *int32,
+	env []corev1.EnvVar,
+	logLevel, logEncoder, logTimeEncoding string,
+	instance *kedav1alpha1.KedaController,
+	scheme *runtime.Scheme,
+	logger logr.Logger,
+) []mf.Transformer {
+	transforms := []mf.Transformer{
+		transform.InjectOwner(instance),
+		transform.ReplaceAllNamespaces(instance.Namespace),
+	}
+
+	if image != "" {
+		transforms = append(transforms, transform.ReplaceContainerImage(image, containerName, scheme))
+	}
+
+	if replicas != nil {
+		transforms = append(transforms, transform.ReplaceReplicas(replicas, scheme))
+	}
+
+	if len(env) > 0 {
+		transforms = append(transforms, transform.ReplaceContainerEnv(env, containerName, scheme))
+	}
+
+	if len(logLevel) > 0 {
+		transforms = append(transforms, transform.ReplaceLogLevel(logLevel, containerName, scheme, logger))
+	}
+	if len(logEncoder) > 0 {
+		transforms = append(transforms, transform.ReplaceLogEncoder(logEncoder, containerName, scheme, logger))
+	}
+	if len(logTimeEncoding) > 0 {
+		transforms = append(transforms, transform.ReplaceLogTimeEncoding(logTimeEncoding, containerName, scheme, logger))
+	}
+
+	if len(spec.DeploymentAnnotations) > 0 {
+		transforms = append(transforms, transform.AddDeploymentAnnotations(spec.DeploymentAnnotations, scheme))
+	}
+	if len(spec.DeploymentLabels) > 0 {
+		transforms = append(transforms, transform.AddDeploymentLabels(spec.DeploymentLabels, scheme))
+	}
+	if len(spec.PodAnnotations) > 0 {
+		transforms = append(transforms, transform.AddPodAnnotations(spec.PodAnnotations, scheme))
+	}
+	if len(spec.PodLabels) > 0 {
+		transforms = append(transforms, transform.AddPodLabels(spec.PodLabels, scheme))
+	}
+	if len(spec.NodeSelector) > 0 {
+		transforms = append(transforms, transform.ReplaceNodeSelector(spec.NodeSelector, scheme))
+	}
+	if len(spec.Tolerations) > 0 {
+		transforms = append(transforms, transform.ReplaceTolerations(spec.Tolerations, scheme))
+	}
+	if spec.Affinity != nil {
+		transforms = append(transforms, transform.ReplaceAffinity(spec.Affinity, scheme))
+	}
+	if len(spec.PriorityClassName) > 0 {
+		transforms = append(transforms, transform.ReplacePriorityClassName(spec.PriorityClassName, scheme))
+	}
+	if spec.Resources.Limits != nil || spec.Resources.Requests != nil {
+		transforms = append(transforms, transform.ReplaceContainerResources(spec.Resources, containerName, scheme))
+	}
+	if spec.Volumes != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumes(spec.Volumes, scheme))
+	}
+	if spec.VolumeMounts != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(spec.VolumeMounts, scheme))
+	}
+
+	return transforms
+}
+
+func (r *KedaControllerReconciler) installHttpAddon(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController, status *kedav1alpha1.KedaControllerStatus) error {
+	if !instance.Spec.HttpAddon.Enabled {
+		logger.Info("HTTP Add-on is disabled, cleaning up resources if present")
+		r.deleteHttpAddon(logger)
+		status.HttpAddon = nil
+		return nil
+	}
+
+	if len(r.resourcesHttpAddonOperator.Resources()) == 0 {
+		return fmt.Errorf("HTTP Add-on is enabled but no manifests are available; ensure resources/keda-http-addon.yaml exists")
+	}
+
+	logger.Info("Reconciling HTTP Add-on")
+	httpAddonStatus := &kedav1alpha1.HttpAddonStatus{}
+
+	globalVersion := instance.Spec.HttpAddon.Version
+	addonSpec := instance.Spec.HttpAddon
+
+	removeSeccomp := util.RunningOnOpenshift(ctx, logger, r.Client) && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient)
+
+	// --- Operator ---
+	operatorImage := httpAddonResolveImage(addonSpec.Operator.Image, httpAddonDefaultOperatorImage, globalVersion)
+	operatorTransforms := httpAddonComponentTransforms(
+		addonSpec.Operator.GenericDeploymentSpec,
+		httpAddonContainerOperator,
+		operatorImage,
+		addonSpec.Operator.Replicas,
+		addonSpec.Operator.Env,
+		addonSpec.Operator.LogLevel,
+		addonSpec.Operator.LogEncoder,
+		addonSpec.Operator.LogTimeEncoding,
+		instance, r.Scheme, logger,
+	)
+	if removeSeccomp {
+		operatorTransforms = append(operatorTransforms, transform.RemoveSeccompProfile(httpAddonContainerOperator, r.Scheme, logger))
+	}
+
+	manifest, err := r.resourcesHttpAddonOperator.Transform(operatorTransforms...)
+	if err != nil {
+		logger.Error(err, "Unable to transform HTTP Add-on Operator manifest")
+		httpAddonStatus.Phase = kedav1alpha1.PhaseFailed
+		httpAddonStatus.Reason = "Failed to transform HTTP Add-on Operator manifest"
+		status.HttpAddon = httpAddonStatus
+		return err
+	}
+	r.resourcesHttpAddonOperator = manifest
+
+	if err := r.resourcesHttpAddonOperator.Apply(); err != nil {
+		logger.Error(err, "Unable to install HTTP Add-on Operator")
+		httpAddonStatus.Phase = kedav1alpha1.PhaseFailed
+		httpAddonStatus.Reason = "Failed to install HTTP Add-on Operator"
+		status.HttpAddon = httpAddonStatus
+		return err
+	}
+
+	// --- Interceptor ---
+	interceptorImage := httpAddonResolveImage(addonSpec.Interceptor.Image, httpAddonDefaultInterceptorImage, globalVersion)
+	interceptorTransforms := httpAddonComponentTransforms(
+		addonSpec.Interceptor.GenericDeploymentSpec,
+		httpAddonContainerInterceptor,
+		interceptorImage,
+		addonSpec.Interceptor.Replicas,
+		addonSpec.Interceptor.Env,
+		addonSpec.Interceptor.LogLevel,
+		addonSpec.Interceptor.LogEncoder,
+		addonSpec.Interceptor.LogTimeEncoding,
+		instance, r.Scheme, logger,
+	)
+	if removeSeccomp {
+		interceptorTransforms = append(interceptorTransforms, transform.RemoveSeccompProfile(httpAddonContainerInterceptor, r.Scheme, logger))
+	}
+
+	manifest, err = r.resourcesHttpAddonInterceptor.Transform(interceptorTransforms...)
+	if err != nil {
+		logger.Error(err, "Unable to transform HTTP Add-on Interceptor manifest")
+		httpAddonStatus.Phase = kedav1alpha1.PhaseFailed
+		httpAddonStatus.Reason = "Failed to transform HTTP Add-on Interceptor manifest"
+		status.HttpAddon = httpAddonStatus
+		return err
+	}
+	r.resourcesHttpAddonInterceptor = manifest
+
+	if err := r.resourcesHttpAddonInterceptor.Apply(); err != nil {
+		logger.Error(err, "Unable to install HTTP Add-on Interceptor")
+		httpAddonStatus.Phase = kedav1alpha1.PhaseFailed
+		httpAddonStatus.Reason = "Failed to install HTTP Add-on Interceptor"
+		status.HttpAddon = httpAddonStatus
+		return err
+	}
+
+	// --- Scaler ---
+	scalerImage := httpAddonResolveImage(addonSpec.Scaler.Image, httpAddonDefaultScalerImage, globalVersion)
+	scalerTransforms := httpAddonComponentTransforms(
+		addonSpec.Scaler.GenericDeploymentSpec,
+		httpAddonContainerScaler,
+		scalerImage,
+		addonSpec.Scaler.Replicas,
+		addonSpec.Scaler.Env,
+		addonSpec.Scaler.LogLevel,
+		addonSpec.Scaler.LogEncoder,
+		addonSpec.Scaler.LogTimeEncoding,
+		instance, r.Scheme, logger,
+	)
+	if removeSeccomp {
+		scalerTransforms = append(scalerTransforms, transform.RemoveSeccompProfile(httpAddonContainerScaler, r.Scheme, logger))
+	}
+
+	manifest, err = r.resourcesHttpAddonScaler.Transform(scalerTransforms...)
+	if err != nil {
+		logger.Error(err, "Unable to transform HTTP Add-on Scaler manifest")
+		httpAddonStatus.Phase = kedav1alpha1.PhaseFailed
+		httpAddonStatus.Reason = "Failed to transform HTTP Add-on Scaler manifest"
+		status.HttpAddon = httpAddonStatus
+		return err
+	}
+	r.resourcesHttpAddonScaler = manifest
+
+	if err := r.resourcesHttpAddonScaler.Apply(); err != nil {
+		logger.Error(err, "Unable to install HTTP Add-on Scaler")
+		httpAddonStatus.Phase = kedav1alpha1.PhaseFailed
+		httpAddonStatus.Reason = "Failed to install HTTP Add-on Scaler"
+		status.HttpAddon = httpAddonStatus
+		return err
+	}
+
+	httpAddonStatus.Phase = kedav1alpha1.PhaseInstallSucceeded
+	httpAddonStatus.Version = globalVersion
+	httpAddonStatus.Reason = fmt.Sprintf("HTTP Add-on v%s is installed in namespace '%s'", globalVersion, r.resourceNamespace)
+	status.HttpAddon = httpAddonStatus
 
 	return nil
 }

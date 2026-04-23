@@ -1462,6 +1462,121 @@ func ReplaceDeploymentVolumeMounts(desiredVolumeMounts []corev1.VolumeMount, sch
 	}
 }
 
+// ReplaceContainerImage replaces the image for a named container in a Deployment.
+func ReplaceContainerImage(image string, containerName string, scheme *runtime.Scheme) mf.Transformer {
+	return replaceContainerImage(image, containerName, scheme)
+}
+
+// ReplaceContainerResources replaces resource requirements for a named container in a Deployment.
+func ReplaceContainerResources(resources corev1.ResourceRequirements, containerName string, scheme *runtime.Scheme) mf.Transformer {
+	return replaceResources(resources, containerName, scheme)
+}
+
+// ReplaceContainerEnv merges the given environment variables into a named container in a Deployment.
+// Existing variables with the same name are overwritten; new variables are appended.
+func ReplaceContainerEnv(envVars []corev1.EnvVar, containerName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			containers := deploy.Spec.Template.Spec.Containers
+			for i, container := range containers {
+				if container.Name == containerName {
+					existing := container.Env
+					for _, newVar := range envVars {
+						found := false
+						for j, existingVar := range existing {
+							if existingVar.Name == newVar.Name {
+								existing[j] = newVar
+								found = true
+								break
+							}
+						}
+						if !found {
+							existing = append(existing, newVar)
+						}
+					}
+					containers[i].Env = existing
+					break
+				}
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+// ReplaceReplicas sets spec.replicas on a Deployment.
+func ReplaceReplicas(replicas *int32, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+
+			deploy.Spec.Replicas = replicas
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
+// ReplaceLogLevel replaces the --zap-log-level arg for a named container in a Deployment.
+func ReplaceLogLevel(logLevel string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	found := false
+	for _, level := range logLevels {
+		if logLevel == level {
+			found = true
+		}
+	}
+	if !found {
+		if _, err := strconv.ParseUint(logLevel, 10, 64); err == nil {
+			found = true
+		}
+	}
+	if !found {
+		logger.Info("Ignoring specified log level", "container", containerName, "specified", logLevel, "allowed", strings.Join(logLevels, ", ")+" or integer > 0")
+		return func(*unstructured.Unstructured) error { return nil }
+	}
+	return replaceContainerArg(logLevel, LogLevelArg, containerName, scheme, logger)
+}
+
+// ReplaceLogEncoder replaces the --zap-encoder arg for a named container in a Deployment.
+func ReplaceLogEncoder(logEncoder string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	found := false
+	for _, format := range logEncoders {
+		if logEncoder == format {
+			found = true
+			break
+		}
+	}
+	if !found {
+		logger.Info("Ignoring specified log encoder", "container", containerName, "specified", logEncoder, "allowed", strings.Join(logEncoders, ", "))
+		return func(*unstructured.Unstructured) error { return nil }
+	}
+	return replaceContainerArg(logEncoder, LogEncoderArg, containerName, scheme, logger)
+}
+
+// ReplaceLogTimeEncoding replaces the --zap-time-encoding arg for a named container in a Deployment.
+func ReplaceLogTimeEncoding(logTimeEncoding string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	found := false
+	for _, timeEncoding := range logTimeEncodings {
+		if logTimeEncoding == timeEncoding {
+			found = true
+			break
+		}
+	}
+	if !found {
+		logger.Info("Ignoring specified log time encoding", "container", containerName, "specified", logTimeEncoding, "allowed", strings.Join(logTimeEncodings, ", "))
+		return func(*unstructured.Unstructured) error { return nil }
+	}
+	return replaceContainerArg(logTimeEncoding, LogTimeEncodingArg, containerName, scheme, logger)
+}
+
 // InjectOwner creates a Transformer which adds an OwnerReference
 // pointing to `owner`, but only if the object is in the same namespace as `owner`
 func InjectOwner(owner mf.Owner) mf.Transformer {

@@ -50,6 +50,9 @@ type KedaControllerSpec struct {
 	// +optional
 	ServiceAccount KedaServiceAccountSpec `json:"serviceAccount"`
 
+	// +optional
+	HttpAddon HttpAddonSpec `json:"httpAddon,omitempty"`
+
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
@@ -167,6 +170,160 @@ type KedaAdmissionWebhooksSpec struct {
 	Args []string `json:"args,omitempty"`
 }
 
+// HttpAddonImageSpec defines the image for an HTTP Add-on component.
+type HttpAddonImageSpec struct {
+	// Image name (repository path), e.g. ghcr.io/kedacore/http-add-on-operator
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Image tag override. If empty, the global HttpAddonSpec.Version is used.
+	// +optional
+	Tag string `json:"tag,omitempty"`
+}
+
+// HttpAddonOperatorSpec defines configuration for the HTTP Add-on operator component.
+type HttpAddonOperatorSpec struct {
+	// Logging level for HTTP Add-on Operator
+	// allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+	// default value: info
+	// +optional
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// Logging format for HTTP Add-on Operator
+	// allowed values are 'json' and 'console'
+	// default value: console
+	// +optional
+	LogEncoder string `json:"logEncoder,omitempty"`
+
+	// Logging time encoding for HTTP Add-on Operator
+	// allowed values are 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'
+	// default value: rfc3339
+	// +optional
+	LogTimeEncoding string `json:"logTimeEncoding,omitempty"`
+
+	// Container image for the HTTP Add-on Operator
+	// +optional
+	Image HttpAddonImageSpec `json:"image,omitempty"`
+
+	// Number of replicas for the HTTP Add-on Operator deployment
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Extra environment variables passed to the HTTP Add-on Operator container
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	GenericDeploymentSpec `json:",inline"`
+}
+
+// HttpAddonInterceptorSpec defines configuration for the HTTP Add-on interceptor component.
+type HttpAddonInterceptorSpec struct {
+	// Logging level for HTTP Add-on Interceptor
+	// allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+	// default value: info
+	// +optional
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// Logging format for HTTP Add-on Interceptor
+	// allowed values are 'json' and 'console'
+	// default value: console
+	// +optional
+	LogEncoder string `json:"logEncoder,omitempty"`
+
+	// Logging time encoding for HTTP Add-on Interceptor
+	// allowed values are 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'
+	// default value: rfc3339
+	// +optional
+	LogTimeEncoding string `json:"logTimeEncoding,omitempty"`
+
+	// Container image for the HTTP Add-on Interceptor
+	// +optional
+	Image HttpAddonImageSpec `json:"image,omitempty"`
+
+	// Number of replicas for the HTTP Add-on Interceptor deployment
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Extra environment variables passed to the HTTP Add-on Interceptor container
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	GenericDeploymentSpec `json:",inline"`
+}
+
+// HttpAddonScalerSpec defines configuration for the HTTP Add-on scaler component.
+type HttpAddonScalerSpec struct {
+	// Logging level for HTTP Add-on Scaler
+	// allowed values: 'debug', 'info', 'error', or an integer value greater than 0, specified as string
+	// default value: info
+	// +optional
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// Logging format for HTTP Add-on Scaler
+	// allowed values are 'json' and 'console'
+	// default value: console
+	// +optional
+	LogEncoder string `json:"logEncoder,omitempty"`
+
+	// Logging time encoding for HTTP Add-on Scaler
+	// allowed values are 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'
+	// default value: rfc3339
+	// +optional
+	LogTimeEncoding string `json:"logTimeEncoding,omitempty"`
+
+	// Container image for the HTTP Add-on Scaler
+	// +optional
+	Image HttpAddonImageSpec `json:"image,omitempty"`
+
+	// Number of replicas for the HTTP Add-on Scaler deployment
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Extra environment variables passed to the HTTP Add-on Scaler container
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	GenericDeploymentSpec `json:",inline"`
+}
+
+// HttpAddonSpec defines configuration for the KEDA HTTP Add-on.
+type HttpAddonSpec struct {
+	// Enable the HTTP Add-on installation. When false (default), no HTTP Add-on
+	// components are deployed. When true, the operator, interceptor, and scaler
+	// are installed.
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Global version tag for HTTP Add-on images. Used as the image tag for all
+	// components unless overridden by a component-specific Image.Tag.
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// HTTP Add-on Operator configuration
+	// +optional
+	Operator HttpAddonOperatorSpec `json:"operator,omitempty"`
+
+	// HTTP Add-on Interceptor configuration
+	// +optional
+	Interceptor HttpAddonInterceptorSpec `json:"interceptor,omitempty"`
+
+	// HTTP Add-on Scaler configuration
+	// +optional
+	Scaler HttpAddonScalerSpec `json:"scaler,omitempty"`
+}
+
+// HttpAddonStatus defines the observed state of the HTTP Add-on.
+type HttpAddonStatus struct {
+	// Phase of the HTTP Add-on installation
+	// +optional
+	Phase KedaControllerPhase `json:"phase,omitempty"`
+	// Human-readable reason for the current phase
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// Installed version of the HTTP Add-on
+	// +optional
+	Version string `json:"version,omitempty"`
+}
+
 type GenericDeploymentSpec struct {
 
 	// Annotations applied to the Deployment
@@ -234,6 +391,9 @@ type KedaControllerStatus struct {
 	ConfigMapDataSum string `json:"configmapdatasum,omitempty"`
 	// +optional
 	SecretDataSum string `json:"secretdatasum,omitempty"`
+	// Status of the HTTP Add-on installation
+	// +optional
+	HttpAddon *HttpAddonStatus `json:"httpAddon,omitempty"`
 
 	// Important: Run "make" to regenerate code after modifying this file
 }
