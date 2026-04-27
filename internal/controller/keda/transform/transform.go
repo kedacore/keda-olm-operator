@@ -1462,6 +1462,41 @@ func ReplaceDeploymentVolumeMounts(desiredVolumeMounts []corev1.VolumeMount, sch
 	}
 }
 
+// ReplaceContainerEnv merges the given env vars into the named container,
+// replacing any existing env var with the same name.
+func ReplaceContainerEnv(envVars []corev1.EnvVar, containerName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "Deployment" {
+			deploy := &appsv1.Deployment{}
+			if err := scheme.Convert(u, deploy, nil); err != nil {
+				return err
+			}
+			containers := deploy.Spec.Template.Spec.Containers
+			for i := range containers {
+				if containers[i].Name != containerName {
+					continue
+				}
+				for _, desired := range envVars {
+					found := false
+					for j := range containers[i].Env {
+						if containers[i].Env[j].Name == desired.Name {
+							containers[i].Env[j] = desired
+							found = true
+							break
+						}
+					}
+					if !found {
+						containers[i].Env = append(containers[i].Env, desired)
+					}
+				}
+				break
+			}
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
 // InjectOwner creates a Transformer which adds an OwnerReference
 // pointing to `owner`, but only if the object is in the same namespace as `owner`
 func InjectOwner(owner mf.Owner) mf.Transformer {

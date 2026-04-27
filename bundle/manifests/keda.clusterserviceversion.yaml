@@ -162,8 +162,9 @@ metadata:
     categories: Cloud Provider
     certified: "false"
     containerImage: ghcr.io/kedacore/keda-olm-operator:2.19.0
-    createdAt: "2026-04-22T03:27:54Z"
+    createdAt: "2026-04-24T20:34:44Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
+    features.operators.openshift.io/token-auth-gcp: "true"
     operatorframework.io/suggested-namespace: keda
     operators.operatorframework.io/builder: operator-sdk-v1.38.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -576,6 +577,14 @@ spec:
           - deployments/finalizers
           verbs:
           - '*'
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - infrastructures
+          verbs:
+          - get
+          - list
+          - watch
         - apiGroups:
           - coordination.k8s.io
           resources:

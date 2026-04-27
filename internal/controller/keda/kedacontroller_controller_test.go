@@ -18,8 +18,10 @@ package keda
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -28,6 +30,8 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -361,6 +365,208 @@ var _ = Describe("Testing functionality", func() {
 				})
 			}
 		})
+	})
+
+	var _ = Describe("GCP WIF integration", func() {
+		var (
+			ctx                  = context.Background()
+			deploymentName       = "keda-operator"
+			containerName        = "keda-operator"
+			eventuallyTimeout    = time.Second * 30
+			consistentlyTimeout  = time.Second * 5
+			interval             = time.Millisecond * 250
+			namespace            = "keda"
+			kedaManifestFilepath = "../../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+		)
+
+		variants := []struct {
+			name string
+			env  map[string]string
+		}{
+			{
+				name: "Subscription patch (AUDIENCE)",
+				env: map[string]string{
+					"SERVICE_ACCOUNT_EMAIL": "sa@test-project.iam.gserviceaccount.com",
+					"AUDIENCE":              "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/test-pool/providers/test-provider",
+					"CLOUDSDK_CORE_PROJECT": "test-project-id",
+				},
+			},
+			{
+				name: "Console install (component vars)",
+				env: map[string]string{
+					"SERVICE_ACCOUNT_EMAIL": "sa@test-project.iam.gserviceaccount.com",
+					"PROJECT_NUMBER":        "123456",
+					"POOL_ID":               "test-pool",
+					"PROVIDER_ID":           "test-provider",
+					"CLOUDSDK_CORE_PROJECT": "test-project-id",
+				},
+			},
+		}
+
+		for _, v := range variants {
+			Context("When configured via "+v.name, func() {
+				BeforeEach(func() {
+					By("Setting GCP WIF environment variables")
+					for k, val := range v.env {
+						os.Setenv(k, val)
+					}
+
+					By("Applying the KedaController manifest to trigger reconciliation")
+					manifest, err := createManifest(kedaManifestFilepath, k8sClient)
+					Expect(err).To(BeNil())
+					Expect(manifest.Apply()).Should(Succeed())
+				})
+
+				AfterEach(func() {
+					By("Cleaning up GCP WIF environment variables")
+					for k := range v.env {
+						os.Unsetenv(k)
+					}
+
+					By("Cleaning up credential Secret and KedaController CR")
+					_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "keda-gcp-credentials", Namespace: namespace}})
+					kc := &kedav1alpha1.KedaController{ObjectMeta: metav1.ObjectMeta{Name: "keda", Namespace: namespace}}
+					_ = k8sClient.Delete(ctx, kc)
+
+					By("Waiting for KedaController CR to be fully removed")
+					Eventually(func() bool {
+						err := k8sClient.Get(ctx, types.NamespacedName{Name: "keda", Namespace: namespace}, kc)
+						return apierrors.IsNotFound(err)
+					}, eventuallyTimeout, interval).Should(BeTrue())
+				})
+
+				It("Should create the GCP credential Secret with valid external_account data", func() {
+					By("Waiting for the credential Secret to be created by the reconciler")
+					secret := &corev1.Secret{}
+					Eventually(func() error {
+						return k8sClient.Get(ctx, types.NamespacedName{
+							Name:      "keda-gcp-credentials",
+							Namespace: namespace,
+						}, secret)
+					}, eventuallyTimeout, interval).Should(Succeed())
+
+					Expect(secret.Labels).To(HaveKeyWithValue("app.kubernetes.io/name", "keda-operator"))
+					Expect(secret.OwnerReferences).NotTo(BeEmpty())
+					Expect(secret.Data).To(HaveKey("service_account.json"))
+
+					var cred map[string]interface{}
+					Expect(json.Unmarshal(secret.Data["service_account.json"], &cred)).To(Succeed())
+					Expect(cred["type"]).To(Equal("external_account"))
+					Expect(cred["audience"]).To(ContainSubstring("workloadIdentityPools"))
+				})
+
+				It("Should wire GCP volumes, mounts, and env vars into the keda-operator Deployment", func() {
+					By("Waiting for the keda-operator Deployment to have the gcp-credentials volume")
+					Eventually(func() error {
+						dep := &appsv1.Deployment{}
+						if err := k8sClient.Get(ctx, types.NamespacedName{
+							Name:      deploymentName,
+							Namespace: namespace,
+						}, dep); err != nil {
+							return err
+						}
+						for _, vol := range dep.Spec.Template.Spec.Volumes {
+							if vol.Name == "gcp-credentials" {
+								return nil
+							}
+						}
+						return fmt.Errorf("gcp-credentials volume not found yet")
+					}, eventuallyTimeout, interval).Should(Succeed())
+
+					dep := &appsv1.Deployment{}
+					Expect(k8sClient.Get(ctx, types.NamespacedName{
+						Name:      deploymentName,
+						Namespace: namespace,
+					}, dep)).To(Succeed())
+
+					By("Verifying the Deployment has the expected volumes")
+					volumeNames := []string{}
+					for _, vol := range dep.Spec.Template.Spec.Volumes {
+						volumeNames = append(volumeNames, vol.Name)
+					}
+					Expect(volumeNames).To(ContainElement("gcp-credentials"))
+					Expect(volumeNames).To(ContainElement("bound-sa-token"))
+
+					By("Verifying the keda-operator container has the expected env vars")
+					var kedaContainer *corev1.Container
+					for i := range dep.Spec.Template.Spec.Containers {
+						if dep.Spec.Template.Spec.Containers[i].Name == containerName {
+							kedaContainer = &dep.Spec.Template.Spec.Containers[i]
+							break
+						}
+					}
+					Expect(kedaContainer).NotTo(BeNil(), "keda-operator container not found")
+
+					envNames := []string{}
+					for _, env := range kedaContainer.Env {
+						envNames = append(envNames, env.Name)
+					}
+					Expect(envNames).To(ContainElement("GOOGLE_APPLICATION_CREDENTIALS"))
+					Expect(envNames).To(ContainElement("CLOUDSDK_CORE_PROJECT"))
+
+					By("Verifying the keda-operator container has the expected volume mounts")
+					mountNames := []string{}
+					for _, mount := range kedaContainer.VolumeMounts {
+						mountNames = append(mountNames, mount.Name)
+					}
+					Expect(mountNames).To(ContainElement("gcp-credentials"))
+					Expect(mountNames).To(ContainElement("bound-sa-token"))
+				})
+			})
+		}
+
+		skipVariants := []struct {
+			name string
+			env  map[string]string
+		}{
+			{
+				name: "no WIF env vars",
+				env:  map[string]string{},
+			},
+			{
+				name: "partial WIF env vars (SERVICE_ACCOUNT_EMAIL only)",
+				env:  map[string]string{"SERVICE_ACCOUNT_EMAIL": "sa@test-project.iam.gserviceaccount.com"},
+			},
+		}
+
+		for _, sv := range skipVariants {
+			Context("When "+sv.name+" are set", func() {
+				BeforeEach(func() {
+					for k, val := range sv.env {
+						os.Setenv(k, val)
+					}
+
+					By("Applying the KedaController manifest to trigger reconciliation")
+					manifest, err := createManifest(kedaManifestFilepath, k8sClient)
+					Expect(err).To(BeNil())
+					Expect(manifest.Apply()).Should(Succeed())
+				})
+
+				AfterEach(func() {
+					for k := range sv.env {
+						os.Unsetenv(k)
+					}
+					_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "keda-gcp-credentials", Namespace: namespace}})
+					kc := &kedav1alpha1.KedaController{ObjectMeta: metav1.ObjectMeta{Name: "keda", Namespace: namespace}}
+					_ = k8sClient.Delete(ctx, kc)
+
+					Eventually(func() bool {
+						err := k8sClient.Get(ctx, types.NamespacedName{Name: "keda", Namespace: namespace}, kc)
+						return apierrors.IsNotFound(err)
+					}, eventuallyTimeout, interval).Should(BeTrue())
+				})
+
+				It("Should not create a GCP credential Secret", func() {
+					Consistently(func() error {
+						secret := &corev1.Secret{}
+						return k8sClient.Get(ctx, types.NamespacedName{
+							Name:      "keda-gcp-credentials",
+							Namespace: namespace,
+						}, secret)
+					}, consistentlyTimeout, interval).ShouldNot(Succeed())
+				})
+			})
+		}
 	})
 })
 

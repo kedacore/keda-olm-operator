@@ -49,6 +49,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
+	"github.com/kedacore/keda-olm-operator/internal/controller/keda/cloud"
 	"github.com/kedacore/keda-olm-operator/internal/controller/keda/transform"
 	"github.com/kedacore/keda-olm-operator/internal/controller/keda/util"
 	"github.com/kedacore/keda-olm-operator/resources"
@@ -213,6 +214,7 @@ func (r *KedaControllerReconciler) initializeDefaultController() *kedav1alpha1.K
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures,verbs=get;list;watch
 
 // Reconcile reads that state of the cluster for a KedaController object and makes changes based on the state read
 // and what is in the KedaController.Spec
@@ -275,6 +277,10 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	status := instance.Status.DeepCopy()
+
+	if err := r.ensureCloudCredentialSecret(ctx, logger, instance); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	if err := r.installGeneralResources(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to create ServiceAccount")
@@ -461,10 +467,41 @@ func (r *KedaControllerReconciler) installGeneralResources(ctx context.Context, 
 	}
 
 	if err := toApply.Apply(); err != nil {
-		logger.Error(err, "Unable to install ServiceAccount and NetworkPolicies")
+		logger.Error(err, "Unable to install ServiceAccount and NetworkPoliciess")
 		return err
 	}
 
+	return nil
+}
+
+// cloudCredentialTransforms returns the manifestival transforms that wire
+// cloud credential volumes, mounts, and env vars into the keda-operator
+// Deployment when a workload identity strategy is active.
+func (r *KedaControllerReconciler) cloudCredentialTransforms(ctx context.Context) ([]mf.Transformer, error) {
+	for _, p := range cloud.Providers() {
+		if p.Enabled() {
+			return p.Transforms(ctx, r.Client, r.Scheme)
+		}
+	}
+	return nil, nil
+}
+
+// ensureCloudCredentialSecret creates or updates the workload identity
+// credential Secret (e.g. GCP WIF) when a cloud credential provider is
+// enabled (through environment variables to the olm operator).
+func (r *KedaControllerReconciler) ensureCloudCredentialSecret(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+	for _, p := range cloud.Providers() {
+		if p.Enabled() {
+			result, err := cloud.EnsureCredentialSecret(ctx, r.Client, p, instance.Namespace, instance, r.Scheme)
+			if err != nil {
+				return err
+			}
+			if result == controllerutil.OperationResultCreated {
+				logger.Info("Created cloud credential Secret", "provider", p.Name())
+			}
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -578,6 +615,12 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.Operator.Args[i], "operator", r.Scheme, logger))
 	}
+
+	cloudTransforms, err := r.cloudCredentialTransforms(ctx)
+	if err != nil {
+		return err
+	}
+	transforms = append(transforms, cloudTransforms...)
 
 	manifest, err := r.resourcesController.Transform(transforms...)
 	if err != nil {

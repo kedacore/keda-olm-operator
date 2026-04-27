@@ -33,6 +33,8 @@ import (
 	"github.com/kedacore/keda-olm-operator/internal/controller/keda/transform"
 )
 
+const testTypeUnit = "unit"
+
 var _ = Describe("Transforming all resource namespaces", func() {
 	var _ = Describe("Changing namespace", func() {
 		Context("When transforming a ServiceAccount", func() {
@@ -85,7 +87,7 @@ spec:
   versionPriority: 100
 `
 			It("Should be able to change the namespace in the object's spec.service.namespace field", func() {
-				if testType != "unit" {
+				if testType != testTypeUnit {
 					Skip("test.type isn't 'unit'")
 				}
 
@@ -113,7 +115,7 @@ spec:
 var _ = Describe("Transforming deployment spec for volumes", func() {
 	var _ = Describe("Overriding volumes", func() {
 		BeforeEach(func() {
-			if testType != "unit" {
+			if testType != testTypeUnit {
 				Skip("test.type isn't 'unit'")
 			}
 		})
@@ -509,6 +511,139 @@ spec:
 			}
 			Expect(peers).To(ContainElement(structuredToMap(desiredPeer)))
 			Expect(err).To(BeNil())
+		})
+	})
+})
+
+var _ = Describe("Transforming deployment spec for env vars", func() {
+	var _ = Describe("Overriding container env vars", func() {
+		BeforeEach(func() {
+			if testType != testTypeUnit {
+				Skip("test.type isn't 'unit'")
+			}
+		})
+		Context("When transforming a Deployment", func() {
+
+			By("Setting up schemes")
+			scheme := runtime.NewScheme()
+			_ = appsv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
+
+			yamlData := `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-keda-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda
+  template:
+    metadata:
+      labels:
+        app: keda
+    spec:
+      containers:
+        - name: keda-operator
+          image: keda:latest
+          env:
+            - name: EXISTING_VAR
+              value: original
+        - name: sidecar
+          image: sidecar:latest`
+
+			It("Should add env vars to the targeted container", func() {
+				manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+				Expect(err).To(BeNil())
+
+				envVars := []corev1.EnvVar{
+					{Name: "MY_VAR", Value: "/some/path"},
+				}
+				transforms := []mf.Transformer{transform.ReplaceContainerEnv(envVars, "keda-operator", scheme)}
+				newManifest, err := manifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+
+				r := newManifest.Resources()
+				Expect(len(r)).To(Equal(1))
+
+				containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				envs, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "env")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				Expect(envs).To(ContainElement(structuredToMap(corev1.EnvVar{Name: "MY_VAR", Value: "/some/path"})))
+				Expect(envs).To(ContainElement(structuredToMap(corev1.EnvVar{Name: "EXISTING_VAR", Value: "original"})))
+			})
+
+			It("Should replace an existing env var by name", func() {
+				manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+				Expect(err).To(BeNil())
+
+				envVars := []corev1.EnvVar{
+					{Name: "EXISTING_VAR", Value: "replaced"},
+				}
+				transforms := []mf.Transformer{transform.ReplaceContainerEnv(envVars, "keda-operator", scheme)}
+				newManifest, err := manifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+
+				r := newManifest.Resources()
+				containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				envs, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "env")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				Expect(envs).To(ContainElement(structuredToMap(corev1.EnvVar{Name: "EXISTING_VAR", Value: "replaced"})))
+				Expect(envs).NotTo(ContainElement(structuredToMap(corev1.EnvVar{Name: "EXISTING_VAR", Value: "original"})))
+			})
+
+			It("Should not modify containers that don't match the target name", func() {
+				manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+				Expect(err).To(BeNil())
+
+				envVars := []corev1.EnvVar{
+					{Name: "INJECTED", Value: "yes"},
+				}
+				transforms := []mf.Transformer{transform.ReplaceContainerEnv(envVars, "keda-operator", scheme)}
+				newManifest, err := manifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+
+				r := newManifest.Resources()
+				containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+
+				// Sidecar (index 1) should have no env
+				sidecarEnvs, found, _ := unstructured.NestedSlice(structuredToMap(containers[1]), "env")
+				Expect(found).To(BeFalse(), "sidecar should not have env vars injected")
+				Expect(sidecarEnvs).To(BeNil())
+			})
+
+			It("Should be a no-op for non-Deployment resources", func() {
+				saYaml := `---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-sa
+  namespace: keda`
+				manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(saYaml)))
+				Expect(err).To(BeNil())
+
+				envVars := []corev1.EnvVar{{Name: "FOO", Value: "bar"}}
+				transforms := []mf.Transformer{transform.ReplaceContainerEnv(envVars, "keda-operator", scheme)}
+				newManifest, err := manifest.Transform(transforms...)
+				Expect(err).To(BeNil())
+
+				r := newManifest.Resources()
+				Expect(len(r)).To(Equal(1))
+				Expect(r[0].GetKind()).To(Equal("ServiceAccount"))
+			})
 		})
 	})
 })
