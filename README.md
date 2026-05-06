@@ -8,6 +8,12 @@
     - [Manual installation](#manual-installation)
   - [The `KedaController` Custom Resource](#the-kedacontroller-custom-resource)
     - [`KedaController` Spec](#kedacontroller-spec)
+  - [HTTP Add-on](#http-add-on)
+    - [Enabling the HTTP Add-on](#enabling-the-http-add-on)
+    - [Image Configuration](#image-configuration)
+    - [Component Configuration](#component-configuration)
+    - [Configuring HTTP Add-on Behavior via Environment Variables](#configuring-http-add-on-behavior-via-environment-variables)
+    - [HTTP Add-on Status](#http-add-on-status)
   - [Uninstallation](#uninstallation)
     - [How to uninstall KEDA Controller](#how-to-uninstall-keda-controller)
     - [How to uninstall KEDA OLM Operator](#how-to-uninstall-keda-olm-operator)
@@ -435,8 +441,187 @@ spec:
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
     # labels:
     #  labelKey: labelValue
+
+  ## KEDA HTTP Add-on related config
+  httpAddon:
+    ## Enable the HTTP Add-on installation
+    # When false (default), no HTTP Add-on components are deployed.
+    # When true, the operator, interceptor, and scaler are installed.
+    # default: false
+    enabled: false
+
+    ## Global version tag for HTTP Add-on images
+    # Used as image tag for all components unless overridden per component.
+    # version: "0.14.0"
+
+    ## HTTP Add-on Operator configuration
+    # operator:
+    #   logLevel: info
+    #   logEncoder: console
+    #   image:
+    #     name: ghcr.io/kedacore/http-add-on-operator
+    #     tag: ""
+    #   replicas: 1
+    #   env: []
+    #   nodeSelector: {}
+    #   tolerations: []
+    #   affinity: {}
+    #   resources: {}
+
+    ## HTTP Add-on Interceptor configuration
+    # interceptor:
+    #   logLevel: info
+    #   logEncoder: console
+    #   image:
+    #     name: ghcr.io/kedacore/http-add-on-interceptor
+    #     tag: ""
+    #   replicas: 1
+    #   env: []
+    #   nodeSelector: {}
+    #   tolerations: []
+    #   affinity: {}
+    #   resources: {}
+
+    ## HTTP Add-on Scaler configuration
+    # scaler:
+    #   logLevel: info
+    #   logEncoder: console
+    #   image:
+    #     name: ghcr.io/kedacore/http-add-on-scaler
+    #     tag: ""
+    #   replicas: 1
+    #   env: []
+    #   nodeSelector: {}
+    #   tolerations: []
+    #   affinity: {}
+    #   resources: {}
 ```
 
+## HTTP Add-on
+
+The [KEDA HTTP Add-on](https://github.com/kedacore/http-add-on) enables HTTP-based
+autoscaling, allowing Kubernetes deployments to scale (including to and from zero)
+based on incoming HTTP traffic. The operator manages the full lifecycle of the
+HTTP Add-on components: the **operator**, **interceptor**, and **scaler**.
+
+The HTTP Add-on CRDs (`InterceptorRoute`, `HTTPScaledObject`) are always installed
+with the KEDA OLM Operator, regardless of whether the add-on itself is enabled.
+This ensures that user-created resources are never accidentally deleted when the
+add-on is disabled.
+
+### Enabling the HTTP Add-on
+
+To install the HTTP Add-on, set `httpAddon.enabled: true` and specify a `version`
+in the `KedaController` resource:
+
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  httpAddon:
+    enabled: true
+    version: "0.14.0"
+```
+
+Setting `enabled: false` (the default) will remove all HTTP Add-on deployments
+while preserving the CRDs and any user-created `InterceptorRoute` resources.
+
+### Image Configuration
+
+A global `version` field sets the default image tag for all HTTP Add-on components.
+Each component can override the tag individually via its `image.tag` field.
+If a component's `tag` is empty or not set, the global `version` is used.
+
+```yaml
+spec:
+  httpAddon:
+    enabled: true
+    version: "0.14.0"
+    operator:
+      image:
+        name: ghcr.io/kedacore/http-add-on-operator
+        tag: "0.14.1"
+    interceptor:
+      image:
+        name: ghcr.io/kedacore/http-add-on-interceptor
+        # tag is empty, uses global version 0.14.0
+    scaler:
+      image:
+        name: ghcr.io/kedacore/http-add-on-scaler
+```
+
+The example above produces the following images:
+- **operator**: `ghcr.io/kedacore/http-add-on-operator:0.14.1` (component override)
+- **interceptor**: `ghcr.io/kedacore/http-add-on-interceptor:0.14.0` (global version)
+- **scaler**: `ghcr.io/kedacore/http-add-on-scaler:0.14.0` (global version)
+
+### Component Configuration
+
+Each component (operator, interceptor, scaler) supports the following standard
+Kubernetes deployment fields:
+
+| Field | Description |
+|---|---|
+| `logLevel` | Logging level (`debug`, `info`, `error`). Default: `info` |
+| `logEncoder` | Logging format (`json`, `console`). Default: `console` |
+| `logTimeEncoding` | Time encoding (`epoch`, `millis`, `nano`, `iso8601`, `rfc3339`, `rfc3339nano`). Default: `rfc3339` |
+| `image.name` | Container image repository |
+| `image.tag` | Image tag override (falls back to global `version`) |
+| `replicas` | Number of deployment replicas |
+| `env` | Extra environment variables |
+| `deploymentAnnotations` | Annotations on the Deployment |
+| `deploymentLabels` | Labels on the Deployment |
+| `podAnnotations` | Annotations on the Pod |
+| `podLabels` | Labels on the Pod |
+| `nodeSelector` | Node selector for pod scheduling |
+| `tolerations` | Tolerations for pod scheduling |
+| `affinity` | Affinity rules for pod scheduling |
+| `priorityClassName` | Pod priority class |
+| `resources` | Resource requests and limits |
+
+### Configuring HTTP Add-on Behavior via Environment Variables
+
+HTTP Add-on specific settings (such as interceptor timeouts, connection pool sizes,
+or scaler parameters) are not exposed as dedicated CRD fields. Instead, configure
+them by passing environment variables directly to the relevant component:
+
+```yaml
+spec:
+  httpAddon:
+    enabled: true
+    version: "0.14.0"
+    interceptor:
+      env:
+        - name: KEDA_HTTP_CONNECT_TIMEOUT
+          value: "500ms"
+        - name: KEDA_HTTP_KEEP_ALIVE
+          value: "1s"
+        - name: KEDA_RESPONSE_HEADER_TIMEOUT
+          value: "500ms"
+    scaler:
+      env:
+        - name: KEDA_HTTP_SCALER_TARGET_ADMIN_PORT
+          value: "9091"
+```
+
+Refer to the [KEDA HTTP Add-on documentation](https://keda.sh/http-add-on)
+for the full list of supported environment variables for each component.
+
+### HTTP Add-on Status
+
+When the HTTP Add-on is enabled, the `KedaController` status includes information
+about the add-on installation:
+
+```yaml
+status:
+  httpAddon:
+    phase: "Installation Succeeded"
+    reason: "HTTP Add-on v0.14.0 is installed in namespace 'keda'"
+    version: "0.14.0"
+```
 
 ## Uninstallation
 

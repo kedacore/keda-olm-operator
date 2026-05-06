@@ -317,3 +317,55 @@ spec:
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
     # labels:
     #  labelKey: labelValue
+
+  ## KEDA HTTP Add-on related config
+  httpAddon:
+    ## Enable the HTTP Add-on installation
+    # default: false
+    enabled: false
+
+    ## Global version tag for HTTP Add-on images.
+    ## Used as image tag for all components unless overridden per component.
+    # version: "0.13.0"
+
+    ## HTTP Add-on Operator configuration
+    # operator:
+    #   logLevel: info
+    #   logEncoder: console
+    #   image:
+    #     name: ghcr.io/kedacore/http-add-on-operator
+    #     tag: ""
+    #   replicas: 1
+    #   env: []
+    #   nodeSelector: {}
+    #   tolerations: []
+    #   affinity: {}
+    #   resources: {}
+
+    ## HTTP Add-on Interceptor configuration
+    # interceptor:
+    #   logLevel: info
+    #   logEncoder: console
+    #   image:
+    #     name: ghcr.io/kedacore/http-add-on-interceptor
+    #     tag: ""
+    #   replicas: 1
+    #   env: []
+    #   nodeSelector: {}
+    #   tolerations: []
+    #   affinity: {}
+    #   resources: {}
+
+    ## HTTP Add-on Scaler configuration
+    # scaler:
+    #   logLevel: info
+    #   logEncoder: console
+    #   image:
+    #     name: ghcr.io/kedacore/http-add-on-scaler
+    #     tag: ""
+    #   replicas: 1
+    #   env: []
+    #   nodeSelector: {}
+    #   tolerations: []
+    #   affinity: {}
+    #   resources: {}
