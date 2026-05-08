@@ -32,6 +32,8 @@ import (
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
+	openshiftconfigv1 "github.com/openshift/api/config/v1"
+	tlspkg "github.com/openshift/controller-runtime-common/pkg/tls"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -42,9 +44,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
@@ -81,28 +86,31 @@ const (
 	httpAddonDefaultOperatorImage    = "ghcr.io/kedacore/http-add-on-operator"
 	httpAddonDefaultInterceptorImage = "ghcr.io/kedacore/http-add-on-interceptor"
 	httpAddonDefaultScalerImage      = "ghcr.io/kedacore/http-add-on-scaler"
+
+	kedaTLSCipherListEnvVar = "KEDA_SERVICE_TLS_CIPHER_LIST"
+	kedaTLSMinVersionEnvVar = "KEDA_SERVICE_MIN_TLS_VERSION"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
 type KedaControllerReconciler struct {
 	client.Client
-	Log                 logr.Logger
-	Scheme              *runtime.Scheme
-	CertDir             string
-	LeaderElection      bool
-	rotatorStarted      bool
-	mgr                 ctrl.Manager
-	resourcesGeneral    mf.Manifest
-	resourcesController mf.Manifest
-	resourcesMetrics    mf.Manifest
-	resourcesWebhooks   mf.Manifest
-	resourcesMonitoring mf.Manifest
-	discoveryClient     *discovery.DiscoveryClient
-	resourceNamespace   string
-
+	Log                           logr.Logger
+	Scheme                        *runtime.Scheme
+	CertDir                       string
+	LeaderElection                bool
+	rotatorStarted                bool
+	mgr                           ctrl.Manager
+	resourcesGeneral              mf.Manifest
+	resourcesController           mf.Manifest
+	resourcesMetrics              mf.Manifest
+	resourcesWebhooks             mf.Manifest
+	resourcesMonitoring           mf.Manifest
+	discoveryClient               *discovery.DiscoveryClient
+	resourceNamespace             string
 	resourcesHTTPAddonOperator    mf.Manifest
 	resourcesHTTPAddonInterceptor mf.Manifest
 	resourcesHTTPAddonScaler      mf.Manifest
+	injectTLSEnvVars              bool // true when running on OpenShift; enables TLS env var injection into KEDA deployments
 }
 
 func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaControllerResourceNamespace string, logger logr.Logger) error {
@@ -137,14 +145,33 @@ func (r *KedaControllerReconciler) SetupWithManager(mgr ctrl.Manager, kedaContro
 		if r.discoveryClient, err = discovery.NewDiscoveryClientForConfig(restConfig); err != nil {
 			logger.Info("Unable to get discovery client for cluster version discovery. Ignore this message in test environments", "err", err)
 		}
+		if directClient, err := client.New(restConfig, client.Options{Scheme: mgr.GetScheme()}); err != nil {
+			logger.Error(err, "Unable to create direct client for TLS profile change detection. Ignore this message in test environments")
+		} else {
+			ctx := context.TODO()
+			if util.RunningOnOpenshift(ctx, logger, directClient) {
+				r.injectTLSEnvVars = true
+			}
+		}
 	}
 
 	go r.ensureKedaController(logger)
 
-	return ctrl.NewControllerManagedBy(mgr).
+	controller := ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.KedaController{}).
-		Owns(&appsv1.Deployment{}).
-		Complete(r)
+		Owns(&appsv1.Deployment{})
+	if r.injectTLSEnvVars {
+		controller = controller.Watches(&openshiftconfigv1.APIServer{},
+			handler.TypedFuncs[client.Object, reconcile.Request]{
+				CreateFunc: func(_ context.Context, _ event.TypedCreateEvent[client.Object], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+					r.enqueueKedaControllerReconcile(q)
+				},
+				UpdateFunc: func(_ context.Context, e event.TypedUpdateEvent[client.Object], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+					r.enqueueOnTLSProfileChange(e.ObjectOld, e.ObjectNew, q)
+				},
+			})
+	}
+	return controller.Complete(r)
 }
 
 func (r *KedaControllerReconciler) ensureKedaController(logger logr.Logger) {
@@ -224,6 +251,52 @@ func (r *KedaControllerReconciler) initializeDefaultController() *kedav1alpha1.K
 	return keda
 }
 
+// enqueueKedaControllerReconcile unconditionally enqueues a reconcile request for the
+// KedaController singleton. Used when there is no previous object to diff against.
+func (r *KedaControllerReconciler) enqueueKedaControllerReconcile(q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+	q.Add(reconcile.Request{NamespacedName: types.NamespacedName{
+		Name:      kedaControllerResourceName,
+		Namespace: r.resourceNamespace,
+	}})
+}
+
+// enqueueOnTLSProfileChange is called by the APIServer UpdateFunc. It resolves the effective TLS
+// profile from both the old and new APIServer objects, and enqueues a KedaController reconcile
+// request only when the profile has changed.
+func (r *KedaControllerReconciler) enqueueOnTLSProfileChange(oldObj, newObj client.Object, q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+	oldConfig, ok := oldObj.(*openshiftconfigv1.APIServer)
+	if !ok {
+		return
+	}
+	newConfig, ok := newObj.(*openshiftconfigv1.APIServer)
+	if !ok {
+		return
+	}
+	oldProfile, oldErr := tlspkg.GetTLSProfileSpec(oldConfig.Spec.TLSSecurityProfile)
+	newProfile, newErr := tlspkg.GetTLSProfileSpec(newConfig.Spec.TLSSecurityProfile)
+	if oldErr == nil && newErr == nil && reflect.DeepEqual(oldProfile, newProfile) {
+		return
+	}
+	r.enqueueKedaControllerReconcile(q)
+}
+
+// tlsEnvVarTransforms reads the current TLS profile from the APIServer via the manager cache and
+// returns Transformers that set KEDA_SERVICE_TLS_CIPHER_LIST and KEDA_SERVICE_MIN_TLS_VERSION in
+// all containers of all Deployment resources. Returns nil if the fetch fails.
+func (r *KedaControllerReconciler) tlsEnvVarTransforms(ctx context.Context, logger logr.Logger) []mf.Transformer {
+	profile, err := tlspkg.FetchAPIServerTLSProfile(ctx, r.Client)
+	if err != nil {
+		logger.Error(err, "Failed to fetch TLS profile from APIServer; skipping TLS env var update")
+		return nil
+	}
+	minTLSVersion := strings.TrimPrefix(string(profile.MinTLSVersion), "Version")
+	cipherList := strings.Join(profile.Ciphers, ",")
+	return []mf.Transformer{
+		transform.EnsureEnvVarInAllContainers(kedaTLSMinVersionEnvVar, minTLSVersion, r.Scheme),
+		transform.EnsureEnvVarInAllContainers(kedaTLSCipherListEnvVar, cipherList, r.Scheme),
+	}
+}
+
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups="",resources=namespaces;serviceaccounts;pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets,verbs="*"
@@ -233,6 +306,8 @@ func (r *KedaControllerReconciler) initializeDefaultController() *kedav1alpha1.K
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=create;delete;get;list;patch;update;watch
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
+// +kubebuilder:rbac:groups=config.openshift.io,resources=apiservers,verbs=get;list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=create;delete;get;list;patch;update;watch
@@ -508,6 +583,10 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 	}
 
 	runningOnOpenshift := util.RunningOnOpenshift(ctx, logger, r.Client)
+
+	if r.injectTLSEnvVars {
+		transforms = append(transforms, r.tlsEnvVarTransforms(ctx, logger)...)
+	}
 
 	caConfigMaps := instance.Spec.Operator.CAConfigMaps
 	if runningOnOpenshift {
@@ -995,6 +1074,10 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		transforms = append(transforms, transform.ReplaceMetricsServerImage(controllerImage, r.Scheme))
 	}
 
+	if r.injectTLSEnvVars {
+		transforms = append(transforms, r.tlsEnvVarTransforms(ctx, logger)...)
+	}
+
 	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
 	if util.RunningOnOpenshift(ctx, logger, r.Client) && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient) {
 		transforms = append(transforms, transform.RemoveSeccompProfileFromMetricsServer(r.Scheme, logger))
@@ -1277,6 +1360,10 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 		transform.InjectOwner(instance),
 		transform.ReplaceAllNamespaces(instance.Namespace),
 		transform.ReplaceWatchNamespace(instance.Spec.WatchNamespace, "keda-admission-webhooks", r.Scheme, logger),
+	}
+
+	if r.injectTLSEnvVars {
+		transforms = append(transforms, r.tlsEnvVarTransforms(ctx, logger)...)
 	}
 
 	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
