@@ -15,6 +15,11 @@ const (
 
 // finalizeKedaController is deleting resources for the respective KedaController
 func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger) error {
+	if err := r.deleteHTTPAddon(logger); err != nil {
+		logger.Info("error finalized KedaController HTTP Add-on", "error", err)
+		return err
+	}
+
 	if err := r.resourcesGeneral.Delete(); err != nil {
 		logger.Info("error finalized KedaController general", "error", err)
 		return err
