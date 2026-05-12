@@ -1,31 +1,39 @@
 package resources
 
 import (
-	"path/filepath"
-	"runtime"
+	"bytes"
+	"embed"
 
 	mf "github.com/manifestival/manifestival"
 )
 
-const resourcesPath = "keda.yaml"
-const olmResourcesPath = "keda-olm-operator.yaml"
-const httpAddonResourcesPath = "keda-http-addon.yaml"
-const LastConfigID = "olm-operator.keda.sh/last-applied-configuration"
+//go:embed keda.yaml keda-olm-operator.yaml keda-http-addon.yaml
+var content embed.FS
+
+const (
+	resourcesPath          = "keda.yaml"
+	olmResourcesPath       = "keda-olm-operator.yaml"
+	httpAddonResourcesPath = "keda-http-addon.yaml"
+	LastConfigID           = "olm-operator.keda.sh/last-applied-configuration"
+)
 
 func GetResourcesManifest() (mf.Manifest, error) {
-	_, path, _, _ := runtime.Caller(0)
-	fullPath := filepath.Join(filepath.Dir(path), resourcesPath)
-	olmFullPath := filepath.Join(filepath.Dir(path), olmResourcesPath)
-	kedamf, err := mf.NewManifest(fullPath, mf.UseLastAppliedConfigAnnotation(LastConfigID))
+	kedamf, err := manifestFromEmbed(resourcesPath)
 	if err != nil {
 		return kedamf, err
 	}
-	operatormf, err := mf.NewManifest(olmFullPath, mf.UseLastAppliedConfigAnnotation(LastConfigID))
+	operatormf, err := manifestFromEmbed(olmResourcesPath)
 	return kedamf.Append(operatormf), err
 }
 
 func GetHTTPAddonResourcesManifest() (mf.Manifest, error) {
-	_, path, _, _ := runtime.Caller(0)
-	fullPath := filepath.Join(filepath.Dir(path), httpAddonResourcesPath)
-	return mf.NewManifest(fullPath, mf.UseLastAppliedConfigAnnotation(LastConfigID))
+	return manifestFromEmbed(httpAddonResourcesPath)
+}
+
+func manifestFromEmbed(name string) (mf.Manifest, error) {
+	data, err := content.ReadFile(name)
+	if err != nil {
+		return mf.Manifest{}, err
+	}
+	return mf.ManifestFrom(mf.Reader(bytes.NewReader(data)), mf.UseLastAppliedConfigAnnotation(LastConfigID))
 }
