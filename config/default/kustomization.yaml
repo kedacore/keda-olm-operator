@@ -9,8 +9,10 @@ namespace: keda
 # namePrefix: keda-olm-operator-
 
 # Labels to add to all resources and selectors.
-#commonLabels:
-#  someName: someValue
+#labels:
+#- pairs:
+#    someName: someValue
+#  includeSelectors: true
 
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
@@ -42,6 +44,8 @@ resources:
 - ../general
 - ../rbac
 - ../manager
-commonLabels:
-  app.kubernetes.io/part-of: keda-olm-operator
-  app.kubernetes.io/version: main
+labels:
+- pairs:
+    app.kubernetes.io/part-of: keda-olm-operator
+    app.kubernetes.io/version: main
+  includeSelectors: true
