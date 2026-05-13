@@ -1620,6 +1620,43 @@ func ReplaceLogTimeEncoding(logTimeEncoding string, containerName string, scheme
 	return replaceContainerArg(logTimeEncoding, LogTimeEncodingArg, containerName, scheme, logger)
 }
 
+// EnsureEnvVarInAllContainers returns a Transformer that ensures an environment variable
+// with the given name is set to the given value in all containers of all Deployment resources.
+func EnsureEnvVarInAllContainers(name, value string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+		deploy := &appsv1.Deployment{}
+		if err := scheme.Convert(u, deploy, nil); err != nil {
+			return err
+		}
+		changed := false
+		for i := range deploy.Spec.Template.Spec.Containers {
+			c := &deploy.Spec.Template.Spec.Containers[i]
+			found := false
+			for j, env := range c.Env {
+				if env.Name == name {
+					if env.Value != value {
+						c.Env[j].Value = value
+						changed = true
+					}
+					found = true
+					break
+				}
+			}
+			if !found {
+				c.Env = append(c.Env, corev1.EnvVar{Name: name, Value: value})
+				changed = true
+			}
+		}
+		if changed {
+			return scheme.Convert(deploy, u, nil)
+		}
+		return nil
+	}
+}
+
 // InjectOwner creates a Transformer which adds an OwnerReference
 // pointing to `owner`, but only if the object is in the same namespace as `owner`
 func InjectOwner(owner mf.Owner) mf.Transformer {

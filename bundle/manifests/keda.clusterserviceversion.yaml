@@ -76,6 +76,9 @@ metadata:
               "logEncoder": "console",
               "logLevel": "info"
             },
+            "httpAddon": {
+              "enabled": false
+            },
             "metricsServer": {
               "logLevel": "0",
               "networkEgressAllowAll": "true"
@@ -206,6 +209,12 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:io.kubernetes:Secret
       version: v1alpha1
+    - kind: HTTPScaledObject
+      name: httpscaledobjects.http.keda.sh
+      version: v1alpha1
+    - kind: InterceptorRoute
+      name: interceptorroutes.http.keda.sh
+      version: v1beta1
     - description: |
         Represents an installation of a particular version of KEDA Controller.
       displayName: KedaController
@@ -577,6 +586,14 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - config.openshift.io
+          resources:
+          - apiservers
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - coordination.k8s.io
           resources:
           - leases
@@ -590,6 +607,18 @@ spec:
           - kedacontrollers/status
           verbs:
           - '*'
+        - apiGroups:
+          - keda.sh
+          resources:
+          - scaledobjects
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - monitoring.coreos.com
           resources:
@@ -607,6 +636,18 @@ spec:
           - networking.k8s.io
           resources:
           - networkpolicies
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - policy
+          resources:
+          - poddisruptionbudgets
           verbs:
           - create
           - delete
