@@ -60,7 +60,7 @@ jobs:
         run: make sign-images
 
   deploy-test:
-    needs: Build
+    needs: build
     name: Deploy-test
     runs-on: ubuntu-latest
     steps:
@@ -125,7 +125,7 @@ jobs:
         run: make test-deployment
 
   deploy:
-    needs: Deploy-test
+    needs: deploy-test
     name: Deploy
     runs-on: ubuntu-latest
     steps:
