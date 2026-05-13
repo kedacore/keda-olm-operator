@@ -15,7 +15,7 @@ jobs:
     container: ghcr.io/kedacore/keda-tools:1.25.6
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
