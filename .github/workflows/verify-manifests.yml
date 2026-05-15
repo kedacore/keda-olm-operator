@@ -1,0 +1,42 @@
+name: Verify Manifests
+on: [pull_request]
+
+jobs:
+  verify-manifests:
+    name: Verify Generated Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run make manifests
+        run: make manifests
+
+      - name: Run make generate
+        run: make generate
+
+      - name: Run make bundle
+        run: make bundle
+
+      - name: Reset kustomize build-time side effects
+        run: git checkout config/manager/kustomization.yaml config/default/kustomization.yaml
+
+      - name: Check for uncommitted changes
+        run: |
+          UNTRACKED="$(git ls-files --others --exclude-standard)"
+          DIFF="$(git diff -I '^\s*createdAt:' --name-only)"
+          if [ -n "$UNTRACKED" ] || [ -n "$DIFF" ]; then
+            echo "::error::Generated manifests are out of date. Please run 'make manifests generate bundle' and commit the changes."
+            echo ""
+            echo "Changed files:"
+            git status --short
+            echo ""
+            echo "Diff (ignoring createdAt timestamps):"
+            git diff -I '^\s*createdAt:'
+            exit 1
+          fi
