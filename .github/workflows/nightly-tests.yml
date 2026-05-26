@@ -3,23 +3,26 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   nightly-test:
     name: Nightly test
     runs-on: ubuntu-latest
     steps:
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: '1.25'
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -31,7 +34,7 @@ jobs:
       # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
       # https://github.com/actions/runner-images/issues/6283
       - name: Setup Homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@6eaeff80e7e5c43087c0e5eb5aa82120399e9c91 # master
       - name: Setup Env
         run: sudo apt-get install gcc-11 g++ binutils libc6
 

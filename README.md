@@ -654,7 +654,7 @@ This project uses the following tools for development.
 
 #### golangci-lint
 
-To install `golangci-lint` locally follow the [official documentation](https://golangci-lint.run/usage/install/#local-installation).
+To install `golangci-lint` locally follow the [official documentation](https://golangci-lint.run/docs/welcome/install/local/).
 
 #### pre-commit
 

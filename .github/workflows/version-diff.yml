@@ -4,6 +4,9 @@ on:
     paths:
       - 'keda/**'
 
+permissions:
+  contents: read
+
 jobs:
   condition-check:
     outputs:
@@ -11,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -56,7 +59,7 @@ jobs:
       old_files: ${{ steps.setup-id.outputs.old_files }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -69,7 +72,7 @@ jobs:
 
       - name: resources/keda.yaml is updated.
         run: |
-          tester=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.workflow_run.head_sha }} ${{ github.sha }} | xargs)
+          tester=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.pull_request.base.sha }} HEAD | xargs)
           echo $tester
           if [[ ! " ${tester[*]} " =~ "resources/keda.yaml" ]]; then
            echo "Did you forget to update resources/keda.yaml file? https://github.com/kedacore/keda-olm-operator/blob/main/RELEASE-PROCESS.MD#1-keda-release-yaml-file"
@@ -105,13 +108,17 @@ jobs:
             fi
           done
           new_files+="]}"
-          echo "::set-output name=new_files::$new_files"
-          echo "::set-output name=old_files::$old_files"
+          echo "new_files=$new_files" >> "$GITHUB_OUTPUT"
+          echo "old_files=$old_files" >> "$GITHUB_OUTPUT"
   diff:
     if: always() && needs.condition-check.outputs.check != ''
     name: Diff files
-    needs: setup
+    needs: [condition-check, setup]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
 
     strategy:
       matrix: ${{fromJSON(needs.setup.outputs.new_files)}}
@@ -121,7 +128,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Checkout Pull Request
         env:
@@ -170,11 +177,11 @@ jobs:
           else
             diff_text="File \`$new_file\` wasn't found in previous version, its brand new!"
           fi
-          echo "::set-output name=body::$diff_text"
-          echo "::set-output name=old_file::$old_file"
+          echo "body=$diff_text" >> "$GITHUB_OUTPUT"
+          echo "old_file=$old_file" >> "$GITHUB_OUTPUT"
 
       - name: Find comment
-        uses: peter-evans/find-comment@v2
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
         id: find-comment
         with:
           comment-author: "github-actions[bot]"
@@ -197,7 +204,7 @@ jobs:
       # Create a brand new comment (usually when PR is created)
       - name: Create comment
         if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && (steps.diff-id.outputs.body == steps.find-comment.outputs.comment-body || steps.find-comment.outputs.comment-id == '')
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
@@ -207,7 +214,7 @@ jobs:
 
       - name: Create comment over limit
         if: steps.diff-id.outputs.body == 'limit exceeded'
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           issue-number: ${{github.event.pull_request.number}}
           body: Diff output of `${{matrix.new}}` is too large - character limit 65536 exceeded for github comment
@@ -216,7 +223,7 @@ jobs:
       # this "updates" a comment (creates a new one as an update)
       - name: Update comment
         if: steps.diff-id.outputs.body != '' && steps.diff-id.outputs.body != 'limit exceeded' && steps.diff-id.outputs.body != steps.find-comment.outputs.comment-body && steps.find-comment.outputs.comment-body != ''
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           # max character length is 65536 (2022/10/06)
