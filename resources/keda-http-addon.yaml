@@ -161,10 +161,8 @@ spec:
       protocol: TCP
       targetPort: metrics-https
   selector:
-    app.kubernetes.io/component: add-on
-    app.kubernetes.io/instance: operator
-    app.kubernetes.io/name: http
-    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/name: http-add-on
+    app.kubernetes.io/component: operator
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -180,17 +178,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/component: add-on
-      app.kubernetes.io/instance: operator
-      app.kubernetes.io/name: http
-      app.kubernetes.io/part-of: keda
+      app.kubernetes.io/name: http-add-on
+      app.kubernetes.io/component: operator
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: add-on
-        app.kubernetes.io/instance: operator
-        app.kubernetes.io/name: http
-        app.kubernetes.io/part-of: keda
+        app.kubernetes.io/name: http-add-on
+        app.kubernetes.io/component: operator
     spec:
       containers:
         - args:
@@ -322,10 +316,8 @@ spec:
       protocol: TCP
       targetPort: admin
   selector:
-    app.kubernetes.io/component: add-on
-    app.kubernetes.io/instance: interceptor
-    app.kubernetes.io/name: http
-    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/name: http-add-on
+    app.kubernetes.io/component: interceptor
 ---
 apiVersion: v1
 kind: Service
@@ -343,10 +335,8 @@ spec:
       protocol: TCP
       targetPort: metrics
   selector:
-    app.kubernetes.io/component: add-on
-    app.kubernetes.io/instance: interceptor
-    app.kubernetes.io/name: http
-    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/name: http-add-on
+    app.kubernetes.io/component: interceptor
   type: ClusterIP
 ---
 apiVersion: v1
@@ -369,10 +359,8 @@ spec:
       protocol: TCP
       targetPort: proxy-tls
   selector:
-    app.kubernetes.io/component: add-on
-    app.kubernetes.io/instance: interceptor
-    app.kubernetes.io/name: http
-    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/name: http-add-on
+    app.kubernetes.io/component: interceptor
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -388,17 +376,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/component: add-on
-      app.kubernetes.io/instance: interceptor
-      app.kubernetes.io/name: http
-      app.kubernetes.io/part-of: keda
+      app.kubernetes.io/name: http-add-on
+      app.kubernetes.io/component: interceptor
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: add-on
-        app.kubernetes.io/instance: interceptor
-        app.kubernetes.io/name: http
-        app.kubernetes.io/part-of: keda
+        app.kubernetes.io/name: http-add-on
+        app.kubernetes.io/component: interceptor
     spec:
       containers:
         - args:
@@ -542,10 +526,8 @@ spec:
       protocol: TCP
       targetPort: grpc
   selector:
-    app.kubernetes.io/component: add-on
-    app.kubernetes.io/instance: external-scaler
-    app.kubernetes.io/name: http
-    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/name: http-add-on
+    app.kubernetes.io/component: external-scaler
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -560,17 +542,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/component: add-on
-      app.kubernetes.io/instance: external-scaler
-      app.kubernetes.io/name: http
-      app.kubernetes.io/part-of: keda
+      app.kubernetes.io/name: http-add-on
+      app.kubernetes.io/component: external-scaler
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: add-on
-        app.kubernetes.io/instance: external-scaler
-        app.kubernetes.io/name: http
-        app.kubernetes.io/part-of: keda
+        app.kubernetes.io/name: http-add-on
+        app.kubernetes.io/component: external-scaler
     spec:
       containers:
         - args:
