@@ -33,8 +33,37 @@ fi
 
 # Post-process the manifest to fix labels
 echo "Fixing labels in manifest..."
-sed -i '/app\.kubernetes\.io\/managed-by: kustomize/d' "$tmpfile"
-sed -i "s/app\.kubernetes\.io\/version: HEAD/app.kubernetes.io\/version: ${ver}/" "$tmpfile"
+python3 -c "
+import re, sys
+ver, path = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    content = f.read()
+content = content.replace('app.kubernetes.io/managed-by: kustomize\n', '')
+content = content.replace('app.kubernetes.io/version: HEAD', 'app.kubernetes.io/version: ' + ver)
+
+# Fix deployment selector labels: upstream misuses app.kubernetes.io/instance as a
+# component differentiator and sets component to the non-differentiating 'add-on'.
+# See https://github.com/kedacore/http-add-on/issues/1462
+# TODO: remove after release of HTTP Addon 1.0.0
+content = re.sub(
+    r'( +)app\.kubernetes\.io/component: add-on\n'
+    r'\s+app\.kubernetes\.io/instance: (\S+)\n'
+    r'\s+app\.kubernetes\.io/name: http\n'
+    r'\s+app\.kubernetes\.io/part-of: keda',
+    r'\1app.kubernetes.io/name: http-add-on\n\1app.kubernetes.io/component: \2',
+    content,
+)
+
+# Replace hardcoded namespace env vars with fieldRef for dynamic namespace injection
+# TODO: remove after release of HTTP Addon 0.15.0
+content = re.sub(
+    r'( +- name: (?:KEDA_HTTP_OPERATOR_NAMESPACE|KEDA_HTTP_SCALER_TARGET_ADMIN_NAMESPACE))\n\s+value: keda',
+    r'\1\n              valueFrom:\n                fieldRef:\n                  fieldPath: metadata.namespace',
+    content,
+)
+with open(path, 'w') as f:
+    f.write(content)
+" "$ver" "$tmpfile"
 
 # Extract all CRDs from the manifest using a generic loop (same approach as relprep.sh)
 echo ""
@@ -79,7 +108,7 @@ python3 -c "
 import re, sys
 with open(sys.argv[1]) as f:
     content = f.read()
-docs = re.split(r'\n---\n', content)
+docs = re.split(r'^---$', content, flags=re.M)
 kept = []
 for doc in docs:
     stripped = doc.strip()
@@ -89,8 +118,8 @@ for doc in docs:
         continue
     if re.search(r'^kind:\s*Namespace', stripped, re.M):
         continue
-    kept.append(doc)
-result = '\n---\n'.join(kept)
+    kept.append(stripped)
+result = '\n---\n'.join(kept) + '\n'
 with open(sys.argv[2], 'w') as f:
     f.write(result)
 " "$tmpfile" resources/keda-http-addon.yaml
@@ -103,7 +132,7 @@ echo "Verifying manifest contents..."
 components=("interceptor" "operator" "scaler")
 for component in "${components[@]}"; do
   if grep -q "http-add-on-${component}" resources/keda-http-addon.yaml; then
-    img_ver=$(grep -oP "ghcr.io/kedacore/http-add-on-${component}:\K[0-9]+\.[0-9]+\.[0-9]+" resources/keda-http-addon.yaml | head -1)
+    img_ver=$(grep -oE "ghcr.io/kedacore/http-add-on-${component}:[0-9]+\.[0-9]+\.[0-9]+" resources/keda-http-addon.yaml | head -1 | cut -d: -f2)
     echo "  OK: ${component} component found (image version: ${img_ver})"
   else
     echo "  MISSING: ${component} component NOT found - manifest may be incomplete"
