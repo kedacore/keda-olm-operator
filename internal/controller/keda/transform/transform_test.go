@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -119,8 +119,7 @@ var _ = Describe("Transforming deployment spec for volumes", func() {
 		})
 		Context("When transforming a Deployment", func() {
 
-			By("Setting up schemes")
-			// Set up the scheme, the transformer uses this convert from unstructured, so we need this
+			// Set up the scheme, the transformer uses this to convert from unstructured, so we need this
 			scheme := runtime.NewScheme()
 			_ = appsv1.AddToScheme(scheme)
 			_ = corev1.AddToScheme(scheme)
@@ -438,7 +437,6 @@ spec:
   - Egress
 `
 		logger := ctrl.Log.WithName("test")
-		By("Setting up schemes")
 		// Set up the scheme; the transformer uses this to convert from unstructured, so we need this
 		scheme := runtime.NewScheme()
 		_ = networkingv1.AddToScheme(scheme)
@@ -483,7 +481,6 @@ spec:
   policyTypes:
   - Egress
 `
-		By("Setting up schemes")
 		// Set up the scheme; the transformer uses this to convert from unstructured, so we need this
 		scheme := runtime.NewScheme()
 		_ = networkingv1.AddToScheme(scheme)
