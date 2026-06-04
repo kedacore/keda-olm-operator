@@ -9,7 +9,9 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.39.1
 	github.com/open-policy-agent/cert-controller v0.16.0
-	github.com/openshift/api v0.0.0-20260421211856-fec28cd18ea9
+	github.com/openshift/api v0.0.0-20260521125114-09730f85d883
+	github.com/openshift/controller-runtime-common v0.0.0-20260318085703-1812aed6dbd2
+	github.com/openshift/library-go v0.0.0-20260604143514-ba2b9a3a3499
 	k8s.io/api v0.35.2
 	k8s.io/apimachinery v0.35.2
 	k8s.io/apiserver v0.35.2
@@ -65,9 +67,6 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
-	github.com/onsi/ginkgo/v2 v2.28.1 // indirect
-	github.com/openshift/controller-runtime-common v0.0.0-20260318085703-1812aed6dbd2 // indirect
-	github.com/openshift/library-go v0.0.0-20260213153706-03f1709971c5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect

@@ -34,6 +34,7 @@ import (
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	openshiftconfigv1 "github.com/openshift/api/config/v1"
 	tlspkg "github.com/openshift/controller-runtime-common/pkg/tls"
+	libgocrypto "github.com/openshift/library-go/pkg/crypto"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -274,7 +275,9 @@ func (r *KedaControllerReconciler) enqueueOnTLSProfileChange(oldObj, newObj clie
 	}
 	oldProfile, oldErr := tlspkg.GetTLSProfileSpec(oldConfig.Spec.TLSSecurityProfile)
 	newProfile, newErr := tlspkg.GetTLSProfileSpec(newConfig.Spec.TLSSecurityProfile)
-	if oldErr == nil && newErr == nil && reflect.DeepEqual(oldProfile, newProfile) {
+	if oldErr == nil && newErr == nil &&
+		reflect.DeepEqual(oldProfile, newProfile) &&
+		oldConfig.Spec.TLSAdherence == newConfig.Spec.TLSAdherence {
 		return
 	}
 	r.enqueueKedaControllerReconcile(q)
@@ -282,11 +285,22 @@ func (r *KedaControllerReconciler) enqueueOnTLSProfileChange(oldObj, newObj clie
 
 // tlsEnvVarTransforms reads the current TLS profile from the APIServer via the manager cache and
 // returns Transformers that set KEDA_SERVICE_TLS_CIPHER_LIST and KEDA_SERVICE_MIN_TLS_VERSION in
-// all containers of all Deployment resources. Returns nil if the fetch fails.
+// all containers of all Deployment resources. Returns nil if the fetch fails or if the TLS
+// adherence policy does not require honoring the cluster-wide profile (in which case KEDA uses its
+// own defaults).
 func (r *KedaControllerReconciler) tlsEnvVarTransforms(ctx context.Context, logger logr.Logger) []mf.Transformer {
-	profile, err := tlspkg.FetchAPIServerTLSProfile(ctx, r.Client)
+	apiServer := &openshiftconfigv1.APIServer{}
+	if err := r.Get(ctx, client.ObjectKey{Name: tlspkg.APIServerName}, apiServer); err != nil {
+		logger.Error(err, "Failed to fetch APIServer; skipping TLS env var update")
+		return nil
+	}
+	if !libgocrypto.ShouldHonorClusterTLSProfile(apiServer.Spec.TLSAdherence) {
+		logger.V(4).Info("TLS adherence policy does not require honoring cluster TLS profile; skipping TLS env var injection", "policy", apiServer.Spec.TLSAdherence)
+		return nil
+	}
+	profile, err := tlspkg.GetTLSProfileSpec(apiServer.Spec.TLSSecurityProfile)
 	if err != nil {
-		logger.Error(err, "Failed to fetch TLS profile from APIServer; skipping TLS env var update")
+		logger.Error(err, "Failed to get TLS profile from APIServer; skipping TLS env var update")
 		return nil
 	}
 	minTLSVersion := strings.TrimPrefix(string(profile.MinTLSVersion), "Version")
