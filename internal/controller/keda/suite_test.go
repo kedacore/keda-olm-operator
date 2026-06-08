@@ -26,7 +26,7 @@ import (
 
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -125,7 +125,7 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
-}, 300)
+})
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
