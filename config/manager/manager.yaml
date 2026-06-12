@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: keda-olm-operator
-          image: ghcr.io/kedacore/keda-olm-operator:main
+          image: ghcr.io/kedacore/keda-olm-operator:main@sha256:1733d7c2b84dbc9773ab324009bacd5c574db31534ac8a3b29a8291874ec670f
           command:
             - /manager
           args:
