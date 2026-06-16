@@ -165,10 +165,6 @@ jobs:
               POSTFIX=$'\n\n```\n\n</details>'
               first_line="Diff \`$new_file\` \& \`$old_file\`"
               diff_text="${first_line}${PREFIX}${diff_text}${POSTFIX}"
-              ## set file ready for github comment
-              diff_text="${diff_text//'%'/'%25'}"
-              diff_text="${diff_text//$'\n'/'%0A'}"
-              diff_text="${diff_text//$'\r'/'%0D'}"
               if [ ${#diff_text} -ge 65536 ]; then
                 echo "$diff_text"
                 diff_text="limit exceeded"
@@ -177,7 +173,11 @@ jobs:
           else
             diff_text="File \`$new_file\` wasn't found in previous version, its brand new!"
           fi
-          echo "body=$diff_text" >> "$GITHUB_OUTPUT"
+          {
+            echo "body<<DIFF_EOF"
+            echo "$diff_text"
+            echo "DIFF_EOF"
+          } >> "$GITHUB_OUTPUT"
           echo "old_file=$old_file" >> "$GITHUB_OUTPUT"
 
       - name: Find comment
