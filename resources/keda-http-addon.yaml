@@ -193,15 +193,15 @@ spec:
             - --zap-encoder=console
             - --zap-time-encoding=rfc3339
           env:
-            - name: KEDAHTTP_OPERATOR_EXTERNAL_SCALER_SERVICE
+            - name: KEDA_HTTP_OPERATOR_EXTERNAL_SCALER_SERVICE
               value: keda-add-ons-http-external-scaler
-            - name: KEDAHTTP_OPERATOR_EXTERNAL_SCALER_PORT
+            - name: KEDA_HTTP_OPERATOR_EXTERNAL_SCALER_PORT
               value: "9090"
             - name: KEDA_HTTP_OPERATOR_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          image: ghcr.io/kedacore/http-add-on-operator:0.14.0@sha256:f3f6049a48651089037485a75b081bffd0caae2473b27225eddb516a10745c1c
+          image: ghcr.io/kedacore/http-add-on-operator:0.15.0@sha256:d579b952ff0a0c3046a49d0e066bc06d33d1944b5f89b5fac5145d89f9f78959
           livenessProbe:
             httpGet:
               path: /healthz
@@ -260,6 +260,7 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - configmaps
       - services
     verbs:
       - get
@@ -394,7 +395,7 @@ spec:
               value: "8080"
             - name: KEDA_HTTP_ADMIN_PORT
               value: "9090"
-          image: ghcr.io/kedacore/http-add-on-interceptor:0.14.0@sha256:8f72277fc375554ba2dccde16bada5657f8e11b3a0bb250d020050a625085b1b
+          image: ghcr.io/kedacore/http-add-on-interceptor:0.15.0@sha256:4e88e7808652e7c438f66d67bc8a53ce6261b6081c81475bd4758602460af499
           livenessProbe:
             httpGet:
               path: /livez
@@ -431,7 +432,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: keda-add-ons-http-interceptor
-      terminationGracePeriodSeconds: 10
+      terminationGracePeriodSeconds: 45
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -568,7 +569,7 @@ spec:
               value: "9090"
             - name: KEDA_HTTP_SCALER_PORT
               value: "9090"
-          image: ghcr.io/kedacore/http-add-on-scaler:0.14.0@sha256:08da8806a82bb2ec28662bdb7139238218e210c18b64536e08e631e3ea923564
+          image: ghcr.io/kedacore/http-add-on-scaler:0.15.0@sha256:f748178bc4af9e546d5da38c4e1b1d8d236a343bb30927b292131c6f4c978394
           livenessProbe:
             failureThreshold: 3
             grpc:
@@ -581,6 +582,8 @@ spec:
           ports:
             - containerPort: 9090
               name: grpc
+            - containerPort: 2223
+              name: metrics
           readinessProbe:
             failureThreshold: 3
             grpc:
