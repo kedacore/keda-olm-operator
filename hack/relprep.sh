@@ -148,7 +148,11 @@ echo "Updating the kedacontrollers crd from code and copying it to $ver manifest
 make manifests
 cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/${ver}/manifests/
 # revert any changes to the kustomization
-git co config/manager/kustomization.yaml
+git checkout config/manager/kustomization.yaml config/default/kustomization.yaml
+
+echo "Syncing bundle annotations to keda/${ver}/metadata/ (stripping test-only entries)"
+sed '/operators\.operatorframework\.io\.test\./d; /^[[:space:]]*#/d; /^[[:space:]]*$/d' \
+    bundle/metadata/annotations.yaml > keda/${ver}/metadata/annotations.yaml
 
 echo "Verifying that bundle-generated CSV (for testing) is equivalent to shipping CSV"
 ignorefields='createdAt|operators\.operatorframework\.io/builder|app\.kubernetes\.io/version'
