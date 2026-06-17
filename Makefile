@@ -75,6 +75,25 @@ test-deployment: manifests generate ## Test OLM deployment.
 test: manifests generate
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -v -ginkgo.v -coverprofile cover.out -test.type unit
 
+.PHONY: e2e-test
+e2e-test: ## Run e2e smoke tests against existing cluster.
+	go test -tags=e2e -count=1 -timeout=10m -v ./test/e2e/...
+
+.PHONY: e2e-test-ci
+e2e-test-ci: ## Run e2e smoke tests (CI mode with GitHub Actions output).
+	go tool gotestsum --rerun-fails=2 --format=github-actions --packages="./test/e2e/..." -- -tags=e2e -count=1 -timeout=10m
+
+.PHONY: e2e-olm-setup
+e2e-olm-setup: build bundle docker-build docker-push bundle-build bundle-push ## Deploy operator via OLM for e2e testing.
+	kubectl create namespace keda --dry-run=client -o yaml | kubectl apply --server-side -f -
+	kubectl annotate namespace keda keda-olm-operator/create-default-controller=skip --overwrite
+	$(OPERATOR_SDK) run bundle $(BUNDLE) --namespace keda --use-http --timeout 5m $(BUNDLE_RUN_OPTS)
+	kubectl rollout status deployment/keda-olm-operator -n keda --timeout=120s
+
+.PHONY: e2e-olm-cleanup
+e2e-olm-cleanup: operator-sdk ## Clean up OLM-deployed operator.
+	- $(OPERATOR_SDK) cleanup keda --namespace keda
+
 ##@ Build
 
 build: generate ## Build manager binary.
@@ -126,6 +145,7 @@ ENVTEST ?= go tool setup-envtest
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
 
 ## Tool Versions
+# renovate: datasource=github-releases depName=operator-framework/operator-sdk
 OPERATOR_SDK_VERSION ?= v1.38.0
 
 .PHONY: operator-sdk
