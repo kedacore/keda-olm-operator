@@ -5,4 +5,4 @@ metadata:
   namespace: olm
 spec:
   sourceType: grpc
-  image: ghcr.io/kedacore/keda-olm-operator-index:main
+  image: ghcr.io/kedacore/keda-olm-operator-index:main@sha256:b4cb4f0472fd8a3a64fde6f7652ea187dc0dc7cc8ead55e6158ad11c706b3b63
