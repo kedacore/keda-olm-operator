@@ -57,15 +57,6 @@ echo
 echo 'Running go mod tidy (pass 1)'
 go mod tidy
 
-echo "Getting tag for keda-tools used to build KEDA version $ver"
-bttag=$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/Dockerfile" | sed -n 's#^FROM.* ghcr.io/kedacore/keda-tools:\([0-9][0-9.]*\) AS builder$#\1#p;T;q')
-
-echo "Updating keda-tools tag to $bttag"
-while read f; do
-  echo " $f"
-  sed -i "s#ghcr.io/kedacore/keda-tools:[0-9][0-9.]*#ghcr.io/kedacore/keda-tools:$bttag#g" "$f"
-done < <(git grep -l "ghcr.io/kedacore/keda-tools:[0-9]")
-
 echo "Updating resources from KEDA $ver release"
 curl -L "https://github.com/kedacore/keda/releases/download/v${ver}/keda-${ver}.yaml" | sed 's/\r//g' > resources/keda.yaml
 
