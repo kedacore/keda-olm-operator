@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../default
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: keda-olm-operator
+      spec:
+        template:
+          spec:
+            containers:
+              - name: keda-olm-operator
+                imagePullPolicy: Never
+  # Skip auto-creation of default KedaController CR, e2e tests create it explicitly.
+  - patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: keda
+        annotations:
+          keda-olm-operator/create-default-controller: "skip"
