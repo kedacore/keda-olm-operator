@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	auditv1 "k8s.io/apiserver/pkg/apis/audit/v1"
 )
 
@@ -421,7 +422,13 @@ type KedaControllerList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&KedaController{}, &KedaControllerList{})
+	SchemeBuilder.Register(addKnownTypes)
+}
+
+func addKnownTypes(s *runtime.Scheme) error {
+	s.AddKnownTypes(GroupVersion, &KedaController{}, &KedaControllerList{})
+	metav1.AddToGroupVersion(s, GroupVersion)
+	return nil
 }
 
 func (kcs *KedaControllerStatus) SetPhase(p KedaControllerPhase) {
