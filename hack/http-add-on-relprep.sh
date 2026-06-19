@@ -54,13 +54,6 @@ content = re.sub(
     content,
 )
 
-# Replace hardcoded namespace env vars with fieldRef for dynamic namespace injection
-# TODO: remove after release of HTTP Addon 0.15.0
-content = re.sub(
-    r'( +- name: (?:KEDA_HTTP_OPERATOR_NAMESPACE|KEDA_HTTP_SCALER_TARGET_ADMIN_NAMESPACE))\n\s+value: keda',
-    r'\1\n              valueFrom:\n                fieldRef:\n                  fieldPath: metadata.namespace',
-    content,
-)
 with open(path, 'w') as f:
     f.write(content)
 " "$ver" "$tmpfile"
