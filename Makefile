@@ -127,7 +127,7 @@ deploy: manifests ## Deploy controller to the K8s cluster specified in ~/.kube/c
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-olm-operator=${IMAGE_CONTROLLER}
 	cd config/default && \
-    $(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
+    $(KUSTOMIZE) edit add label --without-selector --include-templates -f app.kubernetes.io/version:${VERSION}
 	$(KUSTOMIZE) build config/default | kubectl apply --server-side -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
@@ -192,7 +192,7 @@ bundle: manifests operator-sdk	## Generate bundle manifests and metadata, then v
 	cd config/manager && \
 		$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-olm-operator=${IMAGE_CONTROLLER}
 	cd config/default && \
-  	$(KUSTOMIZE) edit add label -f app.kubernetes.io/version:${VERSION}
+  	$(KUSTOMIZE) edit add label --without-selector --include-templates -f app.kubernetes.io/version:${VERSION}
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
