@@ -92,6 +92,22 @@ else
     echo "  Copying to http-add-on/${ver}/manifests/"
     cp "${crd_file}" "http-add-on/${ver}/manifests/"
   done
+
+  # Sync CRDs to the latest KEDA bundle directory so they don't go stale
+  keda_latest=$(ls keda/ | sort --version-sort | tail -1)
+  if [ -n "$keda_latest" ] && [ -d "keda/${keda_latest}/manifests" ]; then
+    echo ""
+    echo "Syncing HTTP Add-on CRDs to keda/${keda_latest}/manifests/..."
+    for i in $crds; do
+      pluralname="${i%%.*}"
+      crdns="${i#*.}"
+      crd_file="config/crd/bases/${crdns}_${pluralname}.yaml"
+      if [ -s "${crd_file}" ]; then
+        echo "  Copying ${crd_file} -> keda/${keda_latest}/manifests/"
+        cp "${crd_file}" "keda/${keda_latest}/manifests/"
+      fi
+    done
+  fi
 fi
 
 # Strip CRDs and Namespace documents from the runtime manifest
@@ -142,10 +158,14 @@ for i in $crds; do
   crdns="${i#*.}"
   crd_file="config/crd/bases/${crdns}_${pluralname}.yaml"
   [ -s "${crd_file}" ] && echo "  - ${crd_file}"
+  [ -s "${crd_file}" ] && echo "  - http-add-on/${ver}/manifests/${crdns}_${pluralname}.yaml"
+  if [ -n "$keda_latest" ] && [ -d "keda/${keda_latest}/manifests" ]; then
+    [ -s "${crd_file}" ] && echo "  - keda/${keda_latest}/manifests/${crdns}_${pluralname}.yaml"
+  fi
 done
 echo ""
 echo "Next steps:"
-echo "  1. Review the changes: git diff resources/ config/crd/"
+echo "  1. Review the changes: git diff resources/ config/crd/ keda/"
 echo "  2. Run 'make manifests' to regenerate controller manifests"
 echo "  3. Test the changes with a KedaController that has httpAddon.enabled: true"
 echo "  4. Commit the changes when validated"
