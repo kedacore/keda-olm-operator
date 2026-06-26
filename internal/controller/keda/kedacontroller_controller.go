@@ -1448,11 +1448,11 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	}
 
 	if instance.Spec.AdmissionWebhooks.Volumes != nil {
-		transforms = append(transforms, transform.ReplaceDeploymentVolumes(instance.Spec.Operator.Volumes, r.Scheme))
+		transforms = append(transforms, transform.ReplaceDeploymentVolumes(instance.Spec.AdmissionWebhooks.Volumes, r.Scheme))
 	}
 
 	if instance.Spec.AdmissionWebhooks.VolumeMounts != nil {
-		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(instance.Spec.Operator.VolumeMounts, r.Scheme))
+		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(instance.Spec.AdmissionWebhooks.VolumeMounts, r.Scheme))
 	}
 
 	// add arbitrary args defined by user
