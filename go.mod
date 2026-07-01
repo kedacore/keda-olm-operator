@@ -13,8 +13,8 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.3-0.20230801201407-f20c69532c27
-	github.com/onsi/ginkgo/v2 v2.31.0
-	github.com/onsi/gomega v1.42.0
+	github.com/onsi/ginkgo/v2 v2.32.0
+	github.com/onsi/gomega v1.42.1
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/openshift/api v0.0.0-20260615110019-261e3a0546f3
 	github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e
