@@ -16,9 +16,9 @@ require (
 	github.com/onsi/ginkgo/v2 v2.31.0
 	github.com/onsi/gomega v1.42.0
 	github.com/open-policy-agent/cert-controller v0.16.0
-	github.com/openshift/api v0.0.0-20260615110019-261e3a0546f3
+	github.com/openshift/api v0.0.0-20260619095050-5346161d1bf2
 	github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e
-	github.com/openshift/library-go v0.0.0-20260615113748-bc9d4056464b
+	github.com/openshift/library-go v0.0.0-20260702085952-fd74bb5c4240
 	k8s.io/api v0.36.0
 	k8s.io/apimachinery v0.36.0
 	k8s.io/apiserver v0.36.0
