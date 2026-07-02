@@ -29,7 +29,7 @@ jobs:
           go-version: '1.26'
 
       - name: Go modules cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -37,7 +37,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -78,7 +78,7 @@ jobs:
           go-version: '1.26'
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -90,7 +90,7 @@ jobs:
       # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
       # https://github.com/actions/runner-images/issues/6283
       - name: Setup Homebrew
-        uses: Homebrew/actions/setup-homebrew@c7f77f7dca7d714f9a72fde4e7b6a4e9cbf99062 # master
+        uses: Homebrew/actions/setup-homebrew@64bb52ce84da6455bdbd6df88ac86151ba2ff16c # master
       - name: Setup Env
         run: sudo apt-get install gcc-11 g++ binutils libc6
 
@@ -143,7 +143,7 @@ jobs:
           go-version: '1.26'
 
       - name: Go modules cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: /go/pkg
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -151,7 +151,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -170,7 +170,7 @@ jobs:
       # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
       # https://github.com/actions/runner-images/issues/6283
       - name: Setup Homebrew
-        uses: Homebrew/actions/setup-homebrew@c7f77f7dca7d714f9a72fde4e7b6a4e9cbf99062 # master
+        uses: Homebrew/actions/setup-homebrew@64bb52ce84da6455bdbd6df88ac86151ba2ff16c # master
       - name: Setup Env
         run: sudo apt-get install gcc-11 g++ binutils libc6
 
