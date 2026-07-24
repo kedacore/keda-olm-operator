@@ -74,7 +74,7 @@ var _ = Describe("Deploying KedaController manifest", func() {
 			manifest, err = changeAttribute(manifest, "namespace", namespace, scheme, "")
 			Expect(err).To(BeNil())
 
-			Expect(manifest.Delete()).Should(Succeed())
+			Expect(manifest.Delete(ctx)).Should(Succeed())
 
 			Eventually(func() error {
 				_, err = getObject(ctx, "Pod", operatorName, namespace, k8sClient)
@@ -85,7 +85,7 @@ var _ = Describe("Deploying KedaController manifest", func() {
 		Context("When deploying in \"keda\" namespace", func() {
 			It("Should deploy KedaController", func() {
 
-				Expect(manifest.Apply()).Should(Succeed())
+				Expect(manifest.Apply(ctx)).Should(Succeed())
 
 				Eventually(func() error {
 					_, err = getObject(ctx, "Pod", operatorName, namespace, k8sClient)
@@ -102,7 +102,7 @@ var _ = Describe("Deploying KedaController manifest", func() {
 				manifest, err = changeAttribute(manifest, "namespace", changedNamespace, scheme, "")
 				Expect(err).To(BeNil())
 
-				Expect(manifest.Apply()).Should(Succeed())
+				Expect(manifest.Apply(ctx)).Should(Succeed())
 
 				Eventually(func() error {
 					_, err = getObject(ctx, "Pod", operatorName, namespace, k8sClient)
@@ -179,7 +179,7 @@ var _ = Describe("Testing functionality", func() {
 			Expect(err).To(BeNil())
 			manifest, err = changeAttribute(manifest, "logLevel", "info", scheme, "default")
 			Expect(err).To(BeNil())
-			Expect(manifest.Apply()).Should(Succeed())
+			Expect(manifest.Apply(ctx)).Should(Succeed())
 
 			By("Waiting for the operator deployment to reflect the changes")
 			Eventually(func() error {
@@ -233,7 +233,7 @@ var _ = Describe("Testing functionality", func() {
 						By(fmt.Sprintf("Setting operator loglevel to %s in kedaController manifest", variant.initialLogLevel))
 						manifest, err = changeAttribute(manifest, "logLevel", variant.initialLogLevel, scheme, caseName)
 						Expect(err).To(BeNil())
-						err = manifest.Apply()
+						err = manifest.Apply(ctx)
 						Expect(err).To(BeNil())
 
 						By("Waiting for the operator deployment to reflect the changes")
@@ -287,7 +287,7 @@ var _ = Describe("Testing functionality", func() {
 			Expect(err).To(BeNil())
 			manifest, err = changeAttribute(manifest, "logLevel", "info", scheme, "default")
 			Expect(err).To(BeNil())
-			Expect(manifest.Apply()).Should(Succeed())
+			Expect(manifest.Apply(ctx)).Should(Succeed())
 
 			By("Waiting for the operator deployment to reflect the changes")
 			Eventually(func() error {
@@ -341,7 +341,7 @@ var _ = Describe("Testing functionality", func() {
 					By(fmt.Sprintf("Setting admission loglevel to %s in kedaController manifest", variant.initialLogLevel))
 					manifest, err = changeAttribute(manifest, "logLevel-admission", variant.initialLogLevel, scheme, caseName)
 					Expect(err).To(BeNil())
-					err = manifest.Apply()
+					err = manifest.Apply(ctx)
 					Expect(err).To(BeNil())
 
 					By("Waiting for the admission deployment to reflect the changes")
@@ -428,7 +428,7 @@ var _ = Describe("Testing audit flags", func() {
 					manifest, err := changeAttribute(manifest, variant.argument, variant.value, scheme, caseName)
 					Expect(err).To(BeNil())
 
-					Expect(manifest.Apply()).To(Succeed())
+					Expect(manifest.Apply(ctx)).To(Succeed())
 					Eventually(func() error {
 						return deploymentHasRolledOut(metricsServerName, namespace, caseName)
 

@@ -15,21 +15,21 @@ const (
 )
 
 // finalizeKedaController is deleting resources for the respective KedaController
-func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger) error {
-	if err := r.deleteHTTPAddon(logger); err != nil {
+func (r *KedaControllerReconciler) finalizeKedaController(ctx context.Context, logger logr.Logger) error {
+	if err := r.deleteHTTPAddon(ctx, logger); err != nil {
 		logger.Info("error finalized KedaController HTTP Add-on", "error", err)
 		return err
 	}
 
-	if err := r.resourcesGeneral.Delete(); err != nil {
+	if err := r.resourcesGeneral.Delete(ctx); err != nil {
 		logger.Info("error finalized KedaController general", "error", err)
 		return err
 	}
-	if err := r.resourcesController.Delete(); err != nil {
+	if err := r.resourcesController.Delete(ctx); err != nil {
 		logger.Info("error finalized KedaController controller", "error", err)
 		return err
 	}
-	if err := r.resourcesMetrics.Delete(); err != nil {
+	if err := r.resourcesMetrics.Delete(ctx); err != nil {
 		logger.Info("error finalized KedaController metrics", "error", err)
 		return err
 	}

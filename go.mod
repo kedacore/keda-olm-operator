@@ -11,7 +11,7 @@ tool (
 
 require (
 	github.com/go-logr/logr v1.4.3
-	github.com/manifestival/controller-runtime-client v0.4.0
+	github.com/manifestival/controller-runtime-client v0.4.1-0.20240501171919-0f8ecbfb571a
 	github.com/manifestival/manifestival v0.7.3-0.20250814160024-3c63ae00089e
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
