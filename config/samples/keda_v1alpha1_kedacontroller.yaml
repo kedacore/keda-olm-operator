@@ -13,6 +13,10 @@ spec:
   # omit or set empty to watch all namespaces (default setting)
   watchNamespace: ""
 
+  ## Kubernetes cluster DNS domain used by KEDA internal service communication.
+  # Leave empty to use KEDA defaults.
+  # clusterDomain: cluster.local
+
   ## KEDA Operator related config
   operator:
     ## Logging level for KEDA Operator

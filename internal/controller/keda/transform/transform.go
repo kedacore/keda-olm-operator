@@ -37,6 +37,8 @@ const (
 	TLSPrivateKeyFile     Prefix = "--tls-private-key-file="
 	CertRotation          Prefix = "--enable-cert-rotation="
 	CADir                 Prefix = "--ca-dir="
+	KedaClusterDomain     Prefix = "--k8s-cluster-domain="
+	MetricsServiceAddress Prefix = "--metrics-service-address="
 )
 
 func (p Prefix) String() string {
@@ -960,6 +962,19 @@ func ReplaceArbitraryArg(argument string, resource string, scheme *runtime.Schem
 			return nil
 		}
 	}
+}
+
+// ReplaceKedaClusterDomain configures the Kubernetes cluster DNS domain used
+// by the KEDA operator.
+func ReplaceKedaClusterDomain(clusterDomain string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	return replaceContainerArg(clusterDomain, KedaClusterDomain, containerNameKedaOperator, scheme, logger)
+}
+
+// ReplaceMetricsServiceAddress configures the metrics server to reach the
+// KEDA operator through the Kubernetes service DNS name.
+func ReplaceMetricsServiceAddress(clusterDomain, namespace string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
+	metricsServiceAddress := "keda-operator." + namespace + ".svc." + clusterDomain + ":9666"
+	return replaceContainerArg(metricsServiceAddress, MetricsServiceAddress, containerNameMetricsServer, scheme, logger)
 }
 
 func SetOperatorCertRotation(enable bool, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {

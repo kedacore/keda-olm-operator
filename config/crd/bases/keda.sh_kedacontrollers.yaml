@@ -3105,6 +3105,12 @@ spec:
                       type: object
                     type: array
                 type: object
+              clusterDomain:
+                description: |-
+                  ClusterDomain is the Kubernetes cluster DNS domain used for KEDA internal
+                  service communication. When set, it configures both the KEDA operator and
+                  metrics server to use the supplied domain. Leave empty to use KEDA defaults.
+                type: string
               httpAddon:
                 description: HTTPAddonSpec defines configuration for the KEDA HTTP
                   Add-on.

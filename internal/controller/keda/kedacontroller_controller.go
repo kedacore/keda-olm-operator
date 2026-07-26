@@ -709,6 +709,9 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.Operator.Args[i], "operator", r.Scheme, logger))
 	}
+	if instance.Spec.ClusterDomain != "" {
+		transforms = append(transforms, transform.ReplaceKedaClusterDomain(instance.Spec.ClusterDomain, r.Scheme, logger))
+	}
 
 	manifest, err := r.resourcesController.Transform(transforms...)
 	if err != nil {
@@ -1229,6 +1232,9 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 	for i := range instance.Spec.MetricsServer.Args {
 		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.MetricsServer.Args[i], "metricsserver", r.Scheme, logger))
+	}
+	if instance.Spec.ClusterDomain != "" {
+		transforms = append(transforms, transform.ReplaceMetricsServiceAddress(instance.Spec.ClusterDomain, instance.Namespace, r.Scheme, logger))
 	}
 
 	// replace namespace in RoleBinding from keda to kube-system
