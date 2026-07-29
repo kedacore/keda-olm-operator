@@ -510,6 +510,160 @@ spec:
 	})
 })
 
+var _ = Describe("Transforming operator deployment for CA certs", func() {
+	Context("When transforming a KEDA operator Deployment", func() {
+
+		scheme := runtime.NewScheme()
+		_ = appsv1.AddToScheme(scheme)
+		_ = corev1.AddToScheme(scheme)
+
+		logger := ctrl.Log.WithName("test")
+
+		yamlData := `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-operator
+  template:
+    metadata:
+      labels:
+        app: keda-operator
+    spec:
+      containers:
+        - name: keda-operator
+          image: keda:latest
+          volumeMounts:
+            - name: example-volume
+              mountPath: /example
+      volumes:
+        - name: example-volume
+          configMap:
+            name: example`
+
+		It("Should replace stale CA bundle args/volumes/mounts when the config map list changes", func() {
+			manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+			Expect(err).To(BeNil())
+
+			By("Reconciling with a single config map")
+			firstTransforms := transform.EnsureCACertsForOperatorDeployment([]string{"corporate-ca-0"}, scheme, logger)
+			manifest, err = manifest.Transform(firstTransforms...)
+			Expect(err).To(BeNil())
+
+			By("Reconciling again with two different config maps")
+			secondTransforms := transform.EnsureCACertsForOperatorDeployment([]string{"corporate-ca-1", "corporate-ca-2"}, scheme, logger)
+			newManifest, err := manifest.Transform(secondTransforms...)
+			Expect(err).To(BeNil())
+
+			r := newManifest.Resources()
+			Expect(len(r)).To(Equal(1))
+
+			By("Checking only the new CA bundle volumes are present")
+			volumes, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "volumes")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+			expectCABundleVolumes(volumes)
+
+			By("Checking the operator container has the new --ca-dir args and the CA bundle mounts")
+			containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+
+			args, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "args")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+			Expect(args).To(ConsistOf("--ca-dir=/custom/ca0", "--ca-dir=/custom/ca1"))
+
+			volumeMounts, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "volumeMounts")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+			expectCABundleVolumeMounts(volumeMounts)
+		})
+	})
+})
+
+var _ = Describe("Transforming interceptor deployment for CA certs", func() {
+	Context("When transforming an HTTP Add-on interceptor Deployment", func() {
+
+		scheme := runtime.NewScheme()
+		_ = appsv1.AddToScheme(scheme)
+		_ = corev1.AddToScheme(scheme)
+
+		yamlData := `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-add-ons-http-interceptor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-add-ons-http-interceptor
+  template:
+    metadata:
+      labels:
+        app: keda-add-ons-http-interceptor
+    spec:
+      containers:
+        - name: interceptor
+          image: interceptor:latest
+          env:
+            - name: KEDA_HTTP_PROXY_PORT
+              value: "8080"
+          volumeMounts:
+            - name: example-volume
+              mountPath: /example
+      volumes:
+        - name: example-volume
+          configMap:
+            name: example`
+
+		It("Should replace stale CA bundle volumes, mounts, and env var when the config map list changes", func() {
+			manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+			Expect(err).To(BeNil())
+
+			By("Reconciling with a single config map")
+			firstTransforms := transform.EnsureCACertsForInterceptorDeployment([]string{"corporate-ca-0"}, "interceptor", scheme)
+			manifest, err = manifest.Transform(firstTransforms...)
+			Expect(err).To(BeNil())
+
+			By("Reconciling again with two different config maps")
+			secondTransforms := transform.EnsureCACertsForInterceptorDeployment([]string{"corporate-ca-1", "corporate-ca-2"}, "interceptor", scheme)
+			newManifest, err := manifest.Transform(secondTransforms...)
+			Expect(err).To(BeNil())
+
+			r := newManifest.Resources()
+			Expect(len(r)).To(Equal(1))
+
+			By("Checking only the new CA bundle volumes are present")
+			volumes, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "volumes")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+			expectCABundleVolumes(volumes)
+
+			By("Checking the interceptor container has the new CA bundle mounts and env var")
+			containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+
+			volumeMounts, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "volumeMounts")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+			expectCABundleVolumeMounts(volumeMounts)
+
+			env, found, err := unstructured.NestedSlice(structuredToMap(containers[0]), "env")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+			Expect(env).To(ContainElement(structuredToMap(corev1.EnvVar{Name: "KEDA_HTTP_TLS_CA_DIRS", Value: "/custom/ca0,/custom/ca1"})))
+			Expect(env).To(ContainElement(structuredToMap(corev1.EnvVar{Name: "KEDA_HTTP_PROXY_PORT", Value: "8080"})))
+		})
+	})
+})
+
 // structuredToMap converts a strongly typed volume object to unstructured so we can do a
 // containElement comparison against the unstructured object that comes back from unstructured.NestedSlice
 // and have them actually match
@@ -519,4 +673,31 @@ func structuredToMap(thing interface{}) map[string]interface{} {
 		panic(err)
 	}
 	return objMap
+}
+
+// expectCABundleVolumes asserts that volumes contains only the cabundle0/cabundle1 volumes for
+// corporate-ca-1/corporate-ca-2 and the pre-existing example-volume.
+func expectCABundleVolumes(volumes []interface{}) {
+	Expect(volumes).To(HaveLen(3), "example-volume + 2 new cabundle volumes, stale one replaced")
+	Expect(volumes).To(ContainElement(structuredToMap(corev1.Volume{
+		Name:         "cabundle0",
+		VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "corporate-ca-1"}}},
+	})))
+	Expect(volumes).To(ContainElement(structuredToMap(corev1.Volume{
+		Name:         "cabundle1",
+		VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "corporate-ca-2"}}},
+	})))
+	Expect(volumes).To(ContainElement(structuredToMap(corev1.Volume{
+		Name:         "example-volume",
+		VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "example"}}},
+	})))
+}
+
+// expectCABundleVolumeMounts asserts that volumeMounts contains only the cabundle0/cabundle1 mounts
+// and the pre-existing example-volume mount.
+func expectCABundleVolumeMounts(volumeMounts []interface{}) {
+	Expect(volumeMounts).To(HaveLen(3))
+	Expect(volumeMounts).To(ContainElement(structuredToMap(corev1.VolumeMount{Name: "cabundle0", MountPath: "/custom/ca0"})))
+	Expect(volumeMounts).To(ContainElement(structuredToMap(corev1.VolumeMount{Name: "cabundle1", MountPath: "/custom/ca1"})))
+	Expect(volumeMounts).To(ContainElement(structuredToMap(corev1.VolumeMount{Name: "example-volume", MountPath: "/example"})))
 }
