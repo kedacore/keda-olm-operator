@@ -451,8 +451,8 @@ func getDepArg(dep *appsv1.Deployment, prefix string, containerName string) (str
 	for _, container := range dep.Spec.Template.Spec.Containers {
 		if container.Name == containerName {
 			for _, arg := range container.Args {
-				if strings.HasPrefix(arg, prefix) {
-					return strings.TrimPrefix(arg, prefix), nil
+				if after, ok := strings.CutPrefix(arg, prefix); ok {
+					return after, nil
 				}
 			}
 			return "", errors.New("Could not find an argument with given prefix: " + prefix)
