@@ -1337,7 +1337,6 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	// add arbitrary args defined by user
 	for i := range instance.Spec.MetricsServer.Args {
-		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.MetricsServer.Args[i], "metricsserver", r.Scheme, logger))
 	}
 
@@ -1401,8 +1400,7 @@ func (r *KedaControllerReconciler) ensureOpenshiftCABundleConfigMap(ctx context.
 	}
 
 	if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
-		var alreadyOwnedErr *controllerutil.AlreadyOwnedError
-		if !goerrors.As(err, &alreadyOwnedErr) {
+		if _, ok := goerrors.AsType[*controllerutil.AlreadyOwnedError](err); !ok {
 			logger.Error(err, "Failed to check Controller Reference for ConfigMap")
 			return err
 		}
@@ -1472,8 +1470,7 @@ func (r *KedaControllerReconciler) ensureMetricsServerAuditLogPolicyConfigMap(ct
 	}
 
 	if err := controllerutil.SetControllerReference(instance, configMap, r.Scheme); err != nil {
-		var alreadyOwnedErr *controllerutil.AlreadyOwnedError
-		if !goerrors.As(err, &alreadyOwnedErr) {
+		if _, ok := goerrors.AsType[*controllerutil.AlreadyOwnedError](err); !ok {
 			logger.Error(err, "failed to check Controller Reference for ConfigMap")
 			return err
 		}
@@ -1585,7 +1582,6 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 
 	// add arbitrary args defined by user
 	for i := range instance.Spec.AdmissionWebhooks.Args {
-		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.AdmissionWebhooks.Args[i], "admissionwebhooks", r.Scheme, logger))
 	}
 

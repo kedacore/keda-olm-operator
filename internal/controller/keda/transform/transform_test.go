@@ -497,7 +497,7 @@ spec:
 			Expect(found).To(BeTrue(), "spec.egress should exist")
 			Expect(len(egress)).To(Equal(1))
 			Expect(err).To(BeNil())
-			peers, found, err := unstructured.NestedSlice(egress[0].(map[string]interface{}), "to")
+			peers, found, err := unstructured.NestedSlice(egress[0].(map[string]any), "to")
 			Expect(found).To(BeTrue(), "spec.egress[0].to should exist")
 			Expect(len(peers)).To(Equal(1))
 			desiredPeer := &networkingv1.NetworkPolicyPeer{
@@ -705,7 +705,7 @@ spec:
               value: "3000"`
 
 	// containerEnv returns the env slice of the named container in the first resource of the manifest.
-	containerEnv := func(manifest mf.Manifest, containerName string) []interface{} {
+	containerEnv := func(manifest mf.Manifest, containerName string) []any {
 		r := manifest.Resources()
 		Expect(r).To(HaveLen(1))
 
@@ -714,11 +714,11 @@ spec:
 		Expect(err).To(BeNil())
 
 		for _, c := range containers {
-			name, found, err := unstructured.NestedString(c.(map[string]interface{}), "name")
+			name, found, err := unstructured.NestedString(c.(map[string]any), "name")
 			Expect(found).To(BeTrue())
 			Expect(err).To(BeNil())
 			if name == containerName {
-				env, found, err := unstructured.NestedSlice(c.(map[string]interface{}), "env")
+				env, found, err := unstructured.NestedSlice(c.(map[string]any), "env")
 				Expect(found).To(BeTrue())
 				Expect(err).To(BeNil())
 				return env
@@ -864,7 +864,7 @@ spec:
 // structuredToMap converts a strongly typed volume object to unstructured so we can do a
 // containElement comparison against the unstructured object that comes back from unstructured.NestedSlice
 // and have them actually match
-func structuredToMap(thing interface{}) map[string]interface{} {
+func structuredToMap(thing any) map[string]any {
 	objMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&thing)
 	if err != nil {
 		panic(err)
@@ -874,7 +874,7 @@ func structuredToMap(thing interface{}) map[string]interface{} {
 
 // expectCABundleVolumes asserts that volumes contains only the cabundle0/cabundle1 volumes for
 // corporate-ca-1/corporate-ca-2 and the pre-existing example-volume.
-func expectCABundleVolumes(volumes []interface{}) {
+func expectCABundleVolumes(volumes []any) {
 	Expect(volumes).To(HaveLen(3), "example-volume + 2 new cabundle volumes, stale one replaced")
 	Expect(volumes).To(ContainElement(structuredToMap(corev1.Volume{
 		Name:         "cabundle0",
@@ -892,7 +892,7 @@ func expectCABundleVolumes(volumes []interface{}) {
 
 // expectCABundleVolumeMounts asserts that volumeMounts contains only the cabundle0/cabundle1 mounts
 // and the pre-existing example-volume mount.
-func expectCABundleVolumeMounts(volumeMounts []interface{}) {
+func expectCABundleVolumeMounts(volumeMounts []any) {
 	Expect(volumeMounts).To(HaveLen(3))
 	Expect(volumeMounts).To(ContainElement(structuredToMap(corev1.VolumeMount{Name: "cabundle0", MountPath: "/custom/ca0"})))
 	Expect(volumeMounts).To(ContainElement(structuredToMap(corev1.VolumeMount{Name: "cabundle1", MountPath: "/custom/ca1"})))

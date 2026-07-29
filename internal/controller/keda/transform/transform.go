@@ -2,7 +2,9 @@ package transform
 
 import (
 	"errors"
+	"maps"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -56,13 +58,13 @@ const (
 // (key, value) of ("namespace", "keda"), changing the value of any matches to namespace
 func ReplaceAllNamespaces(namespace string) mf.Transformer {
 	// recursive function helper
-	var helper func(obj interface{})
+	var helper func(obj any)
 
-	helper = func(obj interface{}) {
+	helper = func(obj any) {
 		if obj == nil || reflect.ValueOf(obj).Kind() == reflect.Pointer && reflect.ValueOf(obj).IsNil() {
 			return
 		}
-		if mapInstance, ok := obj.(map[string]interface{}); ok {
+		if mapInstance, ok := obj.(map[string]any); ok {
 			for k, v := range mapInstance {
 				if stringVal, ok := v.(string); k == "namespace" && ok && stringVal == defaultNamespace {
 					mapInstance[k] = namespace
@@ -70,7 +72,7 @@ func ReplaceAllNamespaces(namespace string) mf.Transformer {
 					helper(v)
 				}
 			}
-		} else if arrayInstance, ok := obj.([]interface{}); ok {
+		} else if arrayInstance, ok := obj.([]any); ok {
 			for _, item := range arrayInstance {
 				helper(item)
 			}
@@ -827,13 +829,7 @@ func ReplaceKedaOperatorLogLevel(logLevel string, scheme *runtime.Scheme, logger
 }
 
 func ReplaceKedaOperatorLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-	found := false
-	for _, format := range logEncoders {
-		if logEncoder == format {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(logEncoders, logEncoder)
 
 	if !found {
 		logger.Info("Ignoring speficied Log encoder for KEDA Operator", "specified", logEncoder, "allowed values", strings.Join(logEncoders, ", "))
@@ -864,13 +860,7 @@ func ReplaceMetricsServerLogLevel(logLevel string, scheme *runtime.Scheme, logge
 }
 
 func ReplaceKedaOperatorLogTimeEncoding(logTimeEncoding string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-	found := false
-	for _, timeEncoding := range logTimeEncodings {
-		if logTimeEncoding == timeEncoding {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(logTimeEncodings, logTimeEncoding)
 
 	if !found {
 		logger.Info("Ignoring speficied Log time encoding for KEDA Operator", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodings, ", "))
@@ -908,13 +898,7 @@ func ReplaceAdmissionWebhooksLogLevel(logLevel string, scheme *runtime.Scheme, l
 }
 
 func ReplaceAdmissionWebhooksLogEncoder(logEncoder string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-	found := false
-	for _, format := range logEncoders {
-		if logEncoder == format {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(logEncoders, logEncoder)
 
 	if !found {
 		logger.Info("Ignoring speficied Log encoder for KEDA Admission Webhooks", "specified", logEncoder, "allowed values", strings.Join(logEncoders, ", "))
@@ -928,13 +912,7 @@ func ReplaceAdmissionWebhooksLogEncoder(logEncoder string, scheme *runtime.Schem
 }
 
 func ReplaceAdmissionWebhooksLogTimeEncoding(logTimeEncoding string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-	found := false
-	for _, timeEncoding := range logTimeEncodings {
-		if logTimeEncoding == timeEncoding {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(logTimeEncodings, logTimeEncoding)
 
 	if !found {
 		logger.Info("Ignoring speficied Log time encoding for KEDA Admission Webhooks", "specified", logTimeEncoding, "allowed values", strings.Join(logTimeEncodings, ", "))
@@ -1220,9 +1198,7 @@ func AddDeploymentLabels(labels map[string]string, scheme *runtime.Scheme) mf.Tr
 
 func updateMap(mapToUpdate map[string]string, newValues map[string]string) map[string]string {
 	if mapToUpdate != nil {
-		for k, v := range newValues {
-			mapToUpdate[k] = v
-		}
+		maps.Copy(mapToUpdate, newValues)
 		return mapToUpdate
 	}
 
@@ -1611,13 +1587,7 @@ func ReplaceLogLevel(logLevel string, containerName string, scheme *runtime.Sche
 
 // ReplaceLogEncoder replaces the --zap-encoder arg for a named container in a Deployment.
 func ReplaceLogEncoder(logEncoder string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-	found := false
-	for _, format := range logEncoders {
-		if logEncoder == format {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(logEncoders, logEncoder)
 	if !found {
 		logger.Info("Ignoring specified log encoder", "container", containerName, "specified", logEncoder, "allowed", strings.Join(logEncoders, ", "))
 		return func(*unstructured.Unstructured) error { return nil }
@@ -1627,13 +1597,7 @@ func ReplaceLogEncoder(logEncoder string, containerName string, scheme *runtime.
 
 // ReplaceLogTimeEncoding replaces the --zap-time-encoding arg for a named container in a Deployment.
 func ReplaceLogTimeEncoding(logTimeEncoding string, containerName string, scheme *runtime.Scheme, logger logr.Logger) mf.Transformer {
-	found := false
-	for _, timeEncoding := range logTimeEncodings {
-		if logTimeEncoding == timeEncoding {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(logTimeEncodings, logTimeEncoding)
 	if !found {
 		logger.Info("Ignoring specified log time encoding", "container", containerName, "specified", logTimeEncoding, "allowed", strings.Join(logTimeEncodings, ", "))
 		return func(*unstructured.Unstructured) error { return nil }
