@@ -303,11 +303,14 @@ func (r *KedaControllerReconciler) tlsEnvVarTransforms(ctx context.Context, logg
 		logger.Error(err, "Failed to get TLS profile from APIServer; skipping TLS env var update")
 		return nil
 	}
-	minTLSVersion := strings.TrimPrefix(string(profile.MinTLSVersion), "Version")
-	cipherList := strings.Join(profile.Ciphers, ",")
+	minTLSVersion, ianaCiphers := util.ConvertTLSProfileSpec(profile)
+	if len(ianaCiphers) != len(profile.Ciphers) {
+		logger.Info("Some TLS profile ciphers could not be converted to IANA names and were dropped",
+			"requested", profile.Ciphers, "converted", ianaCiphers)
+	}
 	return []mf.Transformer{
 		transform.EnsureEnvVarInAllContainers(kedaTLSMinVersionEnvVar, minTLSVersion, r.Scheme),
-		transform.EnsureEnvVarInAllContainers(kedaTLSCipherListEnvVar, cipherList, r.Scheme),
+		transform.EnsureEnvVarInAllContainers(kedaTLSCipherListEnvVar, strings.Join(ianaCiphers, ","), r.Scheme),
 	}
 }
 
