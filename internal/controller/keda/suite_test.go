@@ -86,6 +86,8 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 
+	ctx, cancel = context.WithCancel(context.Background())
+
 	if testType == "functionality" {
 		testEnv = &envtest.Environment{
 			CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
@@ -94,7 +96,7 @@ var _ = BeforeSuite(func() {
 		k8sManager, k8sClient, err = setupEnv(testEnv, scheme.Scheme)
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(deployManifest(namespaceManifest, k8sClient)).Should(Succeed())
+		Expect(deployManifest(ctx, namespaceManifest, k8sClient)).Should(Succeed())
 
 		kedaControllerReconciler = &KedaControllerReconciler{
 			Client: k8sClient,
@@ -111,14 +113,12 @@ var _ = BeforeSuite(func() {
 		k8sManager, k8sClient, err = setupEnv(testEnv, scheme.Scheme)
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(deployManifest(namespaceManifest, k8sClient)).Should(Succeed())
+		Expect(deployManifest(ctx, namespaceManifest, k8sClient)).Should(Succeed())
 
-		Expect(deployManifest(catalogManifest, k8sClient)).Should(Succeed())
-		Expect(deployManifest(operatorGroupManifest, k8sClient)).Should(Succeed())
-		Expect(deployManifest(subscriptionManifest, k8sClient)).Should(Succeed())
+		Expect(deployManifest(ctx, catalogManifest, k8sClient)).Should(Succeed())
+		Expect(deployManifest(ctx, operatorGroupManifest, k8sClient)).Should(Succeed())
+		Expect(deployManifest(ctx, subscriptionManifest, k8sClient)).Should(Succeed())
 	}
-
-	ctx, cancel = context.WithCancel(context.Background())
 
 	go func() {
 		err = k8sManager.Start(ctx)
@@ -234,12 +234,12 @@ func (o Obj) getObjectGroupKindVersion() (group, kind, version string, err error
 	}
 }
 
-func deployManifest(pathname string, c client.Client) error {
+func deployManifest(ctx context.Context, pathname string, c client.Client) error {
 	manifest, err := createManifest(pathname, c)
 	if err != nil {
 		return err
 	}
-	return manifest.Apply()
+	return manifest.Apply(ctx)
 }
 
 func createManifest(pathname string, c client.Client) (manifest mf.Manifest, err error) {
