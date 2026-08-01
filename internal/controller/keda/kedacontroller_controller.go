@@ -24,6 +24,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -303,11 +304,14 @@ func (r *KedaControllerReconciler) tlsEnvVarTransforms(ctx context.Context, logg
 		logger.Error(err, "Failed to get TLS profile from APIServer; skipping TLS env var update")
 		return nil
 	}
-	minTLSVersion := strings.TrimPrefix(string(profile.MinTLSVersion), "Version")
-	cipherList := strings.Join(profile.Ciphers, ",")
+	minTLSVersion, ianaCiphers := util.ConvertTLSProfileSpec(profile)
+	if len(ianaCiphers) != len(profile.Ciphers) {
+		logger.Info("Some TLS profile ciphers could not be converted to IANA names and were dropped",
+			"requested", profile.Ciphers, "converted", ianaCiphers)
+	}
 	return []mf.Transformer{
 		transform.EnsureEnvVarInAllContainers(kedaTLSMinVersionEnvVar, minTLSVersion, r.Scheme),
-		transform.EnsureEnvVarInAllContainers(kedaTLSCipherListEnvVar, cipherList, r.Scheme),
+		transform.EnsureEnvVarInAllContainers(kedaTLSCipherListEnvVar, strings.Join(ianaCiphers, ","), r.Scheme),
 	}
 }
 
@@ -451,7 +455,8 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGeneral, manifestController,
-	manifestMetrics, manifestWebhook, manifestMonitoring mf.Manifest, err error) {
+	manifestMetrics, manifestWebhook, manifestMonitoring mf.Manifest, err error,
+) {
 	var generalResources, controllerResources, metricsResources, webhookResources, monitoringResources []unstructured.Unstructured
 
 	for _, r := range manifest.Resources() {
@@ -611,13 +616,7 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 
 	caConfigMaps := instance.Spec.Operator.CAConfigMaps
 	if runningOnOpenshift {
-		found := false
-		for _, cmName := range caConfigMaps {
-			if cmName == caBundleConfigMapName {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(caConfigMaps, caBundleConfigMapName)
 		if !found {
 			// prepend it
 			caConfigMaps = append([]string{caBundleConfigMapName}, caConfigMaps...)
@@ -962,7 +961,8 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 	globalVersion := instance.Spec.HTTPAddon.Version
 	addonSpec := instance.Spec.HTTPAddon
 
-	removeSeccomp := util.RunningOnOpenshift(ctx, logger, r.Client) && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient)
+	runningOnOpenshift := util.RunningOnOpenshift(ctx, logger, r.Client)
+	removeSeccomp := runningOnOpenshift && util.RunningOnClusterWithoutSeccompProfileDefault(logger, r.discoveryClient)
 
 	// --- Operator ---
 	operatorImage := ""
@@ -1022,6 +1022,12 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 	)
 	if removeSeccomp {
 		interceptorTransforms = append(interceptorTransforms, transform.RemoveSeccompProfile(httpAddonContainerInterceptor, r.Scheme, logger))
+	}
+
+	// external CAs aren't configurable via the CRD for the HTTP Addon yet, cluster-internal communication is the default
+	if runningOnOpenshift {
+		caConfigMaps := []string{caBundleConfigMapName}
+		interceptorTransforms = append(interceptorTransforms, transform.EnsureCACertsForInterceptorDeployment(caConfigMaps, httpAddonContainerInterceptor, r.Scheme)...)
 	}
 
 	manifest, err = r.resourcesHTTPAddonInterceptor.Transform(interceptorTransforms...)

@@ -51,6 +51,7 @@ const (
 	containerNameMetricsServer     = "keda-metrics-apiserver"
 	containerNameAdmissionWebhooks = "keda-admission-webhooks"
 	caCertVolPrefix                = "cabundle"
+	httpAddonCACertDirsEnvVar      = "KEDA_HTTP_TLS_CA_DIRS"
 )
 
 // ReplaceAllNamespaces returns a transformer which will traverse the unstructured content looking for map entries with
@@ -621,18 +622,39 @@ func ensureCertificatesVolumeForDeployment(containerName, configMapName, secretN
 	}
 }
 
-// Add configmap volumes for configMapNames named cabundle0, cabundle1, etc. as /custom/ca0, /custom/ca1, etc. with
-// container args --ca-dir=/custom/ca0, --ca-dir=/custom/ca1, etc.
+// EnsureCACertsForOperatorDeployment returns transformers that mount CA certificate ConfigMaps
+// into the operator container and set one --ca-dir arg per mounted ConfigMap.
 func EnsureCACertsForOperatorDeployment(configMapNames []string, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
-	var retval []mf.Transformer
-
 	var caDirs []string
 	for i := range configMapNames {
 		caDirs = append(caDirs, "/custom/ca"+strconv.Itoa(i))
 	}
-	retval = append(retval, replaceContainerArgs(caDirs, CADir, containerNameKedaOperator, scheme, logger))
 
-	retval = append(retval, func(u *unstructured.Unstructured) error {
+	return []mf.Transformer{
+		replaceContainerArgs(caDirs, CADir, containerNameKedaOperator, scheme, logger),
+		ensureCACertVolumesAndMounts(configMapNames, containerNameKedaOperator, scheme),
+	}
+}
+
+// EnsureCACertsForInterceptorDeployment returns transformers that mount CA certificate ConfigMaps
+// into the interceptor container and set the CA dirs environment variable.
+func EnsureCACertsForInterceptorDeployment(configMapNames []string, containerName string, scheme *runtime.Scheme) []mf.Transformer {
+	var caDirs []string
+	for i := range configMapNames {
+		caDirs = append(caDirs, "/custom/ca"+strconv.Itoa(i))
+	}
+	caDirsEnvVar := corev1.EnvVar{Name: httpAddonCACertDirsEnvVar, Value: strings.Join(caDirs, ",")}
+
+	return []mf.Transformer{
+		ReplaceContainerEnv([]corev1.EnvVar{caDirsEnvVar}, containerName, scheme),
+		ensureCACertVolumesAndMounts(configMapNames, containerName, scheme),
+	}
+}
+
+// ensureCACertVolumesAndMounts mounts configMapNames on containerName as indexed cabundle
+// volumes at /custom/ca<N>, replacing any stale cabundle volumes/mounts.
+func ensureCACertVolumesAndMounts(configMapNames []string, containerName string, scheme *runtime.Scheme) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "Deployment" {
 			deploy := &appsv1.Deployment{}
 			if err := scheme.Convert(u, deploy, nil); err != nil {
@@ -680,7 +702,7 @@ func EnsureCACertsForOperatorDeployment(configMapNames []string, scheme *runtime
 
 			containers := deploy.Spec.Template.Spec.Containers
 			for i := range containers {
-				if containers[i].Name == containerNameKedaOperator {
+				if containers[i].Name == containerName {
 					// mount Volumes referencing certs in ConfigMap
 					var volumeMounts []corev1.VolumeMount
 					cabundleVolumeMountFound := map[string]bool{}
@@ -707,8 +729,7 @@ func EnsureCACertsForOperatorDeployment(configMapNames []string, scheme *runtime
 			}
 		}
 		return nil
-	})
-	return retval
+	}
 }
 
 func EnsurePathsToCertsInDeployment(values []string, prefixes []Prefix, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
