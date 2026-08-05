@@ -1641,6 +1641,61 @@ func ReplaceLogTimeEncoding(logTimeEncoding string, containerName string, scheme
 	return replaceContainerArg(logTimeEncoding, LogTimeEncodingArg, containerName, scheme, logger)
 }
 
+// EnsureCertSecretVolume returns a Transformer that mounts the named Secret as a volume
+// at /certs (read-only) in the specified container of all Deployment resources.
+func EnsureCertSecretVolume(containerName, secretName string, scheme *runtime.Scheme) mf.Transformer {
+	volumeName := containerName + "-certs"
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+		deploy := &appsv1.Deployment{}
+		if err := scheme.Convert(u, deploy, nil); err != nil {
+			return err
+		}
+
+		vol := corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{SecretName: secretName},
+			},
+		}
+		replaced := false
+		for i, v := range deploy.Spec.Template.Spec.Volumes {
+			if v.Name == volumeName {
+				deploy.Spec.Template.Spec.Volumes[i] = vol
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, vol)
+		}
+
+		mount := corev1.VolumeMount{Name: volumeName, MountPath: "/certs", ReadOnly: true}
+		for i := range deploy.Spec.Template.Spec.Containers {
+			c := &deploy.Spec.Template.Spec.Containers[i]
+			if c.Name != containerName {
+				continue
+			}
+			mountReplaced := false
+			for j, m := range c.VolumeMounts {
+				if m.Name == volumeName {
+					c.VolumeMounts[j] = mount
+					mountReplaced = true
+					break
+				}
+			}
+			if !mountReplaced {
+				c.VolumeMounts = append(c.VolumeMounts, mount)
+			}
+			break
+		}
+
+		return scheme.Convert(deploy, u, nil)
+	}
+}
+
 // EnsureEnvVarInAllContainers returns a Transformer that ensures an environment variable
 // with the given name is set to the given value in all containers of all Deployment resources.
 func EnsureEnvVarInAllContainers(name, value string, scheme *runtime.Scheme) mf.Transformer {

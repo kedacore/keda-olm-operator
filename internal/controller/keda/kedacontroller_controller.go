@@ -91,6 +91,10 @@ const (
 
 	kedaTLSCipherListEnvVar = "KEDA_SERVICE_TLS_CIPHER_LIST"
 	kedaTLSMinVersionEnvVar = "KEDA_SERVICE_MIN_TLS_VERSION"
+
+	httpAddonProxyTLSEnabledEnvVar = "KEDA_HTTP_PROXY_TLS_ENABLED"
+	httpAddonTLSCipherSuitesEnvVar = "KEDA_HTTP_TLS_CIPHER_SUITES"
+	httpAddonTLSMinVersionEnvVar   = "KEDA_HTTP_TLS_MIN_VERSION"
 )
 
 // KedaControllerReconciler reconciles a KedaController object
@@ -284,35 +288,52 @@ func (r *KedaControllerReconciler) enqueueOnTLSProfileChange(oldObj, newObj clie
 	r.enqueueKedaControllerReconcile(q)
 }
 
-// tlsEnvVarTransforms reads the current TLS profile from the APIServer via the manager cache and
-// returns Transformers that set KEDA_SERVICE_TLS_CIPHER_LIST and KEDA_SERVICE_MIN_TLS_VERSION in
-// all containers of all Deployment resources. Returns nil if the fetch fails or if the TLS
-// adherence policy does not require honoring the cluster-wide profile (in which case KEDA uses its
-// own defaults).
-func (r *KedaControllerReconciler) tlsEnvVarTransforms(ctx context.Context, logger logr.Logger) []mf.Transformer {
+// kedaTLSEnvVarTransforms sets KEDA's TLS env vars from the cluster TLS profile, or nil if unavailable.
+func (r *KedaControllerReconciler) kedaTLSEnvVarTransforms(ctx context.Context, logger logr.Logger) []mf.Transformer {
+	minTLSVersion, cipherList, ok := r.clusterTLSProfile(ctx, logger)
+	if !ok {
+		return nil
+	}
+	return []mf.Transformer{
+		transform.EnsureEnvVarInAllContainers(kedaTLSMinVersionEnvVar, minTLSVersion, r.Scheme),
+		transform.EnsureEnvVarInAllContainers(kedaTLSCipherListEnvVar, cipherList, r.Scheme),
+	}
+}
+
+// httpAddonTLSEnvVarTransforms sets HTTP add-on TLS env vars from the cluster TLS profile, or nil if unavailable.
+func (r *KedaControllerReconciler) httpAddonTLSEnvVarTransforms(ctx context.Context, logger logr.Logger) []mf.Transformer {
+	minTLSVersion, cipherList, ok := r.clusterTLSProfile(ctx, logger)
+	if !ok {
+		return nil
+	}
+	return []mf.Transformer{
+		transform.EnsureEnvVarInAllContainers(httpAddonTLSMinVersionEnvVar, minTLSVersion, r.Scheme),
+		transform.EnsureEnvVarInAllContainers(httpAddonTLSCipherSuitesEnvVar, cipherList, r.Scheme),
+	}
+}
+
+// clusterTLSProfile fetches the OpenShift cluster TLS profile; ok is false if unavailable or not required.
+func (r *KedaControllerReconciler) clusterTLSProfile(ctx context.Context, logger logr.Logger) (minTLSVersion, cipherList string, ok bool) {
 	apiServer := &openshiftconfigv1.APIServer{}
 	if err := r.Get(ctx, client.ObjectKey{Name: tlspkg.APIServerName}, apiServer); err != nil {
 		logger.Error(err, "Failed to fetch APIServer; skipping TLS env var update")
-		return nil
+		return "", "", false
 	}
 	if !libgocrypto.ShouldHonorClusterTLSProfile(apiServer.Spec.TLSAdherence) {
 		logger.V(4).Info("TLS adherence policy does not require honoring cluster TLS profile; skipping TLS env var injection", "policy", apiServer.Spec.TLSAdherence)
-		return nil
+		return "", "", false
 	}
 	profile, err := tlspkg.GetTLSProfileSpec(apiServer.Spec.TLSSecurityProfile)
 	if err != nil {
 		logger.Error(err, "Failed to get TLS profile from APIServer; skipping TLS env var update")
-		return nil
+		return "", "", false
 	}
-	minTLSVersion, ianaCiphers := util.ConvertTLSProfileSpec(profile)
+	minVer, ianaCiphers := util.ConvertTLSProfileSpec(profile)
 	if len(ianaCiphers) != len(profile.Ciphers) {
 		logger.Info("Some TLS profile ciphers could not be converted to IANA names and were dropped",
 			"requested", profile.Ciphers, "converted", ianaCiphers)
 	}
-	return []mf.Transformer{
-		transform.EnsureEnvVarInAllContainers(kedaTLSMinVersionEnvVar, minTLSVersion, r.Scheme),
-		transform.EnsureEnvVarInAllContainers(kedaTLSCipherListEnvVar, strings.Join(ianaCiphers, ","), r.Scheme),
-	}
+	return minVer, strings.Join(ianaCiphers, ","), true
 }
 
 // +kubebuilder:rbac:groups=keda.sh,resources=kedacontrollers;kedacontrollers/finalizers;kedacontrollers/status,verbs="*"
@@ -611,7 +632,7 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 	runningOnOpenshift := util.RunningOnOpenshift(ctx, logger, r.Client)
 
 	if r.injectTLSEnvVars {
-		transforms = append(transforms, r.tlsEnvVarTransforms(ctx, logger)...)
+		transforms = append(transforms, r.kedaTLSEnvVarTransforms(ctx, logger)...)
 	}
 
 	caConfigMaps := instance.Spec.Operator.CAConfigMaps
@@ -1020,6 +1041,18 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 	if removeSeccomp {
 		interceptorTransforms = append(interceptorTransforms, transform.RemoveSeccompProfile(httpAddonContainerInterceptor, r.Scheme, logger))
 	}
+	if runningOnOpenshift {
+		interceptorService := "keda-add-ons-http-interceptor-proxy"
+		interceptorCertsSecret := interceptorService + "-certs"
+		interceptorTransforms = append(interceptorTransforms,
+			transform.EnsureCertInjectionForService(interceptorService, servingCertsAnnotation, interceptorCertsSecret),
+			transform.EnsureCertSecretVolume(httpAddonContainerInterceptor, interceptorCertsSecret, r.Scheme),
+			transform.EnsureEnvVarInAllContainers(httpAddonProxyTLSEnabledEnvVar, "true", r.Scheme),
+		)
+		if r.injectTLSEnvVars {
+			interceptorTransforms = append(interceptorTransforms, r.httpAddonTLSEnvVarTransforms(ctx, logger)...)
+		}
+	}
 
 	// external CAs aren't configurable via the CRD for the HTTP Addon yet, cluster-internal communication is the default
 	if runningOnOpenshift {
@@ -1102,7 +1135,7 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 	}
 
 	if r.injectTLSEnvVars {
-		transforms = append(transforms, r.tlsEnvVarTransforms(ctx, logger)...)
+		transforms = append(transforms, r.kedaTLSEnvVarTransforms(ctx, logger)...)
 	}
 
 	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC
@@ -1392,7 +1425,7 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	}
 
 	if r.injectTLSEnvVars {
-		transforms = append(transforms, r.tlsEnvVarTransforms(ctx, logger)...)
+		transforms = append(transforms, r.kedaTLSEnvVarTransforms(ctx, logger)...)
 	}
 
 	// on OpenShift 4.10 (kube 1.23) and earlier, the RuntimeDefault SeccompProfile won't validate against any SCC

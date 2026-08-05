@@ -664,6 +664,90 @@ spec:
 	})
 })
 
+var _ = Describe("EnsureCertSecretVolume", func() {
+	BeforeEach(func() {
+		if testType != "unit" {
+			Skip("test.type isn't 'unit'")
+		}
+	})
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+
+	deployYAML := `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      containers:
+        - name: main
+          image: main:latest
+        - name: sidecar
+          image: sidecar:latest`
+
+	It("should add volume and mount to the target container and update idempotently", func() {
+		manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(deployYAML)))
+		Expect(err).To(BeNil())
+
+		newManifest, err := manifest.Transform(
+			transform.EnsureCertSecretVolume("main", "my-certs-secret", scheme),
+		)
+		Expect(err).To(BeNil())
+
+		deploy := &appsv1.Deployment{}
+		Expect(scheme.Convert(&newManifest.Resources()[0], deploy, nil)).To(Succeed())
+
+		Expect(deploy.Spec.Template.Spec.Volumes).To(ContainElement(corev1.Volume{
+			Name: "main-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{SecretName: "my-certs-secret"},
+			},
+		}))
+
+		main := deploy.Spec.Template.Spec.Containers[0]
+		Expect(main.VolumeMounts).To(ContainElement(corev1.VolumeMount{
+			Name: "main-certs", MountPath: "/certs", ReadOnly: true,
+		}))
+
+		sidecar := deploy.Spec.Template.Spec.Containers[1]
+		Expect(sidecar.VolumeMounts).To(BeEmpty())
+
+		// Apply again with a different secret — should replace, not duplicate.
+		updatedManifest, err := newManifest.Transform(
+			transform.EnsureCertSecretVolume("main", "updated-secret", scheme),
+		)
+		Expect(err).To(BeNil())
+
+		updatedDeploy := &appsv1.Deployment{}
+		Expect(scheme.Convert(&updatedManifest.Resources()[0], updatedDeploy, nil)).To(Succeed())
+
+		Expect(updatedDeploy.Spec.Template.Spec.Volumes).To(HaveLen(1))
+		Expect(updatedDeploy.Spec.Template.Spec.Volumes[0]).To(Equal(corev1.Volume{
+			Name: "main-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{SecretName: "updated-secret"},
+			},
+		}))
+
+		updatedMain := updatedDeploy.Spec.Template.Spec.Containers[0]
+		Expect(updatedMain.VolumeMounts).To(HaveLen(1))
+		Expect(updatedMain.VolumeMounts[0]).To(Equal(corev1.VolumeMount{
+			Name: "main-certs", MountPath: "/certs", ReadOnly: true,
+		}))
+	})
+})
+
 // structuredToMap converts a strongly typed volume object to unstructured so we can do a
 // containElement comparison against the unstructured object that comes back from unstructured.NestedSlice
 // and have them actually match
