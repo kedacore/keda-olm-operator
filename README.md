@@ -8,6 +8,7 @@
     - [Manual installation](#manual-installation)
   - [The `KedaController` Custom Resource](#the-kedacontroller-custom-resource)
     - [`KedaController` Spec](#kedacontroller-spec)
+    - [Configuring KEDA Behavior via Environment Variables](#configuring-keda-behavior-via-environment-variables)
   - [HTTP Add-on](#http-add-on)
     - [Enabling the HTTP Add-on](#enabling-the-http-add-on)
     - [Image Configuration](#image-configuration)
@@ -130,6 +131,13 @@ spec:
     # Array of strings (format is either with prefix '--key=value' or just 'value')
     # args: []
 
+    ## Environment variables
+    # Set any environment variable on the KEDA Operator container, overriding a
+    # variable of the same name that the operator sets itself.
+    # env:
+    # - name: KEDA_HTTP_DEFAULT_TIMEOUT
+    #   value: "10000"
+
     ## Egress Network Policy Allow All
     # By default, the operator will be permitted to reach any network endpoint to facilitate scalers and
     # allow them to reach their data sources
@@ -213,6 +221,13 @@ spec:
     # Define any argument with possibility to override already existing ones.
     # Array of strings (format is either with prefix '--key=value' or just 'value')
     # args: []
+
+    ## Environment variables
+    # Set any environment variable on the KEDA Metrics Server container, overriding a
+    # variable of the same name that the operator sets itself.
+    # env:
+    # - name: KEDA_HTTP_DEFAULT_TIMEOUT
+    #   value: "10000"
 
     ## Egress Network Policy Allow All
     # By default, the metrics server will be permitted to reach any network endpoint to facilitate scalers and
@@ -365,6 +380,13 @@ spec:
     # Array of strings (format is either with prefix '--key=value' or just 'value')
     # args: []
 
+    ## Environment variables
+    # Set any environment variable on the KEDA Admission Webhooks container, overriding a
+    # variable of the same name that the operator sets itself.
+    # env:
+    # - name: KEDA_HTTP_DEFAULT_TIMEOUT
+    #   value: "10000"
+
     ## Annotations to be added to the KEDA Admission Webhooks Deployment
     # https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
     # deploymentAnnotations:
@@ -496,6 +518,46 @@ spec:
     #   affinity: {}
     #   resources: {}
 ```
+
+### Configuring KEDA Behavior via Environment Variables
+
+KEDA settings that are not exposed as dedicated CRD fields can be configured by
+passing environment variables directly to the relevant component. Every component
+accepts an `env` list of standard Kubernetes
+[`EnvVar`](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/)
+entries, so both literal values and `valueFrom` references work:
+
+```yaml
+spec:
+  operator:
+    env:
+      - name: KEDA_HTTP_DEFAULT_TIMEOUT
+        value: "10000"
+      - name: HTTPS_PROXY
+        valueFrom:
+          secretKeyRef:
+            name: egress-proxy
+            key: url
+  metricsServer:
+    env:
+      - name: KEDA_HTTP_DEFAULT_TIMEOUT
+        value: "10000"
+  admissionWebhooks:
+    env:
+      - name: KEDA_HTTP_DEFAULT_TIMEOUT
+        value: "10000"
+```
+
+A variable is matched by name: one that already exists on the container is
+overwritten in place, and anything else is appended. These values are applied
+after the ones the operator sets itself, so a user-supplied variable always wins.
+Take care with variables the operator manages on your behalf — overriding
+`WATCH_NAMESPACE` shadows `spec.watchNamespace`, and on OpenShift overriding
+`KEDA_SERVICE_MIN_TLS_VERSION` or `KEDA_SERVICE_TLS_CIPHER_LIST` bypasses the TLS
+settings derived from the cluster TLS profile.
+
+Refer to the [KEDA documentation](https://keda.sh/docs/latest/operate/cluster/)
+for the full list of supported environment variables.
 
 ## HTTP Add-on
 

@@ -730,6 +730,11 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.Operator.Args[i], "operator", r.Scheme, logger))
 	}
 
+	// applied last so user-defined variables take precedence over the ones set above
+	if len(instance.Spec.Operator.Env) > 0 {
+		transforms = append(transforms, transform.ReplaceContainerEnv(instance.Spec.Operator.Env, "keda-operator", r.Scheme))
+	}
+
 	manifest, err := r.resourcesController.Transform(transforms...)
 	if err != nil {
 		logger.Error(err, "Unable to transform KEDA Controller manifest")
@@ -1270,6 +1275,11 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.MetricsServer.Args[i], "metricsserver", r.Scheme, logger))
 	}
 
+	// applied last so user-defined variables take precedence over the ones set above
+	if len(instance.Spec.MetricsServer.Env) > 0 {
+		transforms = append(transforms, transform.ReplaceContainerEnv(instance.Spec.MetricsServer.Env, "keda-metrics-apiserver", r.Scheme))
+	}
+
 	// replace namespace in RoleBinding from keda to kube-system
 	transforms = append(transforms, transform.ReplaceNamespace(roleBindingName, roleBindingNamespace, r.Scheme, logger))
 
@@ -1508,6 +1518,11 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	for i := range instance.Spec.AdmissionWebhooks.Args {
 		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.AdmissionWebhooks.Args[i], "admissionwebhooks", r.Scheme, logger))
+	}
+
+	// applied last so user-defined variables take precedence over the ones set above
+	if len(instance.Spec.AdmissionWebhooks.Env) > 0 {
+		transforms = append(transforms, transform.ReplaceContainerEnv(instance.Spec.AdmissionWebhooks.Env, "keda-admission-webhooks", r.Scheme))
 	}
 
 	manifest, err := r.resourcesWebhooks.Transform(transforms...)
