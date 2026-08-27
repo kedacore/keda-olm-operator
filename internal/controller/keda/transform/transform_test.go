@@ -664,6 +664,119 @@ spec:
 	})
 })
 
+var _ = Describe("ReplaceContainerEnv", func() {
+	BeforeEach(func() {
+		if testType != "unit" {
+			Skip("test.type isn't 'unit'")
+		}
+	})
+
+	scheme := runtime.NewScheme()
+	_ = appsv1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+
+	yamlData := `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-operator
+  template:
+    metadata:
+      labels:
+        app: keda-operator
+    spec:
+      containers:
+        - name: keda-operator
+          image: keda:latest
+          env:
+            - name: WATCH_NAMESPACE
+              value: keda
+            - name: KEDA_HTTP_DEFAULT_TIMEOUT
+              value: "3000"
+        - name: sidecar
+          image: sidecar:latest
+          env:
+            - name: KEDA_HTTP_DEFAULT_TIMEOUT
+              value: "3000"`
+
+	// containerEnv returns the env slice of the named container in the first resource of the manifest.
+	containerEnv := func(manifest mf.Manifest, containerName string) []interface{} {
+		r := manifest.Resources()
+		Expect(r).To(HaveLen(1))
+
+		containers, found, err := unstructured.NestedSlice(r[0].UnstructuredContent(), "spec", "template", "spec", "containers")
+		Expect(found).To(BeTrue())
+		Expect(err).To(BeNil())
+
+		for _, c := range containers {
+			name, found, err := unstructured.NestedString(c.(map[string]interface{}), "name")
+			Expect(found).To(BeTrue())
+			Expect(err).To(BeNil())
+			if name == containerName {
+				env, found, err := unstructured.NestedSlice(c.(map[string]interface{}), "env")
+				Expect(found).To(BeTrue())
+				Expect(err).To(BeNil())
+				return env
+			}
+		}
+
+		Fail("Could not find a container named " + containerName)
+		return nil
+	}
+
+	secretRef := corev1.EnvVar{
+		Name: "KEDA_HTTP_MIN_TLS_VERSION",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "tls-config"},
+				Key:                  "minTLSVersion",
+			},
+		},
+	}
+
+	It("Should overwrite matching variables in place, append new ones, and preserve the rest", func() {
+		manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+		Expect(err).To(BeNil())
+
+		newManifest, err := manifest.Transform(transform.ReplaceContainerEnv(
+			[]corev1.EnvVar{
+				{Name: "KEDA_HTTP_DEFAULT_TIMEOUT", Value: "10000"},
+				secretRef,
+			}, "keda-operator", scheme))
+		Expect(err).To(BeNil())
+
+		env := containerEnv(newManifest, "keda-operator")
+		Expect(env).To(HaveLen(3))
+
+		By("Checking the untouched variable kept its position and value")
+		Expect(env[0]).To(Equal(structuredToMap(corev1.EnvVar{Name: "WATCH_NAMESPACE", Value: "keda"})))
+
+		By("Checking the matching variable was overwritten in place rather than appended")
+		Expect(env[1]).To(Equal(structuredToMap(corev1.EnvVar{Name: "KEDA_HTTP_DEFAULT_TIMEOUT", Value: "10000"})))
+
+		By("Checking the new valueFrom variable was appended")
+		Expect(env[2]).To(Equal(structuredToMap(secretRef)))
+	})
+
+	It("Should leave containers with a different name untouched", func() {
+		manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+		Expect(err).To(BeNil())
+
+		newManifest, err := manifest.Transform(transform.ReplaceContainerEnv(
+			[]corev1.EnvVar{{Name: "KEDA_HTTP_DEFAULT_TIMEOUT", Value: "10000"}}, "keda-operator", scheme))
+		Expect(err).To(BeNil())
+
+		env := containerEnv(newManifest, "sidecar")
+		Expect(env).To(HaveLen(1))
+		Expect(env[0]).To(Equal(structuredToMap(corev1.EnvVar{Name: "KEDA_HTTP_DEFAULT_TIMEOUT", Value: "3000"})))
+	})
+})
+
 var _ = Describe("EnsureCertSecretVolume", func() {
 	BeforeEach(func() {
 		if testType != "unit" {

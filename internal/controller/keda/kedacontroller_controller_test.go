@@ -362,6 +362,107 @@ var _ = Describe("Testing functionality", func() {
 			}
 		})
 	})
+
+	var _ = Describe("Setting component environment variables", func() {
+
+		const (
+			kind                 = "KedaController"
+			name                 = "keda"
+			namespace            = "keda"
+			kedaManifestFilepath = "../../../config/samples/keda_v1alpha1_kedacontroller.yaml"
+		)
+
+		var (
+			ctx      = context.Background()
+			timeout  = time.Second * 60
+			interval = time.Millisecond * 250
+			scheme   *runtime.Scheme
+			manifest mf.Manifest
+			err      error
+			dep      = &appsv1.Deployment{}
+		)
+
+		BeforeEach(func() {
+			scheme = k8sManager.GetScheme()
+			dep = &appsv1.Deployment{}
+			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
+			Expect(err).To(BeNil())
+		})
+
+		// KEDA_HTTP_DEFAULT_TIMEOUT ships on all three containers, so it exercises the override
+		// path, while POD_NAMESPACE is a valueFrom variable the operator never touches.
+		variants := []struct {
+			component      string
+			deploymentName string
+			containerName  string
+		}{
+			{
+				component:      "operator",
+				deploymentName: "keda-operator",
+				containerName:  "keda-operator",
+			},
+			{
+				component:      "metricsServer",
+				deploymentName: "keda-metrics-apiserver",
+				containerName:  "keda-metrics-apiserver",
+			},
+			{
+				component:      "admissionWebhooks",
+				deploymentName: "keda-admission",
+				containerName:  "keda-admission-webhooks",
+			},
+		}
+
+		for _, variant := range variants {
+			caseName := fmt.Sprintf("Should set them on the '%s' container", variant.containerName)
+			It(caseName, func() {
+				By(fmt.Sprintf("Setting %s.env in the kedaController manifest", variant.component))
+				env := []corev1.EnvVar{
+					{Name: "KEDA_HTTP_DEFAULT_TIMEOUT", Value: "10000"},
+					{Name: "KEDA_OLM_OPERATOR_TEST", Value: "example"},
+				}
+				manifest, err = mutateKedaController(manifest, scheme, caseName, func(instance *kedav1alpha1.KedaController) error {
+					switch variant.component {
+					case "operator":
+						instance.Spec.Operator.Env = env
+					case "metricsServer":
+						instance.Spec.MetricsServer.Env = env
+					case "admissionWebhooks":
+						instance.Spec.AdmissionWebhooks.Env = env
+					default:
+						return errors.New("Not a valid component: " + variant.component)
+					}
+					return nil
+				})
+				Expect(err).To(BeNil())
+				Expect(manifest.Apply()).To(Succeed())
+
+				By("Waiting for the deployment to reflect the changes")
+				Eventually(func() error {
+					return deploymentHasRolledOut(variant.deploymentName, namespace, caseName)
+				}, timeout, interval).Should(Succeed())
+
+				u, err := getObject(ctx, "Deployment", variant.deploymentName, namespace, k8sClient)
+				Expect(err).To(BeNil())
+				Expect(scheme.Convert(u, dep, nil)).To(Succeed())
+
+				By("Checking that a variable already present on the container was overridden")
+				overridden, err := getDepEnv(dep, "KEDA_HTTP_DEFAULT_TIMEOUT", variant.containerName)
+				Expect(err).To(BeNil())
+				Expect(overridden.Value).To(Equal("10000"))
+
+				By("Checking that a variable absent from the container was appended")
+				appended, err := getDepEnv(dep, "KEDA_OLM_OPERATOR_TEST", variant.containerName)
+				Expect(err).To(BeNil())
+				Expect(appended.Value).To(Equal("example"))
+
+				By("Checking that an unrelated valueFrom variable was left intact")
+				untouched, err := getDepEnv(dep, "POD_NAMESPACE", variant.containerName)
+				Expect(err).To(BeNil())
+				Expect(untouched.ValueFrom).ToNot(BeNil())
+			})
+		}
+	})
 })
 
 var _ = Describe("Testing audit flags", func() {
@@ -461,7 +562,23 @@ func getDepArg(dep *appsv1.Deployment, prefix string, containerName string) (str
 	return "", errors.New("Could not find a container: " + containerName)
 }
 
-func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *runtime.Scheme, annotation string) (mf.Manifest, error) {
+func getDepEnv(dep *appsv1.Deployment, name string, containerName string) (*corev1.EnvVar, error) {
+	for _, container := range dep.Spec.Template.Spec.Containers {
+		if container.Name == containerName {
+			for i, env := range container.Env {
+				if env.Name == name {
+					return &container.Env[i], nil
+				}
+			}
+			return nil, errors.New("Could not find an environment variable named: " + name)
+		}
+	}
+	return nil, errors.New("Could not find a container: " + containerName)
+}
+
+// mutateKedaController applies mutate to the KedaController in the manifest, stamping the test case
+// annotation on every component so deploymentHasRolledOut can tell our change apart from a previous one.
+func mutateKedaController(manifest mf.Manifest, scheme *runtime.Scheme, annotation string, mutate func(*kedav1alpha1.KedaController) error) (mf.Manifest, error) {
 	transformer := func(u *unstructured.Unstructured) error {
 		kedaControllerInstance := &kedav1alpha1.KedaController{}
 		if err := scheme.Convert(u, kedaControllerInstance, nil); err != nil {
@@ -486,6 +603,17 @@ func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *ru
 		kedaControllerInstance.Spec.AdmissionWebhooks.DeploymentAnnotations["testCase"] = annotation
 		kedaControllerInstance.Spec.MetricsServer.DeploymentAnnotations["testCase"] = annotation
 
+		if err := mutate(kedaControllerInstance); err != nil {
+			return err
+		}
+		return scheme.Convert(kedaControllerInstance, u, nil)
+	}
+
+	return manifest.Transform(transformer)
+}
+
+func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *runtime.Scheme, annotation string) (mf.Manifest, error) {
+	return mutateKedaController(manifest, scheme, annotation, func(kedaControllerInstance *kedav1alpha1.KedaController) error {
 		switch attr {
 		case "namespace":
 			kedaControllerInstance.Namespace = value
@@ -508,10 +636,8 @@ func changeAttribute(manifest mf.Manifest, attr string, value string, scheme *ru
 		default:
 			return errors.New("Not a valid attribute")
 		}
-		return scheme.Convert(kedaControllerInstance, u, nil)
-	}
-
-	return manifest.Transform(transformer)
+		return nil
+	})
 }
 
 // deploymentHasRolledOut waits for the specified deployment to possess the specified annotation
