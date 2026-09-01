@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ver=$1
 if ! [[ "$ver" =~ ^[0-9]\.[0-9][0-9]*\.[0-9][0-9]*$ ]]; then
