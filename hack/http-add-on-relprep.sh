@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Script to update HTTP Add-on manifests for a new release version.
 # This script downloads the release manifest from GitHub, extracts CRDs into
