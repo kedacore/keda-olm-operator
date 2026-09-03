@@ -356,6 +356,8 @@ func (r *KedaControllerReconciler) clusterTLSProfile(ctx context.Context, logger
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+//
+//nolint:gocyclo
 func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithValues("KedaController", req.NamespacedName)
 
@@ -411,6 +413,66 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	status := instance.Status.DeepCopy()
+
+	// Validate Operator configuration
+	if err := instance.Spec.Operator.Validate(); err != nil {
+		logger.Error(err, "Invalid Operator configuration")
+		status.MarkInstallFailed(fmt.Sprintf("Invalid Operator configuration: %v", err))
+		if updateErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); updateErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, updateErr)
+		}
+		return ctrl.Result{}, err
+	}
+	// Operator-specific validation: max 2 replicas
+	if instance.Spec.Operator.Replicas != nil && *instance.Spec.Operator.Replicas > 2 {
+		err := fmt.Errorf("invalid value for Operator Replicas: %d, must be <= 2", *instance.Spec.Operator.Replicas)
+		logger.Error(err, "Invalid Operator configuration")
+		status.MarkInstallFailed(fmt.Sprintf("Invalid Operator configuration: %v", err))
+		if updateErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); updateErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, updateErr)
+		}
+		return ctrl.Result{}, err
+	}
+
+	// Validate MetricsServer configuration
+	if err := instance.Spec.MetricsServer.Validate(); err != nil {
+		logger.Error(err, "Invalid MetricsServer configuration")
+		status.MarkInstallFailed(fmt.Sprintf("Invalid MetricsServer configuration: %v", err))
+		if updateErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); updateErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, updateErr)
+		}
+		return ctrl.Result{}, err
+	}
+	// MetricsServer-specific validation: minimum 1 replica (cannot be 0)
+	if instance.Spec.MetricsServer.Replicas != nil && *instance.Spec.MetricsServer.Replicas < 1 {
+		err := fmt.Errorf("invalid value for MetricsServer Replicas: %d, must be >= 1", *instance.Spec.MetricsServer.Replicas)
+		logger.Error(err, "Invalid MetricsServer configuration")
+		status.MarkInstallFailed(fmt.Sprintf("Invalid MetricsServer configuration: %v", err))
+		if updateErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); updateErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, updateErr)
+		}
+		return ctrl.Result{}, err
+	}
+
+	// Validate AdmissionWebhooks configuration
+	if err := instance.Spec.AdmissionWebhooks.Validate(); err != nil {
+		logger.Error(err, "Invalid AdmissionWebhooks configuration")
+		status.MarkInstallFailed(fmt.Sprintf("Invalid AdmissionWebhooks configuration: %v", err))
+		if updateErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); updateErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, updateErr)
+		}
+		return ctrl.Result{}, err
+	}
+	// AdmissionWebhooks-specific validation: minimum 1 replica (cannot be 0)
+	if instance.Spec.AdmissionWebhooks.Replicas != nil && *instance.Spec.AdmissionWebhooks.Replicas < 1 {
+		err := fmt.Errorf("invalid value for AdmissionWebhooks Replicas: %d, must be >= 1", *instance.Spec.AdmissionWebhooks.Replicas)
+		logger.Error(err, "Invalid AdmissionWebhooks configuration")
+		status.MarkInstallFailed(fmt.Sprintf("Invalid AdmissionWebhooks configuration: %v", err))
+		if updateErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); updateErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, updateErr)
+		}
+		return ctrl.Result{}, err
+	}
 
 	if err := r.installGeneralResources(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to create ServiceAccount")
@@ -678,6 +740,10 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 	}
 	if len(instance.Spec.Operator.LogTimeEncoding) > 0 {
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeEncoding(instance.Spec.Operator.LogTimeEncoding, r.Scheme, logger))
+	}
+
+	if instance.Spec.Operator.Replicas != nil {
+		transforms = append(transforms, transform.ReplaceReplicas(instance.Spec.Operator.Replicas, r.Scheme))
 	}
 
 	if len(instance.Spec.Operator.DeploymentAnnotations) > 0 {
@@ -1126,6 +1192,7 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 	return nil
 }
 
+//nolint:gocyclo
 func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA Metrics Server Deployment")
 
@@ -1219,6 +1286,10 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	if len(instance.Spec.MetricsServer.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.MetricsServer.LogLevel, r.Scheme, logger))
+	}
+
+	if instance.Spec.MetricsServer.Replicas != nil {
+		transforms = append(transforms, transform.ReplaceReplicas(instance.Spec.MetricsServer.Replicas, r.Scheme))
 	}
 
 	if len(instance.Spec.MetricsServer.DeploymentAnnotations) > 0 {
@@ -1468,6 +1539,10 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	}
 	if len(instance.Spec.AdmissionWebhooks.LogTimeEncoding) > 0 {
 		transforms = append(transforms, transform.ReplaceAdmissionWebhooksLogTimeEncoding(instance.Spec.AdmissionWebhooks.LogTimeEncoding, r.Scheme, logger))
+	}
+
+	if instance.Spec.AdmissionWebhooks.Replicas != nil {
+		transforms = append(transforms, transform.ReplaceReplicas(instance.Spec.AdmissionWebhooks.Replicas, r.Scheme))
 	}
 
 	if len(instance.Spec.AdmissionWebhooks.DeploymentAnnotations) > 0 {
