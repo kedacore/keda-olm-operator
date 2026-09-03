@@ -726,7 +726,6 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 
 	// add arbitrary args defined by user
 	for i := range instance.Spec.Operator.Args {
-		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.Operator.Args[i], "operator", r.Scheme, logger))
 	}
 
@@ -1271,7 +1270,6 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	// add arbitrary args defined by user
 	for i := range instance.Spec.MetricsServer.Args {
-		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.MetricsServer.Args[i], "metricsserver", r.Scheme, logger))
 	}
 
@@ -1516,7 +1514,6 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 
 	// add arbitrary args defined by user
 	for i := range instance.Spec.AdmissionWebhooks.Args {
-		i := i
 		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.AdmissionWebhooks.Args[i], "admissionwebhooks", r.Scheme, logger))
 	}
 
