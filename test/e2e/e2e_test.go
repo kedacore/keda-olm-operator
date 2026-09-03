@@ -10,6 +10,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -157,6 +158,10 @@ func TestKedaControllerLifecycle(t *testing.T) {
 		for _, name := range coreDeployments {
 			waitForDeploymentGone(t, ctx, c, name)
 		}
+
+		// the metrics server RoleBinding is the only operand installed outside the
+		// KedaController namespace, so check that finalization reaches it too
+		waitForRoleBindingGone(t, ctx, c, "keda-auth-reader", "kube-system")
 	})
 }
 
@@ -227,6 +232,25 @@ func waitForDeploymentGone(t *testing.T, ctx context.Context, c client.Client, n
 	})
 	if err != nil {
 		t.Fatalf("deployment %s/%s was not deleted: %v", namespace, name, err)
+	}
+}
+
+func waitForRoleBindingGone(t *testing.T, ctx context.Context, c client.Client, name, ns string) {
+	t.Helper()
+	t.Logf("waiting for rolebinding %s/%s to be deleted", ns, name)
+
+	err := wait.PollUntilContextTimeout(ctx, pollInterval, pollTimeout, true, func(ctx context.Context) (bool, error) {
+		rb := &rbacv1.RoleBinding{}
+		if err := c.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, rb); err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, fmt.Errorf("unexpected error checking rolebinding %s: %w", name, err)
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Fatalf("rolebinding %s/%s was not deleted: %v", ns, name, err)
 	}
 }
 
