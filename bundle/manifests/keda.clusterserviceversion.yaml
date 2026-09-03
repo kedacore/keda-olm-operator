@@ -682,7 +682,6 @@ spec:
           selector:
             matchLabels:
               app.kubernetes.io/part-of: keda-olm-operator
-              app.kubernetes.io/version: main
               name: keda-olm-operator
           strategy: {}
           template:
