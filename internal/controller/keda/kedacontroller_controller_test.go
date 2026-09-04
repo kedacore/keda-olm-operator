@@ -363,7 +363,7 @@ var _ = Describe("Testing functionality", func() {
 		})
 	})
 
-	var _ = Describe("Setting component environment variables", func() {
+	var _ = Describe("Setting and removing component environment variables", func() {
 
 		const (
 			kind                 = "KedaController"
@@ -385,9 +385,30 @@ var _ = Describe("Testing functionality", func() {
 		BeforeEach(func() {
 			scheme = k8sManager.GetScheme()
 			dep = &appsv1.Deployment{}
+
+			// The operator creates a default KedaController at start-up. Wait for it to reach the
+			// client cache, otherwise Apply races it and tries to create a second one.
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: namespace, Namespace: namespace}, &kedav1alpha1.KedaController{})
+			}, timeout, interval).Should(Succeed())
+
 			manifest, err = createManifest(kedaManifestFilepath, k8sClient)
 			Expect(err).To(BeNil())
 		})
+
+		setEnv := func(instance *kedav1alpha1.KedaController, component string, env []corev1.EnvVar) error {
+			switch component {
+			case "operator":
+				instance.Spec.Operator.Env = env
+			case "metricsServer":
+				instance.Spec.MetricsServer.Env = env
+			case "admissionWebhooks":
+				instance.Spec.AdmissionWebhooks.Env = env
+			default:
+				return errors.New("Not a valid component: " + component)
+			}
+			return nil
+		}
 
 		// KEDA_HTTP_DEFAULT_TIMEOUT ships on all three containers, so it exercises the override
 		// path, while POD_NAMESPACE is a valueFrom variable the operator never touches.
@@ -414,32 +435,21 @@ var _ = Describe("Testing functionality", func() {
 		}
 
 		for _, variant := range variants {
-			caseName := fmt.Sprintf("Should set them on the '%s' container", variant.containerName)
+			caseName := fmt.Sprintf("Should set them on the '%s' container and drop them again once deleted", variant.containerName)
 			It(caseName, func() {
 				By(fmt.Sprintf("Setting %s.env in the kedaController manifest", variant.component))
-				env := []corev1.EnvVar{
-					{Name: "KEDA_HTTP_DEFAULT_TIMEOUT", Value: "10000"},
-					{Name: "KEDA_OLM_OPERATOR_TEST", Value: "example"},
-				}
-				manifest, err = mutateKedaController(manifest, scheme, caseName, func(instance *kedav1alpha1.KedaController) error {
-					switch variant.component {
-					case "operator":
-						instance.Spec.Operator.Env = env
-					case "metricsServer":
-						instance.Spec.MetricsServer.Env = env
-					case "admissionWebhooks":
-						instance.Spec.AdmissionWebhooks.Env = env
-					default:
-						return errors.New("Not a valid component: " + variant.component)
-					}
-					return nil
+				manifest, err = mutateKedaController(manifest, scheme, caseName+" (set)", func(instance *kedav1alpha1.KedaController) error {
+					return setEnv(instance, variant.component, []corev1.EnvVar{
+						{Name: "KEDA_HTTP_DEFAULT_TIMEOUT", Value: "10000"},
+						{Name: "KEDA_OLM_OPERATOR_TEST", Value: "example"},
+					})
 				})
 				Expect(err).To(BeNil())
 				Expect(manifest.Apply()).To(Succeed())
 
 				By("Waiting for the deployment to reflect the changes")
 				Eventually(func() error {
-					return deploymentHasRolledOut(variant.deploymentName, namespace, caseName)
+					return deploymentHasRolledOut(variant.deploymentName, namespace, caseName+" (set)")
 				}, timeout, interval).Should(Succeed())
 
 				u, err := getObject(ctx, "Deployment", variant.deploymentName, namespace, k8sClient)
@@ -460,9 +470,36 @@ var _ = Describe("Testing functionality", func() {
 				untouched, err := getDepEnv(dep, "POD_NAMESPACE", variant.containerName)
 				Expect(err).To(BeNil())
 				Expect(untouched.ValueFrom).ToNot(BeNil())
+
+				By(fmt.Sprintf("Deleting %s.env from the kedaController manifest", variant.component))
+				manifest, err = mutateKedaController(manifest, scheme, caseName+" (cleared)", func(instance *kedav1alpha1.KedaController) error {
+					return setEnv(instance, variant.component, nil)
+				})
+				Expect(err).To(BeNil())
+				Expect(manifest.Apply()).To(Succeed())
+
+				By("Waiting for the deployment to reflect the removal")
+				Eventually(func() error {
+					return deploymentHasRolledOut(variant.deploymentName, namespace, caseName+" (cleared)")
+				}, timeout, interval).Should(Succeed())
+
+				u, err = getObject(ctx, "Deployment", variant.deploymentName, namespace, k8sClient)
+				Expect(err).To(BeNil())
+				dep = &appsv1.Deployment{}
+				Expect(scheme.Convert(u, dep, nil)).To(Succeed())
+
+				By("Checking that the appended variable is gone")
+				_, err = getDepEnv(dep, "KEDA_OLM_OPERATOR_TEST", variant.containerName)
+				Expect(err).To(HaveOccurred())
+
+				By("Checking that the overridden variable is back to the value from the operand manifest")
+				restored, err := getDepEnv(dep, "KEDA_HTTP_DEFAULT_TIMEOUT", variant.containerName)
+				Expect(err).To(BeNil())
+				Expect(restored.Value).To(BeEmpty())
 			})
 		}
 	})
+
 })
 
 var _ = Describe("Testing audit flags", func() {
