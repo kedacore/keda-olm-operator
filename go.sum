@@ -424,12 +424,12 @@ github.com/open-policy-agent/cert-controller v0.16.0 h1:/w+wAM9dylWGwhPnvfCgepyB
 github.com/open-policy-agent/cert-controller v0.16.0/go.mod h1:w5qBWYbc8HwyHI9VYAZ6YjWOcZtQ39A30I9W4X7pVVk=
 github.com/open-policy-agent/frameworks/constraint v0.0.0-20241101234656-e78c8abd754a h1:gQtOJ50XFyL2Xh3lDD9zP4KQ2PY4mZKQ9hDcWc81Sp8=
 github.com/open-policy-agent/frameworks/constraint v0.0.0-20241101234656-e78c8abd754a/go.mod h1:tI7nc6H6os2UYZRvSm9Y7bq4oMoXqhwA0WfnqKpoAgc=
-github.com/openshift/api v0.0.0-20260715165912-72066cc9718b h1:gN3SihCYEwoIksD+f24wHhwiEgvaV0RxNjgmkDvBBeg=
-github.com/openshift/api v0.0.0-20260715165912-72066cc9718b/go.mod h1:k6qH5QOVa5GDln2VVm8Jz4NV3Z7R2SATHFLwGS6Wh3M=
+github.com/openshift/api v0.0.0-20260805215214-cfb63858e9d7 h1:Z6p+yoWjFXbfnN2zPdQ8SRXPKDs9QtT3P8hN3SP2zuw=
+github.com/openshift/api v0.0.0-20260805215214-cfb63858e9d7/go.mod h1:k6qH5QOVa5GDln2VVm8Jz4NV3Z7R2SATHFLwGS6Wh3M=
 github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e h1:k89oIo2EjX0PRSdi1kesktCyWp50SC9WwKurvupvRGs=
 github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e/go.mod h1:XGabTMnNbz0M5Oa7IbscZp/jmcc7aHobvOCUWwkzKvM=
-github.com/openshift/library-go v0.0.0-20260722141911-d8f45c2a4f64 h1:pJm/aglcdT+TnBlxdtcEVvKfMHn+KqjiFOloYPK2tss=
-github.com/openshift/library-go v0.0.0-20260722141911-d8f45c2a4f64/go.mod h1:iWcB6wgeOhsByZAZGhmzBtEnrLQzABL0s3aeou8AmSI=
+github.com/openshift/library-go v0.0.0-20260904093542-946ee696bcb5 h1:Xxq4yPrGXwYoX02ggkqImBlojBq5cZmJer8uSySdNHc=
+github.com/openshift/library-go v0.0.0-20260904093542-946ee696bcb5/go.mod h1:pH7rnNOj3dJpdpBtE32LB2pAg0AYDIaaBJJrFxX2pPY=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
