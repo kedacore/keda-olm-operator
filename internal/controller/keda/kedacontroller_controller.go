@@ -98,6 +98,11 @@ const (
 )
 
 // KedaControllerReconciler reconciles a KedaController object
+//
+// The resources* manifests hold the operands exactly as loaded from disk at start-up
+// and must stay that way. Every reconcile renders them through the spec-driven
+// transformers, which can only add or overwrite entries, never remove them, so storing
+// a rendered manifest back would keep applying spec values the user has since deleted.
 type KedaControllerReconciler struct {
 	client.Client
 	Log                           logr.Logger
@@ -388,7 +393,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			// Run finalization logic for kedaControllerFinalizer. If the
 			// finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
-			if err := r.finalizeKedaController(logger); err != nil {
+			if err := r.finalizeKedaController(logger, instance); err != nil {
 				return ctrl.Result{}, err
 			}
 			// Remove kedaControllerFinalizer. Once all finalizers have been
@@ -602,11 +607,10 @@ func (r *KedaControllerReconciler) installGeneralResources(ctx context.Context, 
 		logger.Error(err, "Unable to transform ServiceAccount and NetworkPolicies manifests")
 		return err
 	}
-	r.resourcesGeneral = manifest
 
 	isEmptyKedaAllowEgressToAllNetworkPolicy := getIsEmptyKedaAllowEgressToAllNetworkPolicyPredicate(r.Scheme)
-	toDelete := r.resourcesGeneral.Filter(isEmptyKedaAllowEgressToAllNetworkPolicy)
-	toApply := r.resourcesGeneral.Filter(mf.Not(isEmptyKedaAllowEgressToAllNetworkPolicy))
+	toDelete := manifest.Filter(isEmptyKedaAllowEgressToAllNetworkPolicy)
+	toApply := manifest.Filter(mf.Not(isEmptyKedaAllowEgressToAllNetworkPolicy))
 
 	if err := toDelete.Delete(); err != nil {
 		logger.Error(err, "Unable to delete unwanted NetworkPolicy keda-allow-egress-to-all")
@@ -740,9 +744,8 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		logger.Error(err, "Unable to transform KEDA Controller manifest")
 		return err
 	}
-	r.resourcesController = manifest
 
-	if err := r.resourcesController.Apply(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install KEDA Controller")
 		return err
 	}
@@ -796,9 +799,8 @@ func (r *KedaControllerReconciler) installMonitoring(ctx context.Context, logger
 		logger.Error(err, "Unable to transform monitoring resource manifests")
 		return err
 	}
-	r.resourcesMonitoring = manifest
 
-	if err := r.resourcesMonitoring.Apply(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install monitoring resources")
 		return err
 	}
@@ -845,25 +847,41 @@ func (r *KedaControllerReconciler) parseHTTPAddonManifests(manifest mf.Manifest)
 	return nil
 }
 
-func deleteHTTPAddonManifest(logger logr.Logger, manifest mf.Manifest, component string) error {
+// renderForDelete points an untransformed operand manifest at the objects that were
+// actually installed. Deletion only needs to match each resource by kind, name and
+// namespace, so the namespace rewriting is enough and the spec-driven transforms that
+// shape the object bodies can be skipped.
+//
+// Any install transform that changes a resource's kind, name or namespace has to be
+// mirrored here through extra, or the affected object will be left behind on delete.
+func renderForDelete(manifest mf.Manifest, namespace string, extra ...mf.Transformer) (mf.Manifest, error) {
+	return manifest.Transform(append([]mf.Transformer{transform.ReplaceAllNamespaces(namespace)}, extra...)...)
+}
+
+func deleteHTTPAddonManifest(logger logr.Logger, manifest mf.Manifest, namespace string, component string) error {
 	if manifest.Client == nil && len(manifest.Resources()) == 0 {
 		return nil
 	}
-	if err := manifest.Delete(); err != nil {
+	rendered, err := renderForDelete(manifest, namespace)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Unable to transform HTTP Add-on %s manifest for deletion", component))
+		return err
+	}
+	if err := rendered.Delete(); err != nil {
 		logger.Error(err, fmt.Sprintf("Unable to delete HTTP Add-on %s resources", component))
 		return err
 	}
 	return nil
 }
 
-func (r *KedaControllerReconciler) deleteHTTPAddon(logger logr.Logger) error {
-	if err := deleteHTTPAddonManifest(logger, r.resourcesHTTPAddonScaler, "Scaler"); err != nil {
+func (r *KedaControllerReconciler) deleteHTTPAddon(logger logr.Logger, namespace string) error {
+	if err := deleteHTTPAddonManifest(logger, r.resourcesHTTPAddonScaler, namespace, "Scaler"); err != nil {
 		return err
 	}
-	if err := deleteHTTPAddonManifest(logger, r.resourcesHTTPAddonInterceptor, "Interceptor"); err != nil {
+	if err := deleteHTTPAddonManifest(logger, r.resourcesHTTPAddonInterceptor, namespace, "Interceptor"); err != nil {
 		return err
 	}
-	if err := deleteHTTPAddonManifest(logger, r.resourcesHTTPAddonOperator, "Operator"); err != nil {
+	if err := deleteHTTPAddonManifest(logger, r.resourcesHTTPAddonOperator, namespace, "Operator"); err != nil {
 		return err
 	}
 	return nil
@@ -966,7 +984,7 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 	if !instance.Spec.HTTPAddon.Enabled {
 		if status.HTTPAddon != nil {
 			logger.Info("HTTP Add-on is disabled, cleaning up resources")
-			if err := r.deleteHTTPAddon(logger); err != nil {
+			if err := r.deleteHTTPAddon(logger, instance.Namespace); err != nil {
 				return err
 			}
 			status.HTTPAddon = nil
@@ -1016,9 +1034,8 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 		status.HTTPAddon = httpAddonStatus
 		return err
 	}
-	r.resourcesHTTPAddonOperator = manifest
 
-	if err := r.resourcesHTTPAddonOperator.Apply(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install HTTP Add-on Operator")
 		httpAddonStatus.MarkInstallFailed("Failed to install HTTP Add-on Operator")
 		status.HTTPAddon = httpAddonStatus
@@ -1072,9 +1089,8 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 		status.HTTPAddon = httpAddonStatus
 		return err
 	}
-	r.resourcesHTTPAddonInterceptor = manifest
 
-	if err := r.resourcesHTTPAddonInterceptor.Apply(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install HTTP Add-on Interceptor")
 		httpAddonStatus.MarkInstallFailed("Failed to install HTTP Add-on Interceptor")
 		status.HTTPAddon = httpAddonStatus
@@ -1110,9 +1126,8 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 		status.HTTPAddon = httpAddonStatus
 		return err
 	}
-	r.resourcesHTTPAddonScaler = manifest
 
-	if err := r.resourcesHTTPAddonScaler.Apply(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install HTTP Add-on Scaler")
 		httpAddonStatus.MarkInstallFailed("Failed to install HTTP Add-on Scaler")
 		status.HTTPAddon = httpAddonStatus
@@ -1288,9 +1303,8 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 		logger.Error(err, "Unable to transform Metrics Server manifest")
 		return err
 	}
-	r.resourcesMetrics = manifest
 
-	if err := r.resourcesMetrics.Apply(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install Metrics Server")
 		return err
 	}
@@ -1530,9 +1544,8 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 		logger.Error(err, "Unable to transform KEDA Admission Webhooks manifest")
 		return err
 	}
-	r.resourcesWebhooks = manifest
 
-	if err := r.resourcesWebhooks.Apply(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install KEDA Admission Webhooks")
 		return err
 	}
