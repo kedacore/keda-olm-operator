@@ -3274,6 +3274,9 @@ spec:
                       type: object
                     type: array
                 type: object
+                x-kubernetes-validations:
+                - message: admissionWebhooks replicas must be >= 1
+                  rule: '!has(self.replicas) || self.replicas >= 1'
               httpAddon:
                 description: HTTPAddonSpec defines configuration for the KEDA HTTP
                   Add-on.
@@ -16459,6 +16462,9 @@ spec:
                       type: object
                     type: array
                 type: object
+                x-kubernetes-validations:
+                - message: metricsServer replicas must be >= 1
+                  rule: '!has(self.replicas) || self.replicas >= 1'
               operator:
                 properties:
                   affinity:
@@ -19707,6 +19713,10 @@ spec:
                       type: object
                     type: array
                 type: object
+                x-kubernetes-validations:
+                - message: operator replicas must be between 0 and 2
+                  rule: '!has(self.replicas) || (self.replicas >= 0 && self.replicas
+                    <= 2)'
               serviceAccount:
                 properties:
                   annotations:

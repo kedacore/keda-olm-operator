@@ -193,11 +193,6 @@ func (in *HTTPAddonImageSpec) DeepCopy() *HTTPAddonImageSpec {
 func (in *HTTPAddonInterceptorSpec) DeepCopyInto(out *HTTPAddonInterceptorSpec) {
 	*out = *in
 	out.Image = in.Image
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
-		*out = new(int32)
-		**out = **in
-	}
 	in.GenericDeploymentSpec.DeepCopyInto(&out.GenericDeploymentSpec)
 }
 
@@ -215,11 +210,6 @@ func (in *HTTPAddonInterceptorSpec) DeepCopy() *HTTPAddonInterceptorSpec {
 func (in *HTTPAddonOperatorSpec) DeepCopyInto(out *HTTPAddonOperatorSpec) {
 	*out = *in
 	out.Image = in.Image
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
-		*out = new(int32)
-		**out = **in
-	}
 	in.GenericDeploymentSpec.DeepCopyInto(&out.GenericDeploymentSpec)
 }
 
@@ -237,11 +227,6 @@ func (in *HTTPAddonOperatorSpec) DeepCopy() *HTTPAddonOperatorSpec {
 func (in *HTTPAddonScalerSpec) DeepCopyInto(out *HTTPAddonScalerSpec) {
 	*out = *in
 	out.Image = in.Image
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
-		*out = new(int32)
-		**out = **in
-	}
 	in.GenericDeploymentSpec.DeepCopyInto(&out.GenericDeploymentSpec)
 }
 

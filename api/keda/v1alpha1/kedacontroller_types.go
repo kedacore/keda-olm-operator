@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,6 +70,7 @@ type KedaServiceAccountSpec struct {
 	Labels map[string]string `json:"labels,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || (self.replicas >= 0 && self.replicas <= 2)",message="operator replicas must be between 0 and 2"
 type KedaOperatorSpec struct {
 
 	// Logging level for KEDA Controller
@@ -115,6 +114,7 @@ type KedaOperatorSpec struct {
 	CAConfigMaps []string `json:"caConfigMaps,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas >= 1",message="metricsServer replicas must be >= 1"
 type KedaMetricsServerSpec struct {
 
 	// Logging level for Metrics Server
@@ -144,6 +144,7 @@ type KedaMetricsServerSpec struct {
 	NetworkEgressAllowAll string `json:"networkEgressAllowAll,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas >= 1",message="admissionWebhooks replicas must be >= 1"
 type KedaAdmissionWebhooksSpec struct {
 
 	// Logging level for Admission Webhooks
@@ -207,10 +208,6 @@ type HTTPAddonOperatorSpec struct {
 	// +optional
 	Image HTTPAddonImageSpec `json:"image,omitempty"`
 
-	// Number of replicas for the HTTP Add-on Operator deployment
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-
 	GenericDeploymentSpec `json:",inline"`
 }
 
@@ -238,10 +235,6 @@ type HTTPAddonInterceptorSpec struct {
 	// +optional
 	Image HTTPAddonImageSpec `json:"image,omitempty"`
 
-	// Number of replicas for the HTTP Add-on Interceptor deployment
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-
 	GenericDeploymentSpec `json:",inline"`
 }
 
@@ -268,10 +261,6 @@ type HTTPAddonScalerSpec struct {
 	// Container image for the HTTP Add-on Scaler
 	// +optional
 	Image HTTPAddonImageSpec `json:"image,omitempty"`
-
-	// Number of replicas for the HTTP Add-on Scaler deployment
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
 
 	GenericDeploymentSpec `json:",inline"`
 }
@@ -378,18 +367,6 @@ type GenericDeploymentSpec struct {
 	// https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
-}
-
-// Validate validates the GenericDeploymentSpec fields.
-// - Allows replicas >= 0 (0 may be used for maintenance scenarios)
-// - Blocks negative values (invalid)
-// - Allows nil (uses base manifest default)
-// - Component-specific minimums enforced in controller (e.g., metricsServer requires >= 1)
-func (g *GenericDeploymentSpec) Validate() error {
-	if g.Replicas != nil && *g.Replicas < 0 {
-		return fmt.Errorf("invalid value for Replicas: %d, must be >= 0", *g.Replicas)
-	}
-	return nil
 }
 
 // KedaControllerStatus defines the observed state of KedaController

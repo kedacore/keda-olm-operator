@@ -45,9 +45,7 @@ resources:
 - ../rbac
 - ../manager
 labels:
-- includeSelectors: true
-  pairs:
+- pairs:
     app.kubernetes.io/part-of: keda-olm-operator
     app.kubernetes.io/version: main
-commonLabels:
-  app.kubernetes.io/version: main
+  includeSelectors: true
