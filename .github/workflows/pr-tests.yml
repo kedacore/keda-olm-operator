@@ -107,7 +107,7 @@ jobs:
       - name: Install OLM
         env:
           # renovate: datasource=github-releases depName=operator-framework/operator-lifecycle-manager
-          OLM_VERSION: "v0.45.0"
+          OLM_VERSION: "v0.46.0"
         run: make operator-sdk && ./bin/operator-sdk olm install --version "$OLM_VERSION"
 
       - name: Build and deploy operator via OLM
@@ -158,7 +158,7 @@ jobs:
       - name: Install OLM
         env:
           # renovate: datasource=github-releases depName=operator-framework/operator-lifecycle-manager
-          OLM_VERSION: "v0.45.0"
+          OLM_VERSION: "v0.46.0"
         run: make operator-sdk && ./bin/operator-sdk olm install --version "$OLM_VERSION"
 
       - name: Build operator and bundle images
