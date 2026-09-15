@@ -165,7 +165,7 @@ metadata:
     categories: Cloud Provider
     certified: "false"
     containerImage: ghcr.io/kedacore/keda-olm-operator:2.20.2
-    createdAt: "2026-09-01T19:18:08Z"
+    createdAt: "2026-09-15T12:10:22Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
     operatorframework.io/suggested-namespace: keda
     operators.operatorframework.io/builder: operator-sdk-v1.38.0

@@ -684,6 +684,10 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeEncoding(instance.Spec.Operator.LogTimeEncoding, r.Scheme, logger))
 	}
 
+	if instance.Spec.Operator.Replicas != nil {
+		transforms = append(transforms, transform.ReplaceReplicas(instance.Spec.Operator.Replicas, r.Scheme))
+	}
+
 	if len(instance.Spec.Operator.DeploymentAnnotations) > 0 {
 		transforms = append(transforms, transform.AddDeploymentAnnotations(instance.Spec.Operator.DeploymentAnnotations, r.Scheme))
 	}
@@ -1141,6 +1145,7 @@ func (r *KedaControllerReconciler) installHTTPAddon(ctx context.Context, logger 
 	return nil
 }
 
+//nolint:gocyclo
 func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	logger.Info("Reconciling KEDA Metrics Server Deployment")
 
@@ -1234,6 +1239,10 @@ func (r *KedaControllerReconciler) installMetricsServer(ctx context.Context, log
 
 	if len(instance.Spec.MetricsServer.LogLevel) > 0 {
 		transforms = append(transforms, transform.ReplaceMetricsServerLogLevel(instance.Spec.MetricsServer.LogLevel, r.Scheme, logger))
+	}
+
+	if instance.Spec.MetricsServer.Replicas != nil {
+		transforms = append(transforms, transform.ReplaceReplicas(instance.Spec.MetricsServer.Replicas, r.Scheme))
 	}
 
 	if len(instance.Spec.MetricsServer.DeploymentAnnotations) > 0 {
@@ -1482,6 +1491,10 @@ func (r *KedaControllerReconciler) installAdmissionWebhooks(ctx context.Context,
 	}
 	if len(instance.Spec.AdmissionWebhooks.LogTimeEncoding) > 0 {
 		transforms = append(transforms, transform.ReplaceAdmissionWebhooksLogTimeEncoding(instance.Spec.AdmissionWebhooks.LogTimeEncoding, r.Scheme, logger))
+	}
+
+	if instance.Spec.AdmissionWebhooks.Replicas != nil {
+		transforms = append(transforms, transform.ReplaceReplicas(instance.Spec.AdmissionWebhooks.Replicas, r.Scheme))
 	}
 
 	if len(instance.Spec.AdmissionWebhooks.DeploymentAnnotations) > 0 {
