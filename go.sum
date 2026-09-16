@@ -426,8 +426,8 @@ github.com/open-policy-agent/frameworks/constraint v0.0.0-20241101234656-e78c8ab
 github.com/open-policy-agent/frameworks/constraint v0.0.0-20241101234656-e78c8abd754a/go.mod h1:tI7nc6H6os2UYZRvSm9Y7bq4oMoXqhwA0WfnqKpoAgc=
 github.com/openshift/api v0.0.0-20260825094607-13a84dedc5a3 h1:JRsHyxZTqcs5MK0LYTsyzs9VMdO02cSYMBvyize1fhI=
 github.com/openshift/api v0.0.0-20260825094607-13a84dedc5a3/go.mod h1:k6qH5QOVa5GDln2VVm8Jz4NV3Z7R2SATHFLwGS6Wh3M=
-github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e h1:k89oIo2EjX0PRSdi1kesktCyWp50SC9WwKurvupvRGs=
-github.com/openshift/controller-runtime-common v0.0.0-20260428152732-64ee174f5e2e/go.mod h1:XGabTMnNbz0M5Oa7IbscZp/jmcc7aHobvOCUWwkzKvM=
+github.com/openshift/controller-runtime-common v0.0.0-20260813135806-e1187ec555fc h1:7v9PXV3WR5h8h4x44yfzFKwF0KrdiG6YTKV+26YIcfo=
+github.com/openshift/controller-runtime-common v0.0.0-20260813135806-e1187ec555fc/go.mod h1:zyxfp5JNVAFiTBwG0j+RxKPeLUVIEuzkeGMvTeYMaoA=
 github.com/openshift/library-go v0.0.0-20260911204104-f7fdf34b126f h1:TjXVEVAV6qN0udu2s564h/IgmFtw4IucmcHyZiqCoVw=
 github.com/openshift/library-go v0.0.0-20260911204104-f7fdf34b126f/go.mod h1:uGv0Raq/bRG1CNlvR8IQ91Q7E+HnGM48Yp93QmlPn/s=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
