@@ -5,27 +5,16 @@ import (
 	"crypto/md5"
 	"fmt"
 	"strconv"
-	"time"
 	"unicode"
 
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
-)
-
-const (
-	metricsServerPodLabelKey    = "app"
-	metricsServerPodLabelValue  = "keda-metrics-apiserver"
-	metricsServerDeploymentName = "keda-metrics-apiserver"
-	restartAnnotationKey        = "kubectl.kubernetes.io/restartedAt"
 )
 
 func CalculateConfigMapDataCheckSum(m map[string]string) string {
@@ -42,48 +31,6 @@ func CalculateSecretedDataCheckSum(m map[string][]byte) string {
 		data = data + k + string(v)
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(data)))
-}
-
-// DeleteMetricsServerPod triggers a rolling restart of the metrics server deployment
-// by updating the pod template restart annotation. This works with any number of replicas
-// and ensures zero-downtime restarts for multi-replica deployments.
-//
-// The function name is preserved for backward compatibility, but the implementation now
-// performs a rolling restart instead of deleting a single pod.
-func DeleteMetricsServerPod(ctx context.Context, metricsServerNamespace string, logger logr.Logger, cl client.Client) error {
-	// Get the metrics server Deployment
-	deployment := &appsv1.Deployment{}
-	err := cl.Get(ctx, types.NamespacedName{
-		Name:      metricsServerDeploymentName,
-		Namespace: metricsServerNamespace,
-	}, deployment)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("KEDA Metrics Server Deployment not found -> no need to restart it")
-			return nil
-		}
-		return fmt.Errorf("failed to get metrics server deployment: %w", err)
-	}
-
-	// Check if deployment has any replicas configured
-	if deployment.Spec.Replicas != nil && *deployment.Spec.Replicas == 0 {
-		logger.Info("KEDA Metrics Server is scaled to zero -> no need to restart it")
-		return nil
-	}
-
-	// Trigger rolling restart by updating the pod template restart annotation
-	// This is the same approach used by 'kubectl rollout restart'
-	patch := client.MergeFrom(deployment.DeepCopy())
-	if deployment.Spec.Template.Annotations == nil {
-		deployment.Spec.Template.Annotations = make(map[string]string)
-	}
-	deployment.Spec.Template.Annotations[restartAnnotationKey] = time.Now().Format(time.RFC3339)
-
-	logger.Info("Triggering rolling restart of KEDA Metrics Server",
-		"replicas", deployment.Spec.Replicas,
-		"restartedAt", deployment.Spec.Template.Annotations[restartAnnotationKey])
-
-	return cl.Patch(ctx, deployment, patch)
 }
 
 func UpdateKedaControllerStatus(ctx context.Context, cl client.Client, kedaController *kedav1alpha1.KedaController, status *kedav1alpha1.KedaControllerStatus) error {
