@@ -30,6 +30,18 @@
       matchManagers: ["pre-commit"],
       groupName: "Pre-commit Hooks",
     },
+    // Keep release/test image references tag-based. Release prep replaces
+    // :main, and deployment tests should use a per-run catalog image.
+    {
+      matchManagers: ["kubernetes"],
+      matchFileNames: [
+        "config/manager/manager.yaml",
+        "config/manifests/bases/keda.clusterserviceversion.yaml",
+        "config/testing/catalog.yaml",
+      ],
+      matchUpdateTypes: ["pinDigest"],
+      enabled: false,
+    },
     // The following dependencies have their versions defined by upstream KEDA
     // and are synchronized via hack/relprep.sh during release preparation.
     // Updating these independently would conflict with that process.
