@@ -167,6 +167,7 @@ metadata:
     containerImage: ghcr.io/kedacore/keda-olm-operator:2.20.2
     createdAt: "2026-09-01T19:18:08Z"
     description: Operator that provides KEDA, a Kubernetes-based event driver autoscaler
+    features.operators.openshift.io/token-auth-gcp: "true"
     operatorframework.io/suggested-namespace: keda
     operators.operatorframework.io/builder: operator-sdk-v1.42.3
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -589,6 +590,7 @@ spec:
           - config.openshift.io
           resources:
           - apiservers
+          - infrastructures
           verbs:
           - get
           - list
