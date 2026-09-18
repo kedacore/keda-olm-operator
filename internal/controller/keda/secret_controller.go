@@ -120,12 +120,8 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			//  Secret.Data were not changed -> no need to anything, return
 			return ctrl.Result{}, nil
 		}
-		// Secret.Data were changed -> let's restart KEDA Metrics Server
-		logger.Info("Secret containing Certificates was changed -> let's restart KEDA Metrics Server")
-		if err := util.DeleteMetricsServerPod(ctx, r.secretNamespace, logger, r.Client); err != nil {
-			logger.Error(err, "Unable to restart KEDA Metrics Server")
-			return ctrl.Result{}, err
-		}
+		// Secret.Data were changed -> update the checksum
+		logger.Info("Secret containing Certificates was changed")
 	}
 
 	status := kedaController.Status.DeepCopy()

@@ -120,12 +120,8 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			//  ConfigMap.Data were not changed -> no need to anything, return
 			return ctrl.Result{}, nil
 		}
-		// ConfigMap.Data were changed -> let's restart KEDA Metrics Server
-		logger.Info("ConfigMap containing CA Bundle was changed -> let's restart KEDA Metrics Server")
-		if err := util.DeleteMetricsServerPod(ctx, r.installNamespace, logger, r.Client); err != nil {
-			r.Log.Error(err, "Unable to restart KEDA Metrics Server")
-			return ctrl.Result{}, err
-		}
+		// ConfigMap.Data were changed -> update the checksum
+		logger.Info("ConfigMap containing CA Bundle was changed")
 	}
 
 	status := kedaController.Status.DeepCopy()

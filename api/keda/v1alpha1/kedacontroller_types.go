@@ -113,6 +113,7 @@ type KedaOperatorSpec struct {
 	CAConfigMaps []string `json:"caConfigMaps,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas >= 1",message="metricsServer replicas must be >= 1"
 type KedaMetricsServerSpec struct {
 
 	// Logging level for Metrics Server
@@ -142,6 +143,7 @@ type KedaMetricsServerSpec struct {
 	NetworkEgressAllowAll string `json:"networkEgressAllowAll,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas >= 1",message="admissionWebhooks replicas must be >= 1"
 type KedaAdmissionWebhooksSpec struct {
 
 	// Logging level for Admission Webhooks
@@ -205,10 +207,6 @@ type HTTPAddonOperatorSpec struct {
 	// +optional
 	Image HTTPAddonImageSpec `json:"image,omitempty"`
 
-	// Number of replicas for the HTTP Add-on Operator deployment
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-
 	GenericDeploymentSpec `json:",inline"`
 }
 
@@ -236,10 +234,6 @@ type HTTPAddonInterceptorSpec struct {
 	// +optional
 	Image HTTPAddonImageSpec `json:"image,omitempty"`
 
-	// Number of replicas for the HTTP Add-on Interceptor deployment
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-
 	GenericDeploymentSpec `json:",inline"`
 }
 
@@ -266,10 +260,6 @@ type HTTPAddonScalerSpec struct {
 	// Container image for the HTTP Add-on Scaler
 	// +optional
 	Image HTTPAddonImageSpec `json:"image,omitempty"`
-
-	// Number of replicas for the HTTP Add-on Scaler deployment
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
 
 	GenericDeploymentSpec `json:",inline"`
 }
@@ -314,6 +304,10 @@ type HTTPAddonStatus struct {
 }
 
 type GenericDeploymentSpec struct {
+	// Number of replicas for the deployment
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// Annotations applied to the Deployment
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
