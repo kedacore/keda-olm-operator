@@ -30,6 +30,13 @@
       matchManagers: ["pre-commit"],
       groupName: "Pre-commit Hooks",
     },
+    // kindest/node values are managed by regex and do not support digest pinning.
+    {
+      matchManagers: ["custom.regex"],
+      matchFileNames: [".github/workflows/pr-tests.yml"],
+      matchDepNames: ["/kindest\\/node/"],
+      pinDigests: false,
+    },
     // Keep release/test image references tag-based. Release prep replaces
     // :main, and deployment tests should use a per-run catalog image.
     {
