@@ -57,6 +57,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
+	"github.com/kedacore/keda-olm-operator/internal/controller/keda/gcp"
 	"github.com/kedacore/keda-olm-operator/internal/controller/keda/transform"
 	"github.com/kedacore/keda-olm-operator/internal/controller/keda/util"
 	"github.com/kedacore/keda-olm-operator/resources"
@@ -352,6 +353,7 @@ func (r *KedaControllerReconciler) clusterTLSProfile(ctx context.Context, logger
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors;podmonitors,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=list
 // +kubebuilder:rbac:groups=config.openshift.io,resources=apiservers,verbs=get;list;watch
+// +kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures,verbs=get;list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=create;delete;get;list;patch;update;watch
@@ -393,7 +395,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			// Run finalization logic for kedaControllerFinalizer. If the
 			// finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
-			if err := r.finalizeKedaController(logger, instance); err != nil {
+			if err := r.finalizeKedaController(ctx, logger, instance); err != nil {
 				return ctrl.Result{}, err
 			}
 			// Remove kedaControllerFinalizer. Once all finalizers have been
@@ -417,6 +419,18 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	status := instance.Status.DeepCopy()
 
+	// The GCP Workload Identity parameters come from the operator pod's environment
+	// (set on the OLM Subscription), so a broken configuration can only be fixed by the
+	// administrator. Fail visibly instead of installing KEDA without cloud access.
+	gcpConfig, err := gcp.ConfigFromEnv()
+	if err != nil {
+		status.MarkInstallFailed(fmt.Sprintf("Invalid GCP Workload Identity configuration: %v", err))
+		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
+			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
+		}
+		return ctrl.Result{}, err
+	}
+
 	if err := r.installGeneralResources(ctx, logger, instance); err != nil {
 		status.MarkInstallFailed("Not able to create ServiceAccount")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
@@ -424,7 +438,7 @@ func (r *KedaControllerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return ctrl.Result{}, err
 	}
-	if err := r.installController(ctx, logger, instance); err != nil {
+	if err := r.installController(ctx, logger, instance, gcpConfig); err != nil {
 		status.MarkInstallFailed("Not able to install KEDA Controller")
 		if statusErr := util.UpdateKedaControllerStatus(ctx, r.Client, instance, status); statusErr != nil {
 			err = fmt.Errorf("got error: %s and then another: %s", err, statusErr)
@@ -625,7 +639,7 @@ func (r *KedaControllerReconciler) installGeneralResources(ctx context.Context, 
 	return nil
 }
 
-func (r *KedaControllerReconciler) installController(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) installController(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController, gcpConfig *gcp.Config) error {
 	logger.Info("Reconciling KEDA Controller deployment")
 	transforms := []mf.Transformer{
 		transform.InjectOwner(instance),
@@ -674,65 +688,17 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 		transforms = append(transforms, transform.ReplaceKedaOperatorImage(controllerImage, r.Scheme))
 	}
 
-	if len(instance.Spec.Operator.LogLevel) > 0 {
-		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(instance.Spec.Operator.LogLevel, r.Scheme, logger))
-	}
-	if len(instance.Spec.Operator.LogEncoder) > 0 {
-		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(instance.Spec.Operator.LogEncoder, r.Scheme, logger))
-	}
-	if len(instance.Spec.Operator.LogTimeEncoding) > 0 {
-		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeEncoding(instance.Spec.Operator.LogTimeEncoding, r.Scheme, logger))
-	}
+	transforms = append(transforms, kedaOperatorSpecTransforms(instance.Spec.Operator, r.Scheme, logger)...)
 
-	if len(instance.Spec.Operator.DeploymentAnnotations) > 0 {
-		transforms = append(transforms, transform.AddDeploymentAnnotations(instance.Spec.Operator.DeploymentAnnotations, r.Scheme))
+	// GCP Workload Identity Federation: credential Secret plus the volumes and env vars
+	// that make keda-operator pick it up. Applied before the user-defined env so that
+	// spec.operator.env can still override e.g. CLOUDSDK_CORE_PROJECT.
+	gcpTransforms, err := r.gcpWorkloadIdentityTransforms(ctx, logger, instance, gcpConfig)
+	if err != nil {
+		logger.Error(err, "Unable to configure GCP Workload Identity Federation for KEDA Controller")
+		return err
 	}
-
-	if len(instance.Spec.Operator.DeploymentLabels) > 0 {
-		transforms = append(transforms, transform.AddDeploymentLabels(instance.Spec.Operator.DeploymentLabels, r.Scheme))
-	}
-
-	if len(instance.Spec.Operator.PodAnnotations) > 0 {
-		transforms = append(transforms, transform.AddPodAnnotations(instance.Spec.Operator.PodAnnotations, r.Scheme))
-	}
-
-	if len(instance.Spec.Operator.PodLabels) > 0 {
-		transforms = append(transforms, transform.AddPodLabels(instance.Spec.Operator.PodLabels, r.Scheme))
-	}
-
-	if len(instance.Spec.Operator.NodeSelector) > 0 {
-		transforms = append(transforms, transform.ReplaceNodeSelector(instance.Spec.Operator.NodeSelector, r.Scheme))
-	}
-
-	if len(instance.Spec.Operator.Tolerations) > 0 {
-		transforms = append(transforms, transform.ReplaceTolerations(instance.Spec.Operator.Tolerations, r.Scheme))
-	}
-
-	if instance.Spec.Operator.Affinity != nil {
-		transforms = append(transforms, transform.ReplaceAffinity(instance.Spec.Operator.Affinity, r.Scheme))
-	}
-
-	if len(instance.Spec.Operator.PriorityClassName) > 0 {
-		transforms = append(transforms, transform.ReplacePriorityClassName(instance.Spec.Operator.PriorityClassName, r.Scheme))
-	}
-
-	if instance.Spec.Operator.Resources.Limits != nil || instance.Spec.Operator.Resources.Requests != nil {
-		transforms = append(transforms, transform.ReplaceKedaOperatorResources(instance.Spec.Operator.Resources, r.Scheme))
-	}
-
-	if instance.Spec.Operator.Volumes != nil {
-		transforms = append(transforms, transform.ReplaceDeploymentVolumes(instance.Spec.Operator.Volumes, r.Scheme))
-	}
-
-	if instance.Spec.Operator.VolumeMounts != nil {
-		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(instance.Spec.Operator.VolumeMounts, r.Scheme))
-	}
-
-	// add arbitrary args defined by user
-	for i := range instance.Spec.Operator.Args {
-		i := i
-		transforms = append(transforms, transform.ReplaceArbitraryArg(instance.Spec.Operator.Args[i], "operator", r.Scheme, logger))
-	}
+	transforms = append(transforms, gcpTransforms...)
 
 	// applied last so user-defined variables take precedence over the ones set above
 	if len(instance.Spec.Operator.Env) > 0 {
@@ -748,6 +714,16 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 	if err := manifest.Apply(); err != nil {
 		logger.Error(err, "Unable to install KEDA Controller")
 		return err
+	}
+
+	// With GCP Workload Identity disabled, the Deployment applied above no longer mounts
+	// the credential Secret, so one left behind from an earlier configuration can go now.
+	// Deleting it any earlier would leave the still-current Deployment pointing at a
+	// missing Secret if the transform or apply above failed.
+	if gcpConfig == nil {
+		if err := r.deleteGCPCredentialsSecret(ctx, logger, instance); err != nil {
+			return err
+		}
 	}
 
 	if runningOnOpenshift && !r.rotatorStarted {
@@ -773,6 +749,73 @@ func (r *KedaControllerReconciler) installController(ctx context.Context, logger
 	}
 
 	return nil
+}
+
+// kedaOperatorSpecTransforms returns the transforms driven by spec.operator, except for
+// the env vars, which the caller applies last so that they override everything else.
+func kedaOperatorSpecTransforms(spec kedav1alpha1.KedaOperatorSpec, scheme *runtime.Scheme, logger logr.Logger) []mf.Transformer {
+	var transforms []mf.Transformer
+
+	if len(spec.LogLevel) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogLevel(spec.LogLevel, scheme, logger))
+	}
+	if len(spec.LogEncoder) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogEncoder(spec.LogEncoder, scheme, logger))
+	}
+	if len(spec.LogTimeEncoding) > 0 {
+		transforms = append(transforms, transform.ReplaceKedaOperatorLogTimeEncoding(spec.LogTimeEncoding, scheme, logger))
+	}
+
+	if len(spec.DeploymentAnnotations) > 0 {
+		transforms = append(transforms, transform.AddDeploymentAnnotations(spec.DeploymentAnnotations, scheme))
+	}
+
+	if len(spec.DeploymentLabels) > 0 {
+		transforms = append(transforms, transform.AddDeploymentLabels(spec.DeploymentLabels, scheme))
+	}
+
+	if len(spec.PodAnnotations) > 0 {
+		transforms = append(transforms, transform.AddPodAnnotations(spec.PodAnnotations, scheme))
+	}
+
+	if len(spec.PodLabels) > 0 {
+		transforms = append(transforms, transform.AddPodLabels(spec.PodLabels, scheme))
+	}
+
+	if len(spec.NodeSelector) > 0 {
+		transforms = append(transforms, transform.ReplaceNodeSelector(spec.NodeSelector, scheme))
+	}
+
+	if len(spec.Tolerations) > 0 {
+		transforms = append(transforms, transform.ReplaceTolerations(spec.Tolerations, scheme))
+	}
+
+	if spec.Affinity != nil {
+		transforms = append(transforms, transform.ReplaceAffinity(spec.Affinity, scheme))
+	}
+
+	if len(spec.PriorityClassName) > 0 {
+		transforms = append(transforms, transform.ReplacePriorityClassName(spec.PriorityClassName, scheme))
+	}
+
+	if spec.Resources.Limits != nil || spec.Resources.Requests != nil {
+		transforms = append(transforms, transform.ReplaceKedaOperatorResources(spec.Resources, scheme))
+	}
+
+	if spec.Volumes != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumes(spec.Volumes, scheme))
+	}
+
+	if spec.VolumeMounts != nil {
+		transforms = append(transforms, transform.ReplaceDeploymentVolumeMounts(spec.VolumeMounts, scheme))
+	}
+
+	// add arbitrary args defined by user
+	for i := range spec.Args {
+		transforms = append(transforms, transform.ReplaceArbitraryArg(spec.Args[i], "operator", scheme, logger))
+	}
+
+	return transforms
 }
 
 // installMonitoring install the controller resources for the monitoring stack
