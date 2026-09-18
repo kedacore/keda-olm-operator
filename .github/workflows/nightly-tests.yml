@@ -31,16 +31,6 @@ jobs:
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
-      # homebrew (+ gcc etc.) removed from $PATH on Ubuntu images.
-      # https://github.com/actions/runner-images/issues/6283
-      - name: Setup Homebrew
-        uses: Homebrew/actions/setup-homebrew@df4b09108a1de9d6f995fe68f302b3f68bd6d2ef # 2026.07.20.1
-      - name: Setup Env
-        run: sudo apt-get install gcc-11 g++ binutils libc6
-
-      - name: Install operator-sdk
-        run: brew install operator-sdk
-
       - name: Download opm
         run: |
           version=1.26.1
