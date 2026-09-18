@@ -39,6 +39,12 @@ type KedaControllerSpec struct {
 	// +optional
 	WatchNamespace string `json:"watchNamespace,omitempty"`
 
+	// ClusterDomain is the Kubernetes cluster DNS domain used for KEDA internal
+	// service communication. When set, it configures both the KEDA operator and
+	// metrics server to use the supplied domain. Leave empty to use KEDA defaults.
+	// +optional
+	ClusterDomain string `json:"clusterDomain,omitempty"`
+
 	// +optional
 	Operator KedaOperatorSpec `json:"operator"`
 

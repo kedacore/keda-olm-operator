@@ -510,6 +510,61 @@ spec:
 	})
 })
 
+var _ = Describe("Transforming KEDA cluster domain", func() {
+	It("configures the operator and metrics server with the supplied domain", func() {
+		if testType != "unit" {
+			Skip("test.type isn't 'unit'")
+		}
+
+		const yamlData = `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-operator
+spec:
+  template:
+    spec:
+      containers:
+        - name: keda-operator
+          args:
+            - --leader-elect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-metrics-apiserver
+spec:
+  template:
+    spec:
+      containers:
+        - name: keda-metrics-apiserver
+          args:
+            - --secure-port=6443
+`
+		scheme := runtime.NewScheme()
+		Expect(appsv1.AddToScheme(scheme)).To(Succeed())
+		manifest, err := mf.ManifestFrom(mf.Reader(strings.NewReader(yamlData)))
+		Expect(err).To(BeNil())
+
+		updated, err := manifest.Transform(
+			transform.ReplaceKedaClusterDomain("n.internal", scheme, ctrl.Log.WithName("test")),
+			transform.ReplaceMetricsServiceAddress("n.internal", "keda", scheme, ctrl.Log.WithName("test")),
+		)
+		Expect(err).To(BeNil())
+
+		for _, resource := range updated.Resources() {
+			deployment := &appsv1.Deployment{}
+			Expect(scheme.Convert(&resource, deployment, nil)).To(Succeed())
+			switch deployment.Name {
+			case "keda-operator":
+				Expect(deployment.Spec.Template.Spec.Containers[0].Args).To(ContainElement("--k8s-cluster-domain=n.internal"))
+			case "keda-metrics-apiserver":
+				Expect(deployment.Spec.Template.Spec.Containers[0].Args).To(ContainElement("--metrics-service-address=keda-operator.keda.svc.n.internal:9666"))
+			}
+		}
+	})
+})
+
 var _ = Describe("Transforming operator deployment for CA certs", func() {
 	Context("When transforming a KEDA operator Deployment", func() {
 
