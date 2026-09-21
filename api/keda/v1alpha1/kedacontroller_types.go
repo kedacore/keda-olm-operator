@@ -70,6 +70,7 @@ type KedaServiceAccountSpec struct {
 	Labels map[string]string `json:"labels,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas >= 1",message="operator replicas must be >= 1"
 type KedaOperatorSpec struct {
 
 	// Logging level for KEDA Controller

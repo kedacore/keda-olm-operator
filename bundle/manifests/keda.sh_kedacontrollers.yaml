@@ -19713,6 +19713,9 @@ spec:
                       type: object
                     type: array
                 type: object
+                x-kubernetes-validations:
+                - message: operator replicas must be >= 1
+                  rule: '!has(self.replicas) || self.replicas >= 1'
               serviceAccount:
                 properties:
                   annotations:
