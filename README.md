@@ -9,6 +9,13 @@
   - [The `KedaController` Custom Resource](#the-kedacontroller-custom-resource)
     - [`KedaController` Spec](#kedacontroller-spec)
     - [Configuring KEDA Behavior via Environment Variables](#configuring-keda-behavior-via-environment-variables)
+  - [GCP Workload Identity Federation](#gcp-workload-identity-federation)
+    - [Prerequisites](#prerequisites)
+    - [Configuring it in the `KedaController`](#configuring-it-in-the-kedacontroller)
+    - [Configuring it at install time](#configuring-it-at-install-time)
+    - [Which configuration applies](#which-configuration-applies)
+    - [What the operator configures](#what-the-operator-configures)
+    - [Using it in a ScaledObject](#using-it-in-a-scaledobject)
   - [HTTP Add-on](#http-add-on)
     - [Enabling the HTTP Add-on](#enabling-the-http-add-on)
     - [Image Configuration](#image-configuration)
@@ -558,6 +565,170 @@ settings derived from the cluster TLS profile.
 
 Refer to the [KEDA documentation](https://keda.sh/docs/latest/operate/cluster/)
 for the full list of supported environment variables.
+
+## GCP Workload Identity Federation
+
+On an OpenShift cluster that runs on Google Cloud with short-term credentials
+(`credentialsMode: Manual` with Workload Identity Federation set up by `ccoctl`),
+or on any other cluster whose OpenID Connect issuer Google can reach, the
+operator can give KEDA access to Google Cloud without storing a service
+account key anywhere in the cluster. It builds a GCP `external_account`
+credential configuration, stores it in the `keda-gcp-credentials` Secret and
+wires it into the `keda-operator` Deployment together with a projected Kubernetes
+service account token. Scalers that use `podIdentity.provider: gcp` then obtain
+short-lived access tokens by impersonating the configured Google service account.
+
+### Prerequisites
+
+1. A Google service account with the roles the scalers need (for example
+   `roles/monitoring.viewer` for the Stackdriver and Google Managed Prometheus
+   scalers).
+2. Permission for the `keda-operator` Kubernetes service account to impersonate
+   it. The projected token identifies the workload by its subject, so grant
+   `roles/iam.workloadIdentityUser` on the Google service account to
+
+   ```text
+   principal://iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>/subject/system:serviceaccount:<keda_namespace>:keda-operator
+   ```
+
+   where `<keda_namespace>` is the namespace the operator is installed in
+   (`keda` by default).
+
+### Configuring it in the `KedaController`
+
+Set `spec.operator.gcpWorkloadIdentity`:
+
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  operator:
+    gcpWorkloadIdentity:
+      serviceAccountEmail: <name>@<project_id>.iam.gserviceaccount.com
+      audience: //iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>/providers/<provider_id>
+```
+
+| Field | Description |
+|---|---|
+| `serviceAccountEmail` | Google service account that KEDA impersonates. Required. |
+| `audience` | Workload identity provider resource name. Required unless the three fields below are set. |
+| `projectNumber`, `poolID`, `providerID` | Components of the audience, as an alternative to `audience`. |
+| `projectID` | Google project that scalers default to when the trigger doesn't name one. Defaults to the project the OpenShift cluster runs in; set it on other clusters. |
+| `subjectTokenAudience` | Audience of the projected Kubernetes service account token. Must be one of the allowed audiences of the workload identity provider. Defaults to `openshift`, which is what `ccoctl` configures; set it on other clusters. |
+
+The CRD validates the block when it is applied, so malformed values and
+incomplete or contradictory provider settings are rejected right away.
+
+### Configuring it at install time
+
+When installing from the OpenShift web console on a Workload Identity enabled
+cluster, the install form asks for the same parameters and passes them to the
+operator as environment variables of the `Subscription`. On the command line
+you can set them in `spec.config.env` instead:
+
+```yaml
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  channel: stable
+  name: keda
+  source: operatorhubio-catalog
+  sourceNamespace: olm
+  config:
+    env:
+      - name: AUDIENCE
+        value: //iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>/providers/<provider_id>
+      - name: SERVICE_ACCOUNT_EMAIL
+        value: <name>@<project_id>.iam.gserviceaccount.com
+```
+
+| Variable | Field |
+|---|---|
+| `SERVICE_ACCOUNT_EMAIL` | `serviceAccountEmail` |
+| `AUDIENCE` | `audience` |
+| `PROJECT_NUMBER`, `POOL_ID`, `PROVIDER_ID` | `projectNumber`, `poolID`, `providerID` (what the console form collects) |
+| `CLOUDSDK_CORE_PROJECT` | `projectID` |
+| `SUBJECT_TOKEN_AUDIENCE` | `subjectTokenAudience` |
+
+These values are only checked when the operator reconciles: an incomplete or
+inconsistent configuration is reported in the `KedaController` status
+(`Installation Failed` with the reason in `status.reason`) and KEDA is not
+installed until it is fixed.
+
+### Which configuration applies
+
+If `spec.operator.gcpWorkloadIdentity` is set, it applies as a whole and the
+environment variables are ignored; the two are never merged field by field.
+Otherwise the environment variables apply, if any of them other than
+`CLOUDSDK_CORE_PROJECT` is set. So a cluster installed through the console can
+later be managed entirely in the `KedaController`.
+
+Whichever it is, the `KedaController` status shows the configuration in effect
+and where it comes from:
+
+```yaml
+status:
+  gcpWorkloadIdentity:
+    source: KedaController        # or OperatorEnvironment
+    serviceAccountEmail: <name>@<project_id>.iam.gserviceaccount.com
+    audience: //iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>/providers/<provider_id>
+    projectID: <project_id>
+```
+
+Removing both the block and the variables removes the Secret and the
+Deployment wiring again, and the status entry with them.
+
+### What the operator configures
+
+- The `keda-gcp-credentials` Secret in the operator namespace with a
+  `service_account.json` key holding the `external_account` configuration. The
+  Secret is owned by the `KedaController` and is deleted with it. Its layout is
+  the same as the one the OpenShift Cloud Credential Operator produces.
+- On the `keda-operator` Deployment: a `bound-sa-token` projected volume mounted
+  at `/var/run/secrets/openshift/serviceaccount`, the Secret mounted at
+  `/var/run/secrets/gcp`, `GOOGLE_APPLICATION_CREDENTIALS` pointing at the
+  credential file and `CLOUDSDK_CORE_PROJECT` with the resolved project.
+- A `kedacontroller.keda.sh/gcp-credentials-hash` pod annotation, so that a
+  changed configuration restarts the `keda-operator` pods.
+
+`spec.operator.env` on the `KedaController` is applied after this wiring, so it
+can still override `CLOUDSDK_CORE_PROJECT` if needed.
+
+### Using it in a ScaledObject
+
+Reference a `TriggerAuthentication` with GCP pod identity from the trigger:
+
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: gcp-workload-identity
+spec:
+  podIdentity:
+    provider: gcp
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: pubsub-consumer
+spec:
+  scaleTargetRef:
+    name: pubsub-consumer
+  triggers:
+    - type: gcp-pubsub
+      authenticationRef:
+        name: gcp-workload-identity
+      metadata:
+        subscriptionName: my-subscription
+        mode: SubscriptionSize
+        value: "5"
+```
 
 ## HTTP Add-on
 

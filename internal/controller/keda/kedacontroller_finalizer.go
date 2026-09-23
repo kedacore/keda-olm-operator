@@ -32,9 +32,16 @@ func (r *KedaControllerReconciler) deleteOperand(logger logr.Logger, manifest mf
 }
 
 // finalizeKedaController is deleting resources for the respective KedaController
-func (r *KedaControllerReconciler) finalizeKedaController(logger logr.Logger, instance *kedav1alpha1.KedaController) error {
+func (r *KedaControllerReconciler) finalizeKedaController(ctx context.Context, logger logr.Logger, instance *kedav1alpha1.KedaController) error {
 	if err := r.deleteHTTPAddon(logger, instance.Namespace); err != nil {
 		logger.Info("error finalized KedaController HTTP Add-on", "error", err)
+		return err
+	}
+
+	// garbage collection would remove the owned Secret as well, but deleting it here
+	// makes sure the credentials are gone by the time the KedaController is gone
+	if err := r.deleteGCPCredentialsSecret(ctx, logger, instance); err != nil {
+		logger.Info("error finalized KedaController GCP credentials Secret", "error", err)
 		return err
 	}
 

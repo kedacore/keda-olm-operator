@@ -112,9 +112,71 @@ type KedaOperatorSpec struct {
 	// data sources.
 	// +optional
 	CAConfigMaps []string `json:"caConfigMaps,omitempty"`
+
+	// GCP Workload Identity Federation for the KEDA operator, so that scalers using
+	// `podIdentity.provider: gcp` authenticate to Google Cloud with short-lived tokens
+	// instead of a service account key.
+	// When set, this takes precedence over Workload Identity parameters passed to the
+	// operator through its environment, which is how the OpenShift web console passes
+	// them when installing through OperatorHub. The configuration in effect and where it
+	// comes from are reported in status.gcpWorkloadIdentity.
+	// +optional
+	GCPWorkloadIdentity *GCPWorkloadIdentitySpec `json:"gcpWorkloadIdentity,omitempty"`
 }
 
-// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas >= 1",message="metricsServer replicas must be >= 1"
+// GCPWorkloadIdentitySpec configures GCP Workload Identity Federation for the KEDA operator.
+// The workload identity provider is given either as audience or as projectNumber, poolID and providerID.
+// +kubebuilder:validation:XValidation:rule="has(self.audience) || (has(self.projectNumber) && has(self.poolID) && has(self.providerID))",message="either audience or all of projectNumber, poolID and providerID must be set"
+// +kubebuilder:validation:XValidation:rule="has(self.projectNumber) == has(self.poolID) && has(self.poolID) == has(self.providerID)",message="projectNumber, poolID and providerID must be set together"
+// +kubebuilder:validation:XValidation:rule="!has(self.audience) || !has(self.projectNumber) || self.audience == '//iam.googleapis.com/projects/' + self.projectNumber + '/locations/global/workloadIdentityPools/' + self.poolID + '/providers/' + self.providerID",message="audience does not match the provider given by projectNumber, poolID and providerID; set only one of them"
+type GCPWorkloadIdentitySpec struct {
+	// Email of the Google service account the KEDA operator impersonates,
+	// for example keda@my-project.iam.gserviceaccount.com.
+	// +kubebuilder:validation:MaxLength=254
+	// +kubebuilder:validation:Pattern=`^[^@\s]+@[^@\s]+\.[^@\s]+$`
+	ServiceAccountEmail string `json:"serviceAccountEmail"`
+
+	// Resource name of the workload identity provider, in the form
+	// //iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>/providers/<provider_id>.
+	// Required unless projectNumber, poolID and providerID are set.
+	// +kubebuilder:validation:MaxLength=512
+	// +kubebuilder:validation:Pattern=`^//iam\.[^/]+/projects/[^/]+/locations/[^/]+/workloadIdentityPools/[^/]+/providers/[^/]+$`
+	// +optional
+	Audience string `json:"audience,omitempty"`
+
+	// Number of the Google Cloud project that holds the workload identity pool.
+	// +kubebuilder:validation:MaxLength=32
+	// +kubebuilder:validation:Pattern=`^[0-9]+$`
+	// +optional
+	ProjectNumber string `json:"projectNumber,omitempty"`
+
+	// ID of the workload identity pool.
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9._-]+$`
+	// +optional
+	PoolID string `json:"poolID,omitempty"`
+
+	// ID of the workload identity provider within the pool.
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9._-]+$`
+	// +optional
+	ProviderID string `json:"providerID,omitempty"`
+
+	// Google Cloud project that scalers default to when a trigger doesn't name one.
+	// Defaults to the project the OpenShift cluster runs in; required elsewhere for
+	// triggers that don't name a project.
+	// +kubebuilder:validation:MaxLength=64
+	// +optional
+	ProjectID string `json:"projectID,omitempty"`
+
+	// Audience of the projected Kubernetes service account token that the KEDA operator
+	// exchanges for Google credentials. Must be one of the allowed audiences of the
+	// workload identity provider. Defaults to "openshift", which is what ccoctl configures.
+	// +kubebuilder:validation:MaxLength=512
+	// +optional
+	SubjectTokenAudience string `json:"subjectTokenAudience,omitempty"`
+}
+
 type KedaMetricsServerSpec struct {
 
 	// Logging level for Metrics Server
@@ -384,8 +446,37 @@ type KedaControllerStatus struct {
 	// Status of the HTTP Add-on installation
 	// +optional
 	HTTPAddon *HTTPAddonStatus `json:"httpAddon,omitempty"`
+	// GCP Workload Identity Federation configuration in effect for the KEDA operator,
+	// and where it comes from. Absent when Workload Identity is not configured.
+	// +optional
+	GCPWorkloadIdentity *GCPWorkloadIdentityStatus `json:"gcpWorkloadIdentity,omitempty"`
 
 	// Important: Run "make" to regenerate code after modifying this file
+}
+
+// GCPWorkloadIdentitySource tells where the GCP Workload Identity configuration in effect comes from.
+// +kubebuilder:validation:Enum=KedaController;OperatorEnvironment
+type GCPWorkloadIdentitySource string
+
+const (
+	// GCPWorkloadIdentitySourceKedaController is spec.operator.gcpWorkloadIdentity of the KedaController.
+	GCPWorkloadIdentitySourceKedaController GCPWorkloadIdentitySource = "KedaController"
+	// GCPWorkloadIdentitySourceOperatorEnvironment is the environment of the operator pod, which the
+	// OpenShift web console populates through the OLM Subscription (spec.config.env).
+	GCPWorkloadIdentitySourceOperatorEnvironment GCPWorkloadIdentitySource = "OperatorEnvironment"
+)
+
+// GCPWorkloadIdentityStatus reports the GCP Workload Identity configuration in effect.
+type GCPWorkloadIdentityStatus struct {
+	// Where the configuration comes from.
+	Source GCPWorkloadIdentitySource `json:"source"`
+	// Google service account the KEDA operator impersonates.
+	ServiceAccountEmail string `json:"serviceAccountEmail"`
+	// Resource name of the workload identity provider.
+	Audience string `json:"audience"`
+	// Google Cloud project scalers default to, if known.
+	// +optional
+	ProjectID string `json:"projectID,omitempty"`
 }
 
 // +kubebuilder:object:root=true

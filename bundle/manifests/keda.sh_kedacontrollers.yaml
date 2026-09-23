@@ -16462,9 +16462,6 @@ spec:
                       type: object
                     type: array
                 type: object
-                x-kubernetes-validations:
-                - message: metricsServer replicas must be >= 1
-                  rule: '!has(self.replicas) || self.replicas >= 1'
               operator:
                 properties:
                   affinity:
@@ -17580,6 +17577,79 @@ spec:
                       - name
                       type: object
                     type: array
+                  gcpWorkloadIdentity:
+                    description: |-
+                      GCP Workload Identity Federation for the KEDA operator, so that scalers using
+                      `podIdentity.provider: gcp` authenticate to Google Cloud with short-lived tokens
+                      instead of a service account key.
+                      When set, this takes precedence over Workload Identity parameters passed to the
+                      operator through its environment, which is how the OpenShift web console passes
+                      them when installing through OperatorHub. The configuration in effect and where it
+                      comes from are reported in status.gcpWorkloadIdentity.
+                    properties:
+                      audience:
+                        description: |-
+                          Resource name of the workload identity provider, in the form
+                          //iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>/providers/<provider_id>.
+                          Required unless projectNumber, poolID and providerID are set.
+                        maxLength: 512
+                        pattern: ^//iam\.[^/]+/projects/[^/]+/locations/[^/]+/workloadIdentityPools/[^/]+/providers/[^/]+$
+                        type: string
+                      poolID:
+                        description: ID of the workload identity pool.
+                        maxLength: 63
+                        pattern: ^[A-Za-z0-9._-]+$
+                        type: string
+                      projectID:
+                        description: |-
+                          Google Cloud project that scalers default to when a trigger doesn't name one.
+                          Defaults to the project the OpenShift cluster runs in; required elsewhere for
+                          triggers that don't name a project.
+                        maxLength: 64
+                        type: string
+                      projectNumber:
+                        description: Number of the Google Cloud project that holds
+                          the workload identity pool.
+                        maxLength: 32
+                        pattern: ^[0-9]+$
+                        type: string
+                      providerID:
+                        description: ID of the workload identity provider within the
+                          pool.
+                        maxLength: 63
+                        pattern: ^[A-Za-z0-9._-]+$
+                        type: string
+                      serviceAccountEmail:
+                        description: |-
+                          Email of the Google service account the KEDA operator impersonates,
+                          for example keda@my-project.iam.gserviceaccount.com.
+                        maxLength: 254
+                        pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+                        type: string
+                      subjectTokenAudience:
+                        description: |-
+                          Audience of the projected Kubernetes service account token that the KEDA operator
+                          exchanges for Google credentials. Must be one of the allowed audiences of the
+                          workload identity provider. Defaults to "openshift", which is what ccoctl configures.
+                        maxLength: 512
+                        type: string
+                    required:
+                    - serviceAccountEmail
+                    type: object
+                    x-kubernetes-validations:
+                    - message: either audience or all of projectNumber, poolID and
+                        providerID must be set
+                      rule: has(self.audience) || (has(self.projectNumber) && has(self.poolID)
+                        && has(self.providerID))
+                    - message: projectNumber, poolID and providerID must be set together
+                      rule: has(self.projectNumber) == has(self.poolID) && has(self.poolID)
+                        == has(self.providerID)
+                    - message: audience does not match the provider given by projectNumber,
+                        poolID and providerID; set only one of them
+                      rule: '!has(self.audience) || !has(self.projectNumber) || self.audience
+                        == ''//iam.googleapis.com/projects/'' + self.projectNumber
+                        + ''/locations/global/workloadIdentityPools/'' + self.poolID
+                        + ''/providers/'' + self.providerID'
                   logEncoder:
                     description: |-
                       Logging format for KEDA Controller
@@ -19741,6 +19811,31 @@ spec:
             properties:
               configmapdatasum:
                 type: string
+              gcpWorkloadIdentity:
+                description: |-
+                  GCP Workload Identity Federation configuration in effect for the KEDA operator,
+                  and where it comes from. Absent when Workload Identity is not configured.
+                properties:
+                  audience:
+                    description: Resource name of the workload identity provider.
+                    type: string
+                  projectID:
+                    description: Google Cloud project scalers default to, if known.
+                    type: string
+                  serviceAccountEmail:
+                    description: Google service account the KEDA operator impersonates.
+                    type: string
+                  source:
+                    description: Where the configuration comes from.
+                    enum:
+                    - KedaController
+                    - OperatorEnvironment
+                    type: string
+                required:
+                - audience
+                - serviceAccountEmail
+                - source
+                type: object
               httpAddon:
                 description: Status of the HTTP Add-on installation
                 properties:
