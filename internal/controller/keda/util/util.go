@@ -8,7 +8,6 @@ import (
 	"unicode"
 
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,11 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda-olm-operator/api/keda/v1alpha1"
-)
-
-const (
-	metricsServerPodLabelKey   = "app"
-	metricsServerPodLabelValue = "keda-metrics-apiserver"
 )
 
 func CalculateConfigMapDataCheckSum(m map[string]string) string {
@@ -37,31 +31,6 @@ func CalculateSecretedDataCheckSum(m map[string][]byte) string {
 		data = data + k + string(v)
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(data)))
-}
-
-func DeleteMetricsServerPod(ctx context.Context, metricsServerNamespace string, logger logr.Logger, cl client.Client) error {
-	selector := make(map[string]string)
-	selector[metricsServerPodLabelKey] = metricsServerPodLabelValue
-
-	podList := &corev1.PodList{}
-	opts := []client.ListOption{
-		client.InNamespace(metricsServerNamespace),
-		client.MatchingLabels(selector),
-	}
-	err := cl.List(ctx, podList, opts...)
-	if err != nil {
-		return err
-	}
-	if len(podList.Items) == 0 {
-		logger.Info("KEDA Metrics Server is not running -> no need to restart it")
-		return nil
-	} else if len(podList.Items) != 1 {
-		return fmt.Errorf("exactly one Pod object should match label %s", selector)
-	}
-
-	pod := &podList.Items[0]
-	// restart Metrics Server Pod
-	return cl.Delete(ctx, pod)
 }
 
 func UpdateKedaControllerStatus(ctx context.Context, cl client.Client, kedaController *kedav1alpha1.KedaController, status *kedav1alpha1.KedaControllerStatus) error {
