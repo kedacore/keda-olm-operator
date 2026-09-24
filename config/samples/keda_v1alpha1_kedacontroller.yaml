@@ -115,6 +115,21 @@ spec:
     #     cpu: 1000m
     #      memory: 1000Mi
 
+    ## GCP Workload Identity Federation for the KEDA Operator
+    # Lets scalers using `podIdentity.provider: gcp` authenticate to Google Cloud with
+    # short-lived tokens. Takes precedence over the same parameters passed through the
+    # operator's environment, which is how the OpenShift web console passes them.
+    # gcpWorkloadIdentity:
+    #   serviceAccountEmail: keda@my-project.iam.gserviceaccount.com
+    #   audience: //iam.googleapis.com/projects/<project_number>/locations/global/workloadIdentityPools/<pool_id>/providers/<provider_id>
+    #   # or, instead of audience:
+    #   # projectNumber: "<project_number>"
+    #   # poolID: <pool_id>
+    #   # providerID: <provider_id>
+    #   # optional:
+    #   # projectID: my-project
+    #   # subjectTokenAudience: openshift
+
   ## KEDA Metrics Server related config
   metricsServer:
     ## Logging level for Metrics Server
