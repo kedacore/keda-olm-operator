@@ -95,7 +95,7 @@ sed -i 's/\(app.kubernetes.io\/version:\) [0-9.][0-9.]*/\1 '${ver}/ keda/${ver}/
 
 date="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "Updating all version strings, 'replaces' and 'createdAt' fields in base CSV"
-sed -i "s/${prev//./\\.}/${ver}/; s/^\\(  replaces: *keda.v\\)[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/\1${prev}/; s/\\(  *createdAt: *\\)\"?[0-9-]*T[0-9:.]*Z\"/\1\"${date}\"/" config/manifests/bases/keda.clusterserviceversion.yaml
+sed -i "s/${prev//./\\.}/${ver}/; s/^\\(  replaces: *keda.v\\)[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/\1${prev}/; s/^\\(  *createdAt: *\\).*\$/\1\"${date}\"/" config/manifests/bases/keda.clusterserviceversion.yaml
 
 rm -f keda/${ver}/manifests/keda.v${prev}.clusterserviceversion.yaml
 echo "Creating release CSV keda.v${ver}.clusterserviceversion.yaml"
@@ -123,9 +123,27 @@ all_mods="$(go list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}
 declare -A updated_mods
 to_update=()
 
-# force versions of k8s components
+# Treat KEDA's version as a floor rather than an exact pin. The OpenShift
+# modules we depend on (openshift/{api,library-go,controller-runtime-common})
+# track newer k8s.io and controller-runtime releases than KEDA pins, and asking
+# 'go get' to downgrade below them makes it fail outright.
+floor_version() {
+  local mod=$1 want=$2 cur
+  if ! cur=$(go list -mod=readonly -m -f '{{.Version}}' "$mod" 2>/dev/null) || [ -z "$cur" ]; then
+    echo "$want"
+    return
+  fi
+  if [ "$(printf '%s\n%s\n' "$want" "$cur" | sort -V | tail -1)" = "$want" ]; then
+    echo "$want"
+  else
+    echo "  keeping $mod at $cur, newer than KEDA's $want (required by other dependencies)" >&2
+    echo "$cur"
+  fi
+}
+
+# match versions of k8s components used by KEDA
 for i in $kube_components; do
-    to_update+=("k8s.io/$i@$k8sver")
+    to_update+=("k8s.io/$i@$(floor_version "k8s.io/$i" "$k8sver")")
     updated_mods["k8s.io/$i"]=1
 done
 
@@ -136,7 +154,7 @@ for i in $match_keda_version_deps; do
       exit 1
     fi
     echo "  got version $modver"
-    to_update+=("$i@$modver")
+    to_update+=("$i@$(floor_version "$i" "$modver")")
     updated_mods["$i"]=1
 done
 
@@ -172,6 +190,18 @@ make manifests
 cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/${ver}/manifests/
 # revert any changes to the kustomization
 git checkout config/manager/kustomization.yaml config/default/kustomization.yaml
+
+echo "Syncing any remaining CRDs in keda/${ver}/manifests/ from config/crd/bases/"
+# CRDs that do not come from resources/keda.yaml (currently the HTTP Add-on's,
+# maintained by hack/http-add-on-relprep.sh) are inherited verbatim from the
+# previous release directory, so without this they ship a stale schema.
+for f in keda/${ver}/manifests/*.yaml; do
+  crdbase="config/crd/bases/$(basename "$f")"
+  if [ -f "$crdbase" ] && ! cmp -s "$crdbase" "$f"; then
+    echo " $(basename "$f")"
+    cp "$crdbase" "$f"
+  fi
+done
 
 echo "Syncing bundle annotations to keda/${ver}/metadata/ (stripping test-only entries)"
 sed '/operators\.operatorframework\.io\.test\./d; /^[[:space:]]*#/d; /^[[:space:]]*$/d' \
