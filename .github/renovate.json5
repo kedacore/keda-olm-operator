@@ -68,6 +68,11 @@
       matchDatasources: ["golang-version"],
       enabled: false,
     },
+    // Go version in workflows synced with upstream KEDA by hack/relprep.sh.
+    {
+      matchPackageNames: ["actions/go-versions"],
+      enabled: false,
+    },
     // keda-tools image tag synced with upstream KEDA by hack/relprep.sh.
     {
       matchPackageNames: ["ghcr.io/kedacore/keda-tools"],
