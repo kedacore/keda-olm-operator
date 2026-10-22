@@ -273,7 +273,7 @@ bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE) .
 
 .PHONY: bundle-push
-bundle-push:
+bundle-push: operator-sdk
 	docker push ${BUNDLE}
 	$(OPERATOR_SDK) bundle validate ${BUNDLE}
 
