@@ -42,11 +42,6 @@ fi
 
 echo "Updating go version in go.mod to '$gover'"
 sed -i "s/^go  *[1-9][0-9]*\.[0-9][0-9]*$/go $gover/" go.mod
-echo "Updating go version in github workflows"
-while read f; do
-  echo " $f"
-  sed -i "s/^\\(  *go-version: \\) *'[1-9][0-9]*\\.[0-9][0-9]*'\$/\\1'${gover}'/" "$f"
-done < <(git grep -Pl "^  *go-version:  *'[1-9][0-9]*\\.[0-9][0-9]*'\$" .github/workflows/)
 
 echo
 echo 'Running go mod tidy'
