@@ -17,6 +17,7 @@ limitations under the License.
 package keda
 
 import (
+	"cmp"
 	"context"
 	"crypto/x509"
 	goerrors "errors"
@@ -507,11 +508,12 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 				metricsResources = append(metricsResources, r)
 			}
 		case "ClusterRole", "ClusterRoleBinding", "Deployment", "Role", "RoleBinding", "Service":
-			if name := r.GetName(); name == "keda-operator" {
+			switch r.GetName() {
+			case "keda-operator", "keda:edit", "keda:view":
 				controllerResources = append(controllerResources, r)
-			} else if name := r.GetName(); name == "keda-admission-webhooks" || name == "keda-admission" {
+			case "keda-admission-webhooks", "keda-admission":
 				webhookResources = append(webhookResources, r)
-			} else {
+			default:
 				metricsResources = append(metricsResources, r)
 			}
 		case "Secret":
@@ -560,29 +562,31 @@ func parseManifestsFromFile(manifest mf.Manifest, c client.Client) (manifestGene
 }
 
 func sortMetricsResources(resources *[]unstructured.Unstructured) []unstructured.Unstructured {
-	sortedResources := make([]unstructured.Unstructured, 7)
-
-	for _, r := range *resources {
-		switch kind := r.GetKind(); kind {
+	rank := func(r unstructured.Unstructured) int {
+		switch r.GetKind() {
 		case "ClusterRole":
-			sortedResources[0] = r
+			return 0
 		case "RoleBinding":
-			sortedResources[1] = r
+			return 1
 		case "ClusterRoleBinding":
-			if name := r.GetName(); name == "keda-hpa-controller-external-metrics" {
-				sortedResources[2] = r
-			} else {
-				sortedResources[3] = r
+			if r.GetName() == "keda-hpa-controller-external-metrics" {
+				return 2
 			}
+			return 3
 		case "Service":
-			sortedResources[4] = r
+			return 4
 		case "Deployment":
-			sortedResources[5] = r
+			return 5
 		case "APIService":
-			sortedResources[6] = r
+			return 6
 		}
+		return 7
 	}
 
+	sortedResources := slices.Clone(*resources)
+	slices.SortStableFunc(sortedResources, func(a, b unstructured.Unstructured) int {
+		return cmp.Compare(rank(a), rank(b))
+	})
 	return sortedResources
 }
 
