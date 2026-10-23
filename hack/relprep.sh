@@ -10,11 +10,6 @@ fi
 set -o pipefail
 set -e
 
-# these components k8s.io/<item> are versioned for each k8s release and should match the version of k8s used in KEDA for a given release
-kube_components="api apimachinery apiextensions-apiserver apiserver client-go component-base kube-aggregator kms"
-
-match_keda_version_deps="sigs.k8s.io/controller-runtime sigs.k8s.io/controller-runtime/tools/setup-envtest sigs.k8s.io/controller-tools"
-
 echo "Fetching sample CRs for KEDA v$ver"
 curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/config/samples/kustomization.yaml" > config/samples/kustomization.yaml
 for cr in $(sed -n '/^resources:$/,/^[^-]/ { s#[^0-9a-zA-Z_. -]##g; s#^- ##p}' config/samples/kustomization.yaml); do
@@ -47,15 +42,20 @@ fi
 
 echo "Updating go version in go.mod to '$gover'"
 sed -i "s/^go  *[1-9][0-9]*\.[0-9][0-9]*$/go $gover/" go.mod
-echo "Updatign go version in github workflows"
-while read f; do
-  echo " $f"
-  sed -i "s/^\\(  *go-version: \\) *'[1-9][0-9]*\\.[0-9][0-9]*'\$/\\1'${gover}'/" "$f"
-done < <(git grep -Pl "^  *go-version:  *'[1-9][0-9]*\\.[0-9][0-9]*'\$" .github/workflows/)
 
 echo
-echo 'Running go mod tidy (pass 1)'
+echo 'Running go mod tidy'
 go mod tidy
+
+echo "Getting tag for keda-tools used to build KEDA version $ver"
+bttag=$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/Dockerfile" | sed -n 's#^FROM .*ghcr\.io/kedacore/keda-tools:\([0-9][0-9.]*\).*#\1#p;T;q')
+if [ -z "$bttag" ]; then
+  echo "Error: could not find the keda-tools builder image in the Dockerfile of KEDA v$ver"
+  exit 1
+fi
+
+echo "Updating keda-tools tag in Dockerfile to $bttag"
+sed -i "s#ghcr\.io/kedacore/keda-tools:[0-9][0-9.]*#ghcr.io/kedacore/keda-tools:${bttag}#" Dockerfile
 
 echo "Updating resources from KEDA $ver release"
 curl -L "https://github.com/kedacore/keda/releases/download/v${ver}/keda-${ver}.yaml" | sed 's/\r//g' > resources/keda.yaml
@@ -95,7 +95,7 @@ sed -i 's/\(app.kubernetes.io\/version:\) [0-9.][0-9.]*/\1 '${ver}/ keda/${ver}/
 
 date="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "Updating all version strings, 'replaces' and 'createdAt' fields in base CSV"
-sed -i "s/${prev//./\\.}/${ver}/; s/^\\(  replaces: *keda.v\\)[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/\1${prev}/; s/\\(  *createdAt: *\\)\"?[0-9-]*T[0-9:.]*Z\"/\1\"${date}\"/" config/manifests/bases/keda.clusterserviceversion.yaml
+sed -i "s/${prev//./\\.}/${ver}/; s/^\\(  replaces: *keda.v\\)[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/\1${prev}/; s/^\\(  *createdAt: *\\).*\$/\1\"${date}\"/" config/manifests/bases/keda.clusterserviceversion.yaml
 
 rm -f keda/${ver}/manifests/keda.v${prev}.clusterserviceversion.yaml
 echo "Creating release CSV keda.v${ver}.clusterserviceversion.yaml"
@@ -119,46 +119,9 @@ for i in $crds; do
   fi
 done
 
-all_mods="$(go list -mod=readonly -m -f '{{ if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)"
-declare -A updated_mods
-to_update=()
-
-# force versions of k8s components
-for i in $kube_components; do
-    to_update+=("k8s.io/$i@$k8sver")
-    updated_mods["k8s.io/$i"]=1
-done
-
-for i in $match_keda_version_deps; do
-    echo -n checking upstream version of $i .....
-    if ! modver=$(echo "$keda_gomod" | grep -Po '(?<=^\t'"$i"' )v[0-9]*\.[0-9]*\.[0-9]*(-[0-9]*(-[0-9a-f]*)?)?$'); then
-      echo "  Unable to find $i in https://raw.githubusercontent.com/kedacore/keda/v${ver}/go.mod .  Exiting!"
-      exit 1
-    fi
-    echo "  got version $modver"
-    to_update+=("$i@$modver")
-    updated_mods["$i"]=1
-done
-
-# hack: force version of openshift API module based upon k8s->openshift version skew (e.g. 1.27 -> 4.14)
-openshift_branch="release-4.$((k8sminorver-13))"
-to_update+=("github.com/openshift/api@$openshift_branch")
-updated_mods[github.com/openshift/api]=1
-
-for m in $all_mods; do
-    [ -n "${updated_mods[$m]+1}" ] && continue # already updated
-    to_update+=("$m" )
-    updated_mods["$m"]=1
-done
-
-echo
-echo Updating all deps
-echo go get "${to_update[@]}"
-go get -u "${to_update[@]}"
-
-echo
-echo 'Running go mod tidy (pass 2)'
-go mod tidy
+# Go module versions are maintained by Renovate rather than synced from KEDA
+# here. Coupling them previously forced downgrades that conflicted with
+# OpenShift modules (openshift/{api,library-go,controller-runtime-common}).
 
 # make sure we re-build the right version of the build tools
 rm -f bin/controller-gen bin/kustomize
@@ -172,6 +135,18 @@ make manifests
 cp config/crd/bases/keda.sh_kedacontrollers.yaml keda/${ver}/manifests/
 # revert any changes to the kustomization
 git checkout config/manager/kustomization.yaml config/default/kustomization.yaml
+
+echo "Syncing any remaining CRDs in keda/${ver}/manifests/ from config/crd/bases/"
+# CRDs that do not come from resources/keda.yaml (currently the HTTP Add-on's,
+# maintained by hack/http-add-on-relprep.sh) are inherited verbatim from the
+# previous release directory, so without this they ship a stale schema.
+for f in keda/${ver}/manifests/*.yaml; do
+  crdbase="config/crd/bases/$(basename "$f")"
+  if [ -f "$crdbase" ] && ! cmp -s "$crdbase" "$f"; then
+    echo " $(basename "$f")"
+    cp "$crdbase" "$f"
+  fi
+done
 
 echo "Syncing bundle annotations to keda/${ver}/metadata/ (stripping test-only entries)"
 sed '/operators\.operatorframework\.io\.test\./d; /^[[:space:]]*#/d; /^[[:space:]]*$/d' \
@@ -198,7 +173,7 @@ echo "Done! $0 successful"
 echo
 echo "To Do:"
 echo " 1. Validate changes made by this script and 'git add' them"
-echo " 2. Verify the code builds and works with vendor & toolchain update. Make any necessary changes to match changed APIs"
+echo " 2. Verify the code builds with the updated Go toolchain. Make any necessary changes to match changed APIs"
 echo " 3. Test that the bundle is deployable and functional on an OpenShift cluster:"
 echo "      make VERSION=${ver} IMAGE_REGISTRY=quay.io IMAGE_REPO=example_quay_user RESTRICTED=true deploy-olm-testing"
 echo " 4. Test that the bundle is deployable and functional on a Kubernetes cluster:"
