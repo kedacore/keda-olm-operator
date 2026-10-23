@@ -47,6 +47,16 @@ echo
 echo 'Running go mod tidy'
 go mod tidy
 
+echo "Getting tag for keda-tools used to build KEDA version $ver"
+bttag=$(curl -s "https://raw.githubusercontent.com/kedacore/keda/v${ver}/Dockerfile" | sed -n 's#^FROM .*ghcr\.io/kedacore/keda-tools:\([0-9][0-9.]*\).*#\1#p;T;q')
+if [ -z "$bttag" ]; then
+  echo "Error: could not find the keda-tools builder image in the Dockerfile of KEDA v$ver"
+  exit 1
+fi
+
+echo "Updating keda-tools tag in Dockerfile to $bttag"
+sed -i "s#ghcr\.io/kedacore/keda-tools:[0-9][0-9.]*#ghcr.io/kedacore/keda-tools:${bttag}#" Dockerfile
+
 echo "Updating resources from KEDA $ver release"
 curl -L "https://github.com/kedacore/keda/releases/download/v${ver}/keda-${ver}.yaml" | sed 's/\r//g' > resources/keda.yaml
 
