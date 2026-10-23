@@ -206,7 +206,7 @@ OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk
 # renovate: datasource=github-releases depName=operator-framework/operator-sdk
 OPERATOR_SDK_VERSION ?= v1.42.3
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v2.12.2
+GOLANGCI_LINT_VERSION ?= v2.15.0
 
 .PHONY: operator-sdk
 operator-sdk: $(OPERATOR_SDK) ## Download operator-sdk locally if necessary.
