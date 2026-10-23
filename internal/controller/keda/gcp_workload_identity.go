@@ -174,8 +174,7 @@ func (r *KedaControllerReconciler) ensureGCPCredentialsSecret(ctx context.Contex
 				key, secret.Type)
 		}
 		if err := controllerutil.SetControllerReference(instance, secret, r.Scheme); err != nil {
-			var alreadyOwnedErr *controllerutil.AlreadyOwnedError
-			if goerrors.As(err, &alreadyOwnedErr) {
+			if alreadyOwnedErr, ok := goerrors.AsType[*controllerutil.AlreadyOwnedError](err); ok {
 				return fmt.Errorf("secret %s is controlled by %s %s and can't be used for GCP credentials",
 					key, alreadyOwnedErr.Owner.Kind, alreadyOwnedErr.Owner.Name)
 			}

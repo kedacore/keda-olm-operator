@@ -128,8 +128,7 @@ func (r *KedaControllerReconciler) ensurePrometheusRole(ctx context.Context, log
 	}
 
 	if err := controllerutil.SetControllerReference(instance, existing, r.Scheme); err != nil {
-		var alreadyOwnedErr *controllerutil.AlreadyOwnedError
-		if !goerrors.As(err, &alreadyOwnedErr) {
+		if _, ok := goerrors.AsType[*controllerutil.AlreadyOwnedError](err); !ok {
 			logger.Error(err, "Failed to set controller reference for Prometheus Role")
 			return err
 		}
@@ -210,8 +209,7 @@ func (r *KedaControllerReconciler) ensurePrometheusRoleBinding(ctx context.Conte
 	}
 
 	if err := controllerutil.SetControllerReference(instance, existing, r.Scheme); err != nil {
-		var alreadyOwnedErr *controllerutil.AlreadyOwnedError
-		if !goerrors.As(err, &alreadyOwnedErr) {
+		if _, ok := goerrors.AsType[*controllerutil.AlreadyOwnedError](err); !ok {
 			logger.Error(err, "Failed to set controller reference for Prometheus RoleBinding")
 			return err
 		}
