@@ -179,10 +179,14 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - kind: CloudEventSource
+    - description: Defines how KEDA events are sent to an event sink
+      displayName: CloudEventSource
+      kind: CloudEventSource
       name: cloudeventsources.eventing.keda.sh
       version: v1alpha1
-    - kind: ClusterCloudEventSource
+    - description: Defines cluster wide how KEDA events are sent to an event sink
+      displayName: ClusterCloudEventSource
+      kind: ClusterCloudEventSource
       name: clustercloudeventsources.eventing.keda.sh
       version: v1alpha1
     - description: Describes cluster wide authentication parameters
@@ -210,10 +214,15 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:io.kubernetes:Secret
       version: v1alpha1
-    - kind: HTTPScaledObject
+    - description: Defines how the KEDA HTTP Add-on should scale your HTTP application
+      displayName: HTTPScaledObject
+      kind: HTTPScaledObject
       name: httpscaledobjects.http.keda.sh
       version: v1alpha1
-    - kind: InterceptorRoute
+    - description: Configures how the KEDA HTTP Add-on routes requests to a target
+        service and autoscales it
+      displayName: InterceptorRoute
+      kind: InterceptorRoute
       name: interceptorroutes.http.keda.sh
       version: v1beta1
     - description: |
@@ -293,7 +302,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:text
       version: v1alpha1
-    - description: Defines how KEDA should scale your jobs and what the triggers
+    - description: Defines how KEDA should scale your jobs and what the triggers are
       displayName: ScaledJob
       kind: ScaledJob
       name: scaledjobs.keda.sh
