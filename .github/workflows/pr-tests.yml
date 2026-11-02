@@ -94,6 +94,17 @@ jobs:
         with:
           go-version: '1.27'
 
+      # The local kind registry serves plain HTTP. Docker on ubuntu-26.04 no
+      # longer allows that just because kind-registry resolves to 127.0.0.1,
+      # so it has to be listed explicitly.
+      - name: Allow plain HTTP for the local kind registry
+        run: |
+          sudo mkdir -p /etc/docker
+          [ -s /etc/docker/daemon.json ] || echo '{}' | sudo tee /etc/docker/daemon.json > /dev/null
+          jq '."insecure-registries" += ["kind-registry:5000"]' /etc/docker/daemon.json > /tmp/daemon.json
+          sudo mv /tmp/daemon.json /etc/docker/daemon.json
+          sudo systemctl restart docker
+
       - name: Create kind cluster with local registry
         uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
         env:
@@ -144,6 +155,17 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.27'
+
+      # The local kind registry serves plain HTTP. Docker on ubuntu-26.04 no
+      # longer allows that just because kind-registry resolves to 127.0.0.1,
+      # so it has to be listed explicitly.
+      - name: Allow plain HTTP for the local kind registry
+        run: |
+          sudo mkdir -p /etc/docker
+          [ -s /etc/docker/daemon.json ] || echo '{}' | sudo tee /etc/docker/daemon.json > /dev/null
+          jq '."insecure-registries" += ["kind-registry:5000"]' /etc/docker/daemon.json > /tmp/daemon.json
+          sudo mv /tmp/daemon.json /etc/docker/daemon.json
+          sudo systemctl restart docker
 
       - name: Create kind cluster with local registry
         uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
