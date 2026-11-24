@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM ghcr.io/kedacore/keda-tools:1.26.2 as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/keda-tools:1.26.2 AS builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -25,7 +25,10 @@ COPY internal/controller/ internal/controller/
 COPY resources/ resources/
 
 # Build
-RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} make build
+ARG TARGETOS
+ARG TARGETARCH
+RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} \
+    TARGET_OS=${TARGETOS} ARCH=${TARGETARCH} make build
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details

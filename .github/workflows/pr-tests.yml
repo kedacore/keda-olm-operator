@@ -53,8 +53,15 @@ jobs:
           SKIP: golangci-lint
 
   test-build:
-    name: Test Image Build
-    runs-on: ubuntu-latest
+    name: Test Image Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
     permissions:
       contents: read
       packages: write
@@ -79,8 +86,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Test build
-        run: make docker-build
+      - name: Build and run the operator image
+        env:
+          DOCKER_DEFAULT_PLATFORM: ${{ matrix.platform }}
+        run: |
+          image=keda-olm-operator:test
+          make docker-build IMAGE_CONTROLLER="$image"
+          docker run --rm "$image" --help
 
   e2e:
     name: E2E Smoke Test
