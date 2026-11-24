@@ -6,6 +6,8 @@ IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-olm-operator:$(VERSION)
+IMAGE_PLATFORMS ?= linux/amd64,linux/arm64
+IMAGE_BUILD_ARGS = --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
 
 ARCH       ?=amd64
 CGO        ?=0
@@ -162,12 +164,13 @@ run: manifests generate ## Run a controller from your host.
 	WATCH_NAMESPACE="keda" go run ./cmd/main.go
 
 docker-build: ## Build docker image with the manager.
-	docker build . -t ${IMAGE_CONTROLLER}  --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
+	docker build . -t ${IMAGE_CONTROLLER} ${IMAGE_BUILD_ARGS}
 
 docker-push: ## Push docker image with the manager.
 	docker push ${IMAGE_CONTROLLER}
 
-publish: docker-build docker-push ## Build & push docker image with the manager.
+publish: ## Build and push a multi-platform manager image.
+	docker buildx build . -t ${IMAGE_CONTROLLER} ${IMAGE_BUILD_ARGS} --platform ${IMAGE_PLATFORMS} --push
 
 sign-images: ## Sign KEDA images published on GitHub Container Registry
 	cosign sign ${COSIGN_FLAGS} $(IMAGE_CONTROLLER)

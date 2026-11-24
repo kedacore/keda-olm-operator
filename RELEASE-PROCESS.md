@@ -64,6 +64,7 @@ git push origin release290
 ## 8. Create KEDA release on GitHub
 
 Creating a new release in the releases page (https://github.com/kedacore/keda-olm-operator/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.9.0).
+The workflow publishes a single image tag for both `linux/amd64` and `linux/arm64`.
 
 > Note: The GitHub Container Registry repo with all the different images can be seen here: https://github.com/kedacore/keda-olm-operator/pkgs/container/keda-olm-operator
 
